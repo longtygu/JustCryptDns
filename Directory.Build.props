@@ -1,0 +1,22 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Same output folder whether built via the solution (x64) or a single project (AnyCPU). -->
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+    <RuntimeIdentifier Condition="'$(OutputType)' == 'WinExe' Or '$(OutputType)' == 'Exe'">win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <Version>0.1.0</Version>
+    <Company>JustCryptDns</Company>
+    <Product>JustCryptDns</Product>
+    <Copyright>Copyright © 2026 JustCryptDns contributors</Copyright>
+    <SatelliteResourceLanguages>en;vi</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <NoWarn>$(NoWarn);CA1848;CA1716;CA1805;CA1515;CA2007;CA1873</NoWarn>
+  </PropertyGroup>
+</Project>

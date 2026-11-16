@@ -1,0 +1,122 @@
+key|en|vi
+App_Name|JustCryptDns|JustCryptDns
+App_Tagline|DNS security & optimization|Bảo mật & tối ưu DNS
+Nav_Dashboard|Dashboard|Tổng quan
+Nav_DnsManager|DNS Manager|Quản lý DNS
+Nav_Resolvers|Resolver Library|Thư viện Resolver
+Nav_Routing|Smart Routing|Định tuyến thông minh
+Nav_Gaming|Gaming Optimization|Tối ưu chơi game
+Nav_Filtering|DNS Filtering|Lọc DNS
+Nav_Diagnostics|Network Diagnostics|Chẩn đoán mạng
+Nav_Monitor|Live Monitor|Giám sát trực tiếp
+Nav_Settings|Settings|Cài đặt
+Nav_ToggleSidebar|Collapse or expand navigation|Thu gọn hoặc mở rộng thanh điều hướng
+Window_Minimize|Minimize|Thu nhỏ
+Window_Maximize|Maximize|Phóng to
+Window_Restore|Restore down|Khôi phục kích thước
+Window_Close|Close|Đóng
+Page_Dashboard_Subtitle|Protection status, resolver health and local network overview.|Trạng thái bảo vệ, tình trạng resolver và tổng quan mạng cục bộ.
+Page_DnsManager_Subtitle|Control the DNS engine, local proxy and Windows adapter DNS configuration.|Điều khiển DNS engine, proxy cục bộ và cấu hình DNS của bộ điều hợp Windows.
+Page_Resolvers_Subtitle|Browse, validate and organize DNS resolvers and protocols.|Duyệt, xác thực và sắp xếp các resolver DNS và giao thức.
+Page_Routing_Subtitle|Send different domains to different resolvers with prioritized rules.|Gửi các tên miền khác nhau tới các resolver khác nhau bằng quy tắc ưu tiên.
+Page_Gaming_Subtitle|Benchmark resolvers and keep DNS stable during gaming sessions.|Đo hiệu năng resolver và giữ DNS ổn định khi chơi game.
+Page_Filtering_Subtitle|Block ads, trackers, malware and phishing domains at the DNS level.|Chặn quảng cáo, trình theo dõi, mã độc và lừa đảo ở cấp DNS.
+Page_Diagnostics_Subtitle|Inspect connectivity and run DNS tests.|Kiểm tra kết nối và chạy các bài kiểm tra DNS.
+Page_Monitor_Subtitle|Watch DNS queries and engine health in real time.|Theo dõi truy vấn DNS và tình trạng engine theo thời gian thực.
+Page_Settings_Subtitle|Language, appearance and application preferences.|Ngôn ngữ, giao diện và tùy chọn ứng dụng.
+Planned_Badge|Planned · Phase {0}|Dự kiến · Giai đoạn {0}
+Planned_Heading|This module is not implemented yet|Mô-đun này chưa được triển khai
+Planned_Body|To avoid showing misleading information, this page displays no data until its engine is built. Planned capabilities:|Để tránh hiển thị thông tin sai lệch, trang này không hiển thị dữ liệu cho đến khi engine được xây dựng. Các khả năng dự kiến:
+Planned_DnsManager_1|Start, stop and restart the DNS engine with health monitoring and automatic recovery|Khởi động, dừng và khởi động lại DNS engine với giám sát và tự phục hồi
+Planned_DnsManager_2|Local DNS proxy (127.0.0.1) with port-conflict and DNS-loop detection|Proxy DNS cục bộ (127.0.0.1) với phát hiện xung đột cổng và vòng lặp DNS
+Planned_DnsManager_3|DNS over UDP/TCP, DNS over HTTPS, DNS over TLS and DNSCrypt (via dnscrypt-proxy)|DNS qua UDP/TCP, DNS qua HTTPS, DNS qua TLS và DNSCrypt (qua dnscrypt-proxy)
+Planned_DnsManager_4|Safe adapter DNS changes: backup, verify, automatic rollback and emergency restore|Thay đổi DNS an toàn: sao lưu, xác minh, tự động hoàn tác và khôi phục khẩn cấp
+Planned_Resolvers_1|Built-in providers: Cloudflare, Google, Quad9, OpenDNS, AdGuard, Control D, NextDNS, Mullvad, DNS0|Nhà cung cấp tích hợp: Cloudflare, Google, Quad9, OpenDNS, AdGuard, Control D, NextDNS, Mullvad, DNS0
+Planned_Resolvers_2|Add, edit, remove and validate custom DoH, DoT and DNSCrypt resolvers|Thêm, sửa, xóa và xác thực resolver DoH, DoT và DNSCrypt tùy chỉnh
+Planned_Resolvers_3|Primary/secondary resolvers, groups and health checks|Resolver chính/phụ, nhóm và kiểm tra tình trạng
+Planned_Resolvers_4|Import and export resolver profiles|Nhập và xuất hồ sơ resolver
+Planned_Routing_1|Domain rules with exact and wildcard matching|Quy tắc tên miền với khớp chính xác và ký tự đại diện
+Planned_Routing_2|Rule priority, enable/disable and routing profiles|Độ ưu tiên quy tắc, bật/tắt và hồ sơ định tuyến
+Planned_Routing_3|Rule tester and routing log|Công cụ kiểm tra quy tắc và nhật ký định tuyến
+Planned_Routing_4|Default fallback resolver|Resolver dự phòng mặc định
+Planned_Gaming_1|Resolver benchmark: average, min, max, P95, success and timeout rates|Đo hiệu năng resolver: trung bình, min, max, P95, tỷ lệ thành công và hết thời gian
+Planned_Gaming_2|Lowest Latency, Balanced and Maximum Reliability selection profiles|Hồ sơ lựa chọn Độ trễ thấp nhất, Cân bằng và Độ tin cậy tối đa
+Planned_Gaming_3|Profiles for Steam, Riot, Epic, EA, Ubisoft Connect, Battle.net and custom|Hồ sơ cho Steam, Riot, Epic, EA, Ubisoft Connect, Battle.net và tùy chỉnh
+Planned_Gaming_4|Gaming Mode: stable resolver, warm cache, health monitoring. DNS latency is not in-game ping.|Chế độ Game: resolver ổn định, bộ nhớ đệm sẵn sàng, giám sát. Độ trễ DNS không phải ping trong game.
+Planned_Filtering_1|Advertising, tracking, malware, phishing and telemetry blocklists|Danh sách chặn quảng cáo, theo dõi, mã độc, lừa đảo và telemetry
+Planned_Filtering_2|Allowlist, domain exceptions and temporary exceptions|Danh sách cho phép, ngoại lệ tên miền và ngoại lệ tạm thời
+Planned_Filtering_3|Validated automatic and manual list updates; hosts-file import|Cập nhật danh sách tự động và thủ công có xác thực; nhập tệp hosts
+Planned_Filtering_4|Inspect why a domain was blocked or allowed|Kiểm tra lý do một tên miền bị chặn hoặc được cho phép
+Planned_Diagnostics_1|DNS lookup for A, AAAA, CNAME, MX, TXT and NS records|Tra cứu DNS cho bản ghi A, AAAA, CNAME, MX, TXT và NS
+Planned_Diagnostics_2|DNSSEC, DoH and DNSCrypt connectivity tests|Kiểm tra DNSSEC, kết nối DoH và DNSCrypt
+Planned_Diagnostics_3|Resolver comparison, DNS leak test and propagation test|So sánh resolver, kiểm tra rò rỉ DNS và kiểm tra lan truyền
+Planned_Diagnostics_4|UDP/53 and TCP/53 blocking detection, IPv4/IPv6 checks|Phát hiện chặn UDP/53 và TCP/53, kiểm tra IPv4/IPv6
+Planned_Monitor_1|Virtualized live DNS query log|Nhật ký truy vấn DNS trực tiếp (ảo hóa)
+Planned_Monitor_2|Per-resolver latency, success rate and failover events|Độ trễ, tỷ lệ thành công và sự kiện chuyển đổi dự phòng theo resolver
+Planned_Monitor_3|Cache hit ratio and blocked query statistics|Tỷ lệ trúng bộ nhớ đệm và thống kê truy vấn bị chặn
+Planned_Monitor_4|Power Saving, Balanced and Performance monitoring modes|Chế độ giám sát Tiết kiệm, Cân bằng và Hiệu năng
+Dash_Protection_Title|DNS protection|Bảo vệ DNS
+Dash_Protection_Inactive|Not active|Chưa hoạt động
+Dash_Protection_InactiveDetail|The JustCryptDns engine is not available yet (Phase 4). Windows is currently using the DNS servers listed under Network.|DNS engine của JustCryptDns chưa khả dụng (Giai đoạn 4). Windows hiện đang dùng các máy chủ DNS được liệt kê ở mục Mạng.
+Dash_StartEngine|Start DNS engine|Khởi động DNS engine
+Dash_EngineUnavailableTip|Available once the DNS engine is implemented (Phase 4).|Khả dụng khi DNS engine được triển khai (Giai đoạn 4).
+Dash_Protocol|Protocol|Giao thức
+Dash_Resolver|Resolver|Resolver
+Dash_GamingMode|Gaming Mode|Chế độ Game
+Dash_Filtering|Filtering|Lọc
+Dash_Metric_Latency|DNS latency|Độ trễ DNS
+Dash_Metric_Queries|Total queries|Tổng truy vấn
+Dash_Metric_Blocked|Blocked queries|Truy vấn bị chặn
+Dash_Metric_CacheHit|Cache hit rate|Tỷ lệ trúng cache
+Dash_Metric_NoData|No data — engine not running|Không có dữ liệu — engine chưa chạy
+Dash_Network_Title|Network|Mạng
+Dash_Network_LocalNote|Local adapter information reported by Windows. No external tests were performed.|Thông tin bộ điều hợp cục bộ do Windows cung cấp. Không thực hiện kiểm tra bên ngoài.
+Dash_Network_Adapter|Active adapter|Bộ điều hợp đang dùng
+Dash_Network_Type|Type|Loại
+Dash_Network_Speed|Link speed|Tốc độ liên kết
+Dash_Network_LocalIp|Local IP|IP cục bộ
+Dash_Network_Gateway|Gateway|Cổng mặc định
+Dash_Network_Dns|Current DNS servers|Máy chủ DNS hiện tại
+Dash_Network_IPv4|IPv4|IPv4
+Dash_Network_IPv6|IPv6|IPv6
+Dash_Network_NoActive|No active network adapter detected.|Không phát hiện bộ điều hợp mạng đang hoạt động.
+Dash_Network_Updated|Updated {0}|Cập nhật lúc {0}
+Dash_Network_State|Local link state|Trạng thái liên kết cục bộ
+Connectivity_Offline|Offline|Ngoại tuyến
+Connectivity_LocalOnly|Connected, no gateway|Đã kết nối, không có cổng mặc định
+Connectivity_GatewayAvailable|Connected · internet not verified|Đã kết nối · chưa xác minh Internet
+IpStatus_Global|Global address|Địa chỉ toàn cầu
+IpStatus_LinkLocal|Link-local only|Chỉ link-local
+IpStatus_Configured|Configured|Đã cấu hình
+IpStatus_None|Not configured|Chưa cấu hình
+AdapterKind_Ethernet|Ethernet|Ethernet
+AdapterKind_WiFi|Wi-Fi|Wi-Fi
+AdapterKind_Cellular|Cellular|Di động
+AdapterKind_Virtual|Virtual|Ảo
+AdapterKind_Other|Other|Khác
+Common_NotAvailable|Not available|Không khả dụng
+Common_None|None|Không có
+Common_Refresh|Refresh|Làm mới
+Common_Unknown|Unknown|Không rõ
+Common_Open|Open|Mở
+Settings_General|General|Chung
+Settings_Language|Language|Ngôn ngữ
+Settings_Language_Desc|Changes apply immediately.|Thay đổi được áp dụng ngay lập tức.
+Lang_system|System default|Theo hệ thống
+Lang_en|English|English
+Lang_vi|Tiếng Việt|Tiếng Việt
+Settings_Appearance|Appearance|Giao diện
+Settings_Theme|Theme|Chủ đề
+Settings_Theme_Desc|System follows the Windows app mode setting.|Theo hệ thống sẽ dùng chế độ ứng dụng của Windows.
+Theme_Dark|Dark|Tối
+Theme_Light|Light|Sáng
+Theme_System|System|Hệ thống
+Settings_AppearanceMore|Transparency, accent color, scaling and more appearance options arrive in Phase 2.|Độ trong suốt, màu nhấn, tỉ lệ hiển thị và các tùy chọn giao diện khác sẽ có ở Giai đoạn 2.
+Settings_About|About|Giới thiệu
+Settings_Version|Version|Phiên bản
+Settings_OS|Operating system|Hệ điều hành
+Settings_DataFolder|Data folder|Thư mục dữ liệu
+Settings_LogsFolder|Logs folder|Thư mục nhật ký
+Settings_Privacy|No telemetry. Settings and logs are stored only on this computer.|Không thu thập telemetry. Cài đặt và nhật ký chỉ được lưu trên máy tính này.
+Settings_LoadWarning|Your settings file could not be read and was reset. The damaged file was kept next to it for inspection.|Không thể đọc tệp cài đặt nên đã đặt lại. Tệp bị hỏng được giữ lại bên cạnh để kiểm tra.
+Settings_SaveError|Settings could not be saved: {0}|Không thể lưu cài đặt: {0}

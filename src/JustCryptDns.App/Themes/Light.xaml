@@ -1,0 +1,51 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Light theme palette. Accent brushes are injected at runtime by ThemeService. -->
+    <Color x:Key="Color.WindowBackground">#FFF3F5F9</Color>
+    <Color x:Key="Color.Sidebar">#FFEBEEF4</Color>
+    <Color x:Key="Color.Card">#FFFFFFFF</Color>
+    <Color x:Key="Color.CardHover">#FFF8F9FC</Color>
+    <Color x:Key="Color.CardBorder">#FFE1E5EC</Color>
+    <Color x:Key="Color.TextPrimary">#FF14171D</Color>
+    <Color x:Key="Color.TextSecondary">#FF545C6B</Color>
+    <Color x:Key="Color.TextTertiary">#FF838B99</Color>
+
+    <SolidColorBrush x:Key="Brush.WindowBackground" Color="{StaticResource Color.WindowBackground}" />
+    <SolidColorBrush x:Key="Brush.Sidebar" Color="{StaticResource Color.Sidebar}" />
+    <SolidColorBrush x:Key="Brush.Card" Color="{StaticResource Color.Card}" />
+    <SolidColorBrush x:Key="Brush.CardHover" Color="{StaticResource Color.CardHover}" />
+    <SolidColorBrush x:Key="Brush.CardBorder" Color="{StaticResource Color.CardBorder}" />
+    <SolidColorBrush x:Key="Brush.Divider" Color="#FFE4E7ED" />
+
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.TextSecondary}" />
+    <SolidColorBrush x:Key="Brush.TextTertiary" Color="{StaticResource Color.TextTertiary}" />
+    <SolidColorBrush x:Key="Brush.TextDisabled" Color="#FFB3B9C3" />
+
+    <SolidColorBrush x:Key="Brush.ControlFill" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="Brush.ControlFillHover" Color="#FFF5F7FA" />
+    <SolidColorBrush x:Key="Brush.ControlFillPressed" Color="#FFEDF0F5" />
+    <SolidColorBrush x:Key="Brush.ControlBorder" Color="#FFD5DAE2" />
+    <SolidColorBrush x:Key="Brush.ControlBorderHover" Color="#FFC3C9D3" />
+    <SolidColorBrush x:Key="Brush.SubtleHover" Color="#0F000000" />
+    <SolidColorBrush x:Key="Brush.SubtlePressed" Color="#08000000" />
+    <SolidColorBrush x:Key="Brush.Popup" Color="#FFFFFFFF" />
+
+    <SolidColorBrush x:Key="Brush.CaptionCloseHover" Color="#FFC42B1C" />
+
+    <SolidColorBrush x:Key="Brush.Success" Color="#FF128A52" />
+    <SolidColorBrush x:Key="Brush.SuccessSubtle" Color="#1A128A52" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="#FFB7790A" />
+    <SolidColorBrush x:Key="Brush.WarningSubtle" Color="#1AB7790A" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#FFD13438" />
+    <SolidColorBrush x:Key="Brush.DangerSubtle" Color="#1AD13438" />
+    <SolidColorBrush x:Key="Brush.Neutral" Color="#FF6B7280" />
+    <SolidColorBrush x:Key="Brush.NeutralSubtle" Color="#146B7280" />
+
+    <SolidColorBrush x:Key="Brush.Accent" Color="#FF2F6FEB" />
+    <SolidColorBrush x:Key="Brush.AccentHover" Color="#FF4A82EE" />
+    <SolidColorBrush x:Key="Brush.AccentPressed" Color="#FF285FC9" />
+    <SolidColorBrush x:Key="Brush.AccentSubtle" Color="#1A2F6FEB" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#FF2259C7" />
+    <SolidColorBrush x:Key="Brush.OnAccent" Color="#FFFFFFFF" />
+</ResourceDictionary>

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>JustCryptDns.App</RootNamespace>
+    <AssemblyName>JustCryptDns</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\AppIcon.ico</ApplicationIcon>
+    <TieredPGO>true</TieredPGO>
+    <!-- CA1822: bindable ViewModel properties must stay instance members. -->
+    <NoWarn>$(NoWarn);CA1822</NoWarn>
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+    <!-- Workstation, non-concurrent GC: lower idle working set for a long-running desktop utility. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JustCryptDns.Core\JustCryptDns.Core.csproj" />
+    <ProjectReference Include="..\JustCryptDns.DNS\JustCryptDns.DNS.csproj" />
+    <ProjectReference Include="..\JustCryptDns.Network\JustCryptDns.Network.csproj" />
+    <ProjectReference Include="..\JustCryptDns.Infrastructure\JustCryptDns.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\AppIcon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="JustCryptDns.Tests" />
+  </ItemGroup>
+
+</Project>

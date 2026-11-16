@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>JustCryptDns.Network</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JustCryptDns.Core\JustCryptDns.Core.csproj" />
+    <ProjectReference Include="..\JustCryptDns.DNS\JustCryptDns.DNS.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="JustCryptDns.Tests" />
+  </ItemGroup>
+
+</Project>

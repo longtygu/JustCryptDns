@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="App_Name" xml:space="preserve">
+    <value>JustCryptDns</value>
+  </data>
+  <data name="App_Tagline" xml:space="preserve">
+    <value>Bảo mật &amp; tối ưu DNS</value>
+  </data>
+  <data name="Nav_Dashboard" xml:space="preserve">
+    <value>Tổng quan</value>
+  </data>
+  <data name="Nav_DnsManager" xml:space="preserve">
+    <value>Quản lý DNS</value>
+  </data>
+  <data name="Nav_Resolvers" xml:space="preserve">
+    <value>Thư viện Resolver</value>
+  </data>
+  <data name="Nav_Routing" xml:space="preserve">
+    <value>Định tuyến thông minh</value>
+  </data>
+  <data name="Nav_Gaming" xml:space="preserve">
+    <value>Tối ưu chơi game</value>
+  </data>
+  <data name="Nav_Filtering" xml:space="preserve">
+    <value>Lọc DNS</value>
+  </data>
+  <data name="Nav_Diagnostics" xml:space="preserve">
+    <value>Chẩn đoán mạng</value>
+  </data>
+  <data name="Nav_Monitor" xml:space="preserve">
+    <value>Giám sát trực tiếp</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Cài đặt</value>
+  </data>
+  <data name="Nav_ToggleSidebar" xml:space="preserve">
+    <value>Thu gọn hoặc mở rộng thanh điều hướng</value>
+  </data>
+  <data name="Window_Minimize" xml:space="preserve">
+    <value>Thu nhỏ</value>
+  </data>
+  <data name="Window_Maximize" xml:space="preserve">
+    <value>Phóng to</value>
+  </data>
+  <data name="Window_Restore" xml:space="preserve">
+    <value>Khôi phục kích thước</value>
+  </data>
+  <data name="Window_Close" xml:space="preserve">
+    <value>Đóng</value>
+  </data>
+  <data name="Page_Dashboard_Subtitle" xml:space="preserve">
+    <value>Trạng thái bảo vệ, tình trạng resolver và tổng quan mạng cục bộ.</value>
+  </data>
+  <data name="Page_DnsManager_Subtitle" xml:space="preserve">
+    <value>Điều khiển DNS engine, proxy cục bộ và cấu hình DNS của bộ điều hợp Windows.</value>
+  </data>
+  <data name="Page_Resolvers_Subtitle" xml:space="preserve">
+    <value>Duyệt, xác thực và sắp xếp các resolver DNS và giao thức.</value>
+  </data>
+  <data name="Page_Routing_Subtitle" xml:space="preserve">
+    <value>Gửi các tên miền khác nhau tới các resolver khác nhau bằng quy tắc ưu tiên.</value>
+  </data>
+  <data name="Page_Gaming_Subtitle" xml:space="preserve">
+    <value>Đo hiệu năng resolver và giữ DNS ổn định khi chơi game.</value>
+  </data>
+  <data name="Page_Filtering_Subtitle" xml:space="preserve">
+    <value>Chặn quảng cáo, trình theo dõi, mã độc và lừa đảo ở cấp DNS.</value>
+  </data>
+  <data name="Page_Diagnostics_Subtitle" xml:space="preserve">
+    <value>Kiểm tra kết nối và chạy các bài kiểm tra DNS.</value>
+  </data>
+  <data name="Page_Monitor_Subtitle" xml:space="preserve">
+    <value>Theo dõi truy vấn DNS và tình trạng engine theo thời gian thực.</value>
+  </data>
+  <data name="Page_Settings_Subtitle" xml:space="preserve">
+    <value>Ngôn ngữ, giao diện và tùy chọn ứng dụng.</value>
+  </data>
+  <data name="Planned_Badge" xml:space="preserve">
+    <value>Dự kiến · Giai đoạn {0}</value>
+  </data>
+  <data name="Planned_Heading" xml:space="preserve">
+    <value>Mô-đun này chưa được triển khai</value>
+  </data>
+  <data name="Planned_Body" xml:space="preserve">
+    <value>Để tránh hiển thị thông tin sai lệch, trang này không hiển thị dữ liệu cho đến khi engine được xây dựng. Các khả năng dự kiến:</value>
+  </data>
+  <data name="Planned_DnsManager_1" xml:space="preserve">
+    <value>Khởi động, dừng và khởi động lại DNS engine với giám sát và tự phục hồi</value>
+  </data>
+  <data name="Planned_DnsManager_2" xml:space="preserve">
+    <value>Proxy DNS cục bộ (127.0.0.1) với phát hiện xung đột cổng và vòng lặp DNS</value>
+  </data>
+  <data name="Planned_DnsManager_3" xml:space="preserve">
+    <value>DNS qua UDP/TCP, DNS qua HTTPS, DNS qua TLS và DNSCrypt (qua dnscrypt-proxy)</value>
+  </data>
+  <data name="Planned_DnsManager_4" xml:space="preserve">
+    <value>Thay đổi DNS an toàn: sao lưu, xác minh, tự động hoàn tác và khôi phục khẩn cấp</value>
+  </data>
+  <data name="Planned_Resolvers_1" xml:space="preserve">
+    <value>Nhà cung cấp tích hợp: Cloudflare, Google, Quad9, OpenDNS, AdGuard, Control D, NextDNS, Mullvad, DNS0</value>
+  </data>
+  <data name="Planned_Resolvers_2" xml:space="preserve">
+    <value>Thêm, sửa, xóa và xác thực resolver DoH, DoT và DNSCrypt tùy chỉnh</value>
+  </data>
+  <data name="Planned_Resolvers_3" xml:space="preserve">
+    <value>Resolver chính/phụ, nhóm và kiểm tra tình trạng</value>
+  </data>
+  <data name="Planned_Resolvers_4" xml:space="preserve">
+    <value>Nhập và xuất hồ sơ resolver</value>
+  </data>
+  <data name="Planned_Routing_1" xml:space="preserve">
+    <value>Quy tắc tên miền với khớp chính xác và ký tự đại diện</value>
+  </data>
+  <data name="Planned_Routing_2" xml:space="preserve">
+    <value>Độ ưu tiên quy tắc, bật/tắt và hồ sơ định tuyến</value>
+  </data>
+  <data name="Planned_Routing_3" xml:space="preserve">
+    <value>Công cụ kiểm tra quy tắc và nhật ký định tuyến</value>
+  </data>
+  <data name="Planned_Routing_4" xml:space="preserve">
+    <value>Resolver dự phòng mặc định</value>
+  </data>
+  <data name="Planned_Gaming_1" xml:space="preserve">
+    <value>Đo hiệu năng resolver: trung bình, min, max, P95, tỷ lệ thành công và hết thời gian</value>
+  </data>
+  <data name="Planned_Gaming_2" xml:space="preserve">
+    <value>Hồ sơ lựa chọn Độ trễ thấp nhất, Cân bằng và Độ tin cậy tối đa</value>
+  </data>
+  <data name="Planned_Gaming_3" xml:space="preserve">
+    <value>Hồ sơ cho Steam, Riot, Epic, EA, Ubisoft Connect, Battle.net và tùy chỉnh</value>
+  </data>
+  <data name="Planned_Gaming_4" xml:space="preserve">
+    <value>Chế độ Game: resolver ổn định, bộ nhớ đệm sẵn sàng, giám sát. Độ trễ DNS không phải ping trong game.</value>
+  </data>
+  <data name="Planned_Filtering_1" xml:space="preserve">
+    <value>Danh sách chặn quảng cáo, theo dõi, mã độc, lừa đảo và telemetry</value>
+  </data>
+  <data name="Planned_Filtering_2" xml:space="preserve">
+    <value>Danh sách cho phép, ngoại lệ tên miền và ngoại lệ tạm thời</value>
+  </data>
+  <data name="Planned_Filtering_3" xml:space="preserve">
+    <value>Cập nhật danh sách tự động và thủ công có xác thực; nhập tệp hosts</value>
+  </data>
+  <data name="Planned_Filtering_4" xml:space="preserve">
+    <value>Kiểm tra lý do một tên miền bị chặn hoặc được cho phép</value>
+  </data>
+  <data name="Planned_Diagnostics_1" xml:space="preserve">
+    <value>Tra cứu DNS cho bản ghi A, AAAA, CNAME, MX, TXT và NS</value>
+  </data>
+  <data name="Planned_Diagnostics_2" xml:space="preserve">
+    <value>Kiểm tra DNSSEC, kết nối DoH và DNSCrypt</value>
+  </data>
+  <data name="Planned_Diagnostics_3" xml:space="preserve">
+    <value>So sánh resolver, kiểm tra rò rỉ DNS và kiểm tra lan truyền</value>
+  </data>
+  <data name="Planned_Diagnostics_4" xml:space="preserve">
+    <value>Phát hiện chặn UDP/53 và TCP/53, kiểm tra IPv4/IPv6</value>
+  </data>
+  <data name="Planned_Monitor_1" xml:space="preserve">
+    <value>Nhật ký truy vấn DNS trực tiếp (ảo hóa)</value>
+  </data>
+  <data name="Planned_Monitor_2" xml:space="preserve">
+    <value>Độ trễ, tỷ lệ thành công và sự kiện chuyển đổi dự phòng theo resolver</value>
+  </data>
+  <data name="Planned_Monitor_3" xml:space="preserve">
+    <value>Tỷ lệ trúng bộ nhớ đệm và thống kê truy vấn bị chặn</value>
+  </data>
+  <data name="Planned_Monitor_4" xml:space="preserve">
+    <value>Chế độ giám sát Tiết kiệm, Cân bằng và Hiệu năng</value>
+  </data>
+  <data name="Dash_Protection_Title" xml:space="preserve">
+    <value>Bảo vệ DNS</value>
+  </data>
+  <data name="Dash_Protection_Inactive" xml:space="preserve">
+    <value>Chưa hoạt động</value>
+  </data>
+  <data name="Dash_Protection_InactiveDetail" xml:space="preserve">
+    <value>DNS engine của JustCryptDns chưa khả dụng (Giai đoạn 4). Windows hiện đang dùng các máy chủ DNS được liệt kê ở mục Mạng.</value>
+  </data>
+  <data name="Dash_StartEngine" xml:space="preserve">
+    <value>Khởi động DNS engine</value>
+  </data>
+  <data name="Dash_EngineUnavailableTip" xml:space="preserve">
+    <value>Khả dụng khi DNS engine được triển khai (Giai đoạn 4).</value>
+  </data>
+  <data name="Dash_Protocol" xml:space="preserve">
+    <value>Giao thức</value>
+  </data>
+  <data name="Dash_Resolver" xml:space="preserve">
+    <value>Resolver</value>
+  </data>
+  <data name="Dash_GamingMode" xml:space="preserve">
+    <value>Chế độ Game</value>
+  </data>
+  <data name="Dash_Filtering" xml:space="preserve">
+    <value>Lọc</value>
+  </data>
+  <data name="Dash_Metric_Latency" xml:space="preserve">
+    <value>Độ trễ DNS</value>
+  </data>
+  <data name="Dash_Metric_Queries" xml:space="preserve">
+    <value>Tổng truy vấn</value>
+  </data>
+  <data name="Dash_Metric_Blocked" xml:space="preserve">
+    <value>Truy vấn bị chặn</value>
+  </data>
+  <data name="Dash_Metric_CacheHit" xml:space="preserve">
+    <value>Tỷ lệ trúng cache</value>
+  </data>
+  <data name="Dash_Metric_NoData" xml:space="preserve">
+    <value>Không có dữ liệu — engine chưa chạy</value>
+  </data>
+  <data name="Dash_Network_Title" xml:space="preserve">
+    <value>Mạng</value>
+  </data>
+  <data name="Dash_Network_LocalNote" xml:space="preserve">
+    <value>Thông tin bộ điều hợp cục bộ do Windows cung cấp. Không thực hiện kiểm tra bên ngoài.</value>
+  </data>
+  <data name="Dash_Network_Adapter" xml:space="preserve">
+    <value>Bộ điều hợp đang dùng</value>
+  </data>
+  <data name="Dash_Network_Type" xml:space="preserve">
+    <value>Loại</value>
+  </data>
+  <data name="Dash_Network_Speed" xml:space="preserve">
+    <value>Tốc độ liên kết</value>
+  </data>
+  <data name="Dash_Network_LocalIp" xml:space="preserve">
+    <value>IP cục bộ</value>
+  </data>
+  <data name="Dash_Network_Gateway" xml:space="preserve">
+    <value>Cổng mặc định</value>
+  </data>
+  <data name="Dash_Network_Dns" xml:space="preserve">
+    <value>Máy chủ DNS hiện tại</value>
+  </data>
+  <data name="Dash_Network_IPv4" xml:space="preserve">
+    <value>IPv4</value>
+  </data>
+  <data name="Dash_Network_IPv6" xml:space="preserve">
+    <value>IPv6</value>
+  </data>
+  <data name="Dash_Network_NoActive" xml:space="preserve">
+    <value>Không phát hiện bộ điều hợp mạng đang hoạt động.</value>
+  </data>
+  <data name="Dash_Network_Updated" xml:space="preserve">
+    <value>Cập nhật lúc {0}</value>
+  </data>
+  <data name="Dash_Network_State" xml:space="preserve">
+    <value>Trạng thái liên kết cục bộ</value>
+  </data>
+  <data name="Connectivity_Offline" xml:space="preserve">
+    <value>Ngoại tuyến</value>
+  </data>
+  <data name="Connectivity_LocalOnly" xml:space="preserve">
+    <value>Đã kết nối, không có cổng mặc định</value>
+  </data>
+  <data name="Connectivity_GatewayAvailable" xml:space="preserve">
+    <value>Đã kết nối · chưa xác minh Internet</value>
+  </data>
+  <data name="IpStatus_Global" xml:space="preserve">
+    <value>Địa chỉ toàn cầu</value>
+  </data>
+  <data name="IpStatus_LinkLocal" xml:space="preserve">
+    <value>Chỉ link-local</value>
+  </data>
+  <data name="IpStatus_Configured" xml:space="preserve">
+    <value>Đã cấu hình</value>
+  </data>
+  <data name="IpStatus_None" xml:space="preserve">
+    <value>Chưa cấu hình</value>
+  </data>
+  <data name="AdapterKind_Ethernet" xml:space="preserve">
+    <value>Ethernet</value>
+  </data>
+  <data name="AdapterKind_WiFi" xml:space="preserve">
+    <value>Wi-Fi</value>
+  </data>
+  <data name="AdapterKind_Cellular" xml:space="preserve">
+    <value>Di động</value>
+  </data>
+  <data name="AdapterKind_Virtual" xml:space="preserve">
+    <value>Ảo</value>
+  </data>
+  <data name="AdapterKind_Other" xml:space="preserve">
+    <value>Khác</value>
+  </data>
+  <data name="Common_NotAvailable" xml:space="preserve">
+    <value>Không khả dụng</value>
+  </data>
+  <data name="Common_None" xml:space="preserve">
+    <value>Không có</value>
+  </data>
+  <data name="Common_Refresh" xml:space="preserve">
+    <value>Làm mới</value>
+  </data>
+  <data name="Common_Unknown" xml:space="preserve">
+    <value>Không rõ</value>
+  </data>
+  <data name="Common_Open" xml:space="preserve">
+    <value>Mở</value>
+  </data>
+  <data name="Settings_General" xml:space="preserve">
+    <value>Chung</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Ngôn ngữ</value>
+  </data>
+  <data name="Settings_Language_Desc" xml:space="preserve">
+    <value>Thay đổi được áp dụng ngay lập tức.</value>
+  </data>
+  <data name="Lang_system" xml:space="preserve">
+    <value>Theo hệ thống</value>
+  </data>
+  <data name="Lang_en" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Lang_vi" xml:space="preserve">
+    <value>Tiếng Việt</value>
+  </data>
+  <data name="Settings_Appearance" xml:space="preserve">
+    <value>Giao diện</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Chủ đề</value>
+  </data>
+  <data name="Settings_Theme_Desc" xml:space="preserve">
+    <value>Theo hệ thống sẽ dùng chế độ ứng dụng của Windows.</value>
+  </data>
+  <data name="Theme_Dark" xml:space="preserve">
+    <value>Tối</value>
+  </data>
+  <data name="Theme_Light" xml:space="preserve">
+    <value>Sáng</value>
+  </data>
+  <data name="Theme_System" xml:space="preserve">
+    <value>Hệ thống</value>
+  </data>
+  <data name="Settings_AppearanceMore" xml:space="preserve">
+    <value>Độ trong suốt, màu nhấn, tỉ lệ hiển thị và các tùy chọn giao diện khác sẽ có ở Giai đoạn 2.</value>
+  </data>
+  <data name="Settings_About" xml:space="preserve">
+    <value>Giới thiệu</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>Phiên bản</value>
+  </data>
+  <data name="Settings_OS" xml:space="preserve">
+    <value>Hệ điều hành</value>
+  </data>
+  <data name="Settings_DataFolder" xml:space="preserve">
+    <value>Thư mục dữ liệu</value>
+  </data>
+  <data name="Settings_LogsFolder" xml:space="preserve">
+    <value>Thư mục nhật ký</value>
+  </data>
+  <data name="Settings_Privacy" xml:space="preserve">
+    <value>Không thu thập telemetry. Cài đặt và nhật ký chỉ được lưu trên máy tính này.</value>
+  </data>
+  <data name="Settings_LoadWarning" xml:space="preserve">
+    <value>Không thể đọc tệp cài đặt nên đã đặt lại. Tệp bị hỏng được giữ lại bên cạnh để kiểm tra.</value>
+  </data>
+  <data name="Settings_SaveError" xml:space="preserve">
+    <value>Không thể lưu cài đặt: {0}</value>
+  </data>
+</root>
