@@ -690,4 +690,106 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>Exit</value>
   </data>
+  <data name="EngineState_NotImplemented" xml:space="preserve">
+    <value>Unavailable</value>
+  </data>
+  <data name="EngineState_Stopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="EngineState_Starting" xml:space="preserve">
+    <value>Starting…</value>
+  </data>
+  <data name="EngineState_Running" xml:space="preserve">
+    <value>Protected (Running)</value>
+  </data>
+  <data name="EngineState_Degraded" xml:space="preserve">
+    <value>Degraded</value>
+  </data>
+  <data name="EngineState_Stopping" xml:space="preserve">
+    <value>Stopping…</value>
+  </data>
+  <data name="Dash_Protection_StoppedDetail" xml:space="preserve">
+    <value>The JustCryptDns local DNS proxy is currently stopped. Click Start DNS engine to enable encrypted DNS.</value>
+  </data>
+  <data name="Dash_Protection_RunningDetail" xml:space="preserve">
+    <value>Local DNS proxy is active and forwarding queries through the selected upstream resolver.</value>
+  </data>
+  <data name="DnsMgr_PortConflictTitle" xml:space="preserve">
+    <value>Local port conflict detected</value>
+  </data>
+  <data name="DnsMgr_UseSuggestedPort" xml:space="preserve">
+    <value>Use port {0}</value>
+  </data>
+  <data name="DnsMgr_EngineTitle" xml:space="preserve">
+    <value>DNS Engine &amp; Local Proxy</value>
+  </data>
+  <data name="DnsMgr_TestResolver" xml:space="preserve">
+    <value>Test resolver</value>
+  </data>
+  <data name="DnsMgr_Restart" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+  <data name="DnsMgr_StopEngine" xml:space="preserve">
+    <value>Stop DNS engine</value>
+  </data>
+  <data name="DnsMgr_LocalProxy" xml:space="preserve">
+    <value>Local proxy endpoint</value>
+  </data>
+  <data name="DnsMgr_SuccessFailed" xml:space="preserve">
+    <value>Succeeded / Failed</value>
+  </data>
+  <data name="DnsMgr_ResolverSection" xml:space="preserve">
+    <value>Active upstream resolver</value>
+  </data>
+  <data name="DnsMgr_ActiveResolver" xml:space="preserve">
+    <value>Selected resolver</value>
+  </data>
+  <data name="DnsMgr_ListenEndpointLabel" xml:space="preserve">
+    <value>Listen IP &amp; port</value>
+  </data>
+  <data name="DnsMgr_ListenEndpointDesc" xml:space="preserve">
+    <value>Default is 127.0.0.1:53. If another DNS proxy is using port 53, you can bind to an alternate port.</value>
+  </data>
+  <data name="DnsMgr_ListenPort" xml:space="preserve">
+    <value>Listen port</value>
+  </data>
+  <data name="DnsMgr_EnableIpv6" xml:space="preserve">
+    <value>Bind IPv6 loopback (::1)</value>
+  </data>
+  <data name="DnsMgr_EnableIpv6Desc" xml:space="preserve">
+    <value>Also accepts DNS queries on ::1 using the same port.</value>
+  </data>
+  <data name="DnsMgr_WindowsSection" xml:space="preserve">
+    <value>Windows network adapter integration &amp; safety</value>
+  </data>
+  <data name="DnsMgr_ConfigureAdapter" xml:space="preserve">
+    <value>Configure Windows adapter automatically when engine starts</value>
+  </data>
+  <data name="DnsMgr_ConfigureAdapterDesc" xml:space="preserve">
+    <value>Backs up current DNS settings with SHA-256 verification, applies the local proxy, verifies connectivity, and rolls back automatically on failure.</value>
+  </data>
+  <data name="DnsMgr_EmergencyRestore" xml:space="preserve">
+    <value>Emergency Restore DNS</value>
+  </data>
+  <data name="DnsMgr_EmergencyRestoreDesc" xml:space="preserve">
+    <value>Immediately restores your network adapter's original DNS configuration from the verified backup or resets to DHCP.</value>
+  </data>
+  <data name="DnsMgr_DnsCryptSection" xml:space="preserve">
+    <value>DNSCrypt engine (dnscrypt-proxy)</value>
+  </data>
+  <data name="DnsMgr_InstallUpdateDnsCrypt" xml:space="preserve">
+    <value>Install / Update</value>
+  </data>
+  <data name="DnsMgr_ProbeSuccess" xml:space="preserve">
+    <value>Verified {0} in {1} ms.</value>
+  </data>
+  <data name="DnsMgr_InvalidPort" xml:space="preserve">
+    <value>Enter a valid port between 1 and 65535.</value>
+  </data>
+  <data name="DnsMgr_RestoreSuccess" xml:space="preserve">
+    <value>Original Windows adapter DNS settings have been restored.</value>
+  </data>
+  <data name="DnsMgr_DnsCryptInstalled" xml:space="preserve">
+    <value>Installed dnscrypt-proxy ({0}).</value>
+  </data>
 </root>

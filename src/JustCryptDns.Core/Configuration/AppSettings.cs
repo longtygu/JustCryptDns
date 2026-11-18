@@ -1,4 +1,6 @@
+using System.Net;
 using System.Text.Json.Serialization;
+using JustCryptDns.Core.Models;
 
 namespace JustCryptDns.Core.Configuration;
 
@@ -12,14 +14,16 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background operation, tray and startup.</summary>
-    public const int CurrentSchemaVersion = 3;
+    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine.</summary>
+    public const int CurrentSchemaVersion = 4;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
     public GeneralSettings General { get; set; } = new();
 
     public AppearanceSettings Appearance { get; set; } = new();
+
+    public DnsSettings Dns { get; set; } = new();
 
     public PerformanceSettings Performance { get; set; } = new();
 
@@ -28,9 +32,11 @@ public sealed class AppSettings
     {
         General ??= new GeneralSettings();
         Appearance ??= new AppearanceSettings();
+        Dns ??= new DnsSettings();
         Performance ??= new PerformanceSettings();
         General.Normalize();
         Appearance.Normalize();
+        Dns.Normalize();
         Performance.Normalize();
         return this;
     }
@@ -231,6 +237,51 @@ public sealed class AppearanceSettings
         CornerStyle = Enum.IsDefined(CornerStyle) ? CornerStyle : WindowCornerStyle.Default;
         TextSize = Enum.IsDefined(TextSize) ? TextSize : TextSize.Default;
         Animations = Enum.IsDefined(Animations) ? Animations : AnimationLevel.Normal;
+    }
+}
+
+public sealed class DnsSettings
+{
+    public const string DefaultListenAddress = "127.0.0.1";
+    public const int DefaultListenPort = 53;
+    public const int DefaultDnsCryptInternalPort = 5354;
+
+    public string ActiveResolverId { get; set; } = BuiltInResolvers.DefaultResolverId;
+
+    public string ListenAddress { get; set; } = DefaultListenAddress;
+
+    public int ListenPort { get; set; } = DefaultListenPort;
+
+    public bool EnableIpv6 { get; set; }
+
+    public bool ConfigureWindowsAdapter { get; set; }
+
+    public string? TargetAdapterId { get; set; }
+
+    public int DnsCryptInternalPort { get; set; } = DefaultDnsCryptInternalPort;
+
+    public int QueryTimeoutMs { get; set; } = 3500;
+
+    internal void Normalize()
+    {
+        if (string.IsNullOrWhiteSpace(ActiveResolverId))
+        {
+            ActiveResolverId = BuiltInResolvers.DefaultResolverId;
+        }
+
+        if (!IPAddress.TryParse(ListenAddress, out var ip) || !IPAddress.IsLoopback(ip))
+        {
+            ListenAddress = DefaultListenAddress;
+        }
+
+        ListenPort = Math.Clamp(ListenPort, 1, 65535);
+        DnsCryptInternalPort = Math.Clamp(DnsCryptInternalPort, 1024, 65535);
+        if (DnsCryptInternalPort == ListenPort)
+        {
+            DnsCryptInternalPort = ListenPort == DefaultDnsCryptInternalPort ? 5355 : DefaultDnsCryptInternalPort;
+        }
+
+        QueryTimeoutMs = Math.Clamp(QueryTimeoutMs, 500, 15000);
     }
 }
 

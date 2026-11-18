@@ -4,6 +4,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using JustCryptDns.App.ViewModels;
+using JustCryptDns.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.App.Diagnostics;
@@ -15,7 +16,7 @@ namespace JustCryptDns.App.Diagnostics;
 /// </summary>
 internal static class DevSnapshot
 {
-    public static void TryAttach(Window window, ShellViewModel shell, ILogger logger)
+    public static void TryAttach(Window window, ShellViewModel shell, IDnsEngine dnsEngine, ILogger logger)
     {
         var dir = Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_DIR");
         if (string.IsNullOrWhiteSpace(dir))
@@ -26,10 +27,16 @@ internal static class DevSnapshot
         var pages = (Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_PAGES") ?? PageKeys.Dashboard)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var suffix = Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_SUFFIX") ?? string.Empty;
+        var startEngine = Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_START_ENGINE") == "1";
 
         window.ContentRendered += async (_, _) =>
         {
             Directory.CreateDirectory(dir);
+            if (startEngine)
+            {
+                await dnsEngine.StartAsync();
+                await dnsEngine.ProbeActiveResolverAsync();
+            }
             foreach (var raw in pages)
             {
                 var scrollBottom = raw.EndsWith(":bottom", StringComparison.OrdinalIgnoreCase);

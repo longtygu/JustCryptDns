@@ -225,3 +225,37 @@ Tray_DisableGaming|Disable Gaming Mode|Tắt Chế độ Game
 Tray_ActiveResolver|Active resolver: {0}|Resolver đang dùng: {0}
 Tray_RestoreDns|Restore original DNS|Khôi phục DNS gốc
 Tray_Exit|Exit|Thoát
+EngineState_NotImplemented|Unavailable|Chưa khả dụng
+EngineState_Stopped|Stopped|Đã dừng
+EngineState_Starting|Starting…|Đang khởi động…
+EngineState_Running|Protected (Running)|Đang bảo vệ (Đang chạy)
+EngineState_Degraded|Degraded|Suy giảm
+EngineState_Stopping|Stopping…|Đang dừng…
+Dash_Protection_StoppedDetail|The JustCryptDns local DNS proxy is currently stopped. Click Start DNS engine to enable encrypted DNS.|Proxy DNS cục bộ của JustCryptDns hiện đang dừng. Nhấn Khởi động DNS engine để bật DNS mã hóa.
+Dash_Protection_RunningDetail|Local DNS proxy is active and forwarding queries through the selected upstream resolver.|Proxy DNS cục bộ đang hoạt động và chuyển tiếp truy vấn qua resolver đã chọn.
+DnsMgr_PortConflictTitle|Local port conflict detected|Phát hiện xung đột cổng cục bộ
+DnsMgr_UseSuggestedPort|Use port {0}|Dùng cổng {0}
+DnsMgr_EngineTitle|DNS Engine & Local Proxy|DNS Engine & Proxy cục bộ
+DnsMgr_TestResolver|Test resolver|Kiểm tra resolver
+DnsMgr_Restart|Restart|Khởi động lại
+DnsMgr_StopEngine|Stop DNS engine|Dừng DNS engine
+DnsMgr_LocalProxy|Local proxy endpoint|Điểm cuối proxy cục bộ
+DnsMgr_SuccessFailed|Succeeded / Failed|Thành công / Lỗi
+DnsMgr_ResolverSection|Active upstream resolver|Resolver đích đang dùng
+DnsMgr_ActiveResolver|Selected resolver|Resolver được chọn
+DnsMgr_ListenEndpointLabel|Listen IP & port|Địa chỉ IP & cổng lắng nghe
+DnsMgr_ListenEndpointDesc|Default is 127.0.0.1:53. If another DNS proxy is using port 53, you can bind to an alternate port.|Mặc định là 127.0.0.1:53. Nếu một dịch vụ khác đang chiếm cổng 53, bạn có thể chọn cổng khác.
+DnsMgr_ListenPort|Listen port|Cổng lắng nghe
+DnsMgr_EnableIpv6|Bind IPv6 loopback (::1)|Lắng nghe thêm IPv6 loopback (::1)
+DnsMgr_EnableIpv6Desc|Also accepts DNS queries on ::1 using the same port.|Chấp nhận thêm các truy vấn DNS trên ::1 ở cùng cổng.
+DnsMgr_WindowsSection|Windows network adapter integration & safety|Tích hợp bộ điều hợp mạng Windows & an toàn
+DnsMgr_ConfigureAdapter|Configure Windows adapter automatically when engine starts|Tự động cấu hình DNS cho bộ điều hợp Windows khi bật engine
+DnsMgr_ConfigureAdapterDesc|Backs up current DNS settings with SHA-256 verification, applies the local proxy, verifies connectivity, and rolls back automatically on failure.|Sao lưu DNS hiện tại kèm kiểm tra SHA-256, áp dụng proxy cục bộ, xác minh kết nối và tự động hoàn tác nếu lỗi.
+DnsMgr_EmergencyRestore|Emergency Restore DNS|Khôi phục DNS khẩn cấp
+DnsMgr_EmergencyRestoreDesc|Immediately restores your network adapter's original DNS configuration from the verified backup or resets to DHCP.|Khôi phục ngay lập tức cấu hình DNS gốc của bộ điều hợp mạng từ bản sao lưu hoặc đặt lại về DHCP.
+DnsMgr_DnsCryptSection|DNSCrypt engine (dnscrypt-proxy)|Engine DNSCrypt (dnscrypt-proxy)
+DnsMgr_InstallUpdateDnsCrypt|Install / Update|Cài đặt / Cập nhật
+DnsMgr_ProbeSuccess|Verified {0} in {1} ms.|Đã xác minh {0} trong {1} ms.
+DnsMgr_InvalidPort|Enter a valid port between 1 and 65535.|Hãy nhập số cổng hợp lệ từ 1 đến 65535.
+DnsMgr_RestoreSuccess|Original Windows adapter DNS settings have been restored.|Đã khôi phục cài đặt DNS gốc cho bộ điều hợp mạng Windows.
+DnsMgr_DnsCryptInstalled|Installed dnscrypt-proxy ({0}).|Đã cài đặt dnscrypt-proxy ({0}).

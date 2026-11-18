@@ -85,8 +85,9 @@ public partial class App : Application
         });
         tray.Initialize();
 
-        // Probe background service status non-blockingly.
+        // Probe background service status and recover any orphaned adapter DNS backup non-blockingly.
         _ = _services.GetRequiredService<IServiceClient>().RefreshStatusAsync();
+        _ = _services.GetRequiredService<Core.Interfaces.IWindowsDnsManager>().RecoverAfterCrashIfNeededAsync(proxyIsRunning: false);
 
         var window = _services.GetRequiredService<MainWindow>();
         _logger.LogDebug("Main window constructed.");
@@ -95,7 +96,8 @@ public partial class App : Application
         window.ContentRendered += (_, _) => _logger.LogInformation(
             "First frame rendered {Elapsed} ms after process start.",
             (int)(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds);
-        Diagnostics.DevSnapshot.TryAttach(window, shell, _logger);
+        var dnsEngine = _services.GetRequiredService<Core.Interfaces.IDnsEngine>();
+        Diagnostics.DevSnapshot.TryAttach(window, shell, dnsEngine, _logger);
 
         var startMinimized = ShouldStartMinimized(e.Args, settings.Current.General)
             && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_DIR"));
@@ -119,6 +121,11 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _logger.LogInformation("JustCryptDns UI exiting with code {Code}.", e.ApplicationExitCode);
+        if (_services?.GetService<Core.Interfaces.IDnsEngine>() is { } dnsEngine)
+        {
+            dnsEngine.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+
         if (_services?.GetService<ISettingsService>() is { } settings)
         {
             settings.FlushAsync().GetAwaiter().GetResult();

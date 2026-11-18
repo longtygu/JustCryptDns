@@ -13,6 +13,12 @@ public interface IAppPaths
 
     /// <summary>Full path of the user settings JSON file.</summary>
     string SettingsFile { get; }
+
+    /// <summary>Full path of the verified Windows adapter DNS backup file.</summary>
+    string DnsBackupFile { get; }
+
+    /// <summary>Directory holding managed engine binaries and runtime configs (e.g. dnscrypt-proxy).</summary>
+    string EngineDirectory { get; }
 }
 
 /// <summary>
@@ -29,6 +35,8 @@ public sealed class AppPaths : IAppPaths
             : Path.GetFullPath(rootOverride);
         LogsDirectory = Path.Combine(DataDirectory, "logs");
         SettingsFile = Path.Combine(DataDirectory, "settings.json");
+        DnsBackupFile = Path.Combine(DataDirectory, "dns-backup.json");
+        EngineDirectory = Path.Combine(DataDirectory, "engine");
     }
 
     public string DataDirectory { get; }
@@ -37,10 +45,15 @@ public sealed class AppPaths : IAppPaths
 
     public string SettingsFile { get; }
 
-    /// <summary>Creates the data and log directories if they do not exist.</summary>
+    public string DnsBackupFile { get; }
+
+    public string EngineDirectory { get; }
+
+    /// <summary>Creates the data, log and engine directories if they do not exist.</summary>
     public void EnsureCreated()
     {
         Directory.CreateDirectory(DataDirectory);
         Directory.CreateDirectory(LogsDirectory);
+        Directory.CreateDirectory(EngineDirectory);
     }
 }

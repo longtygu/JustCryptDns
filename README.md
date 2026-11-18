@@ -2,11 +2,12 @@
 
 Advanced DNS security, smart routing and gaming DNS optimization suite for Windows 10 22H2 / Windows 11 (x64).
 
-> **Status: early development (Phase 3 of 12).** The application shell, theming, window transparency (Mica / Acrylic / DWM Blur),
-> full appearance customization, background service (`JustCryptDns.Service`), Named Pipe IPC, system tray integration,
-> Windows startup registration, localization, settings and local network information work.
-> The DNS engine itself (DoH/DoT/DNSCrypt, local proxy) arrives in Phase 4.
-> Pages for modules not yet built show an explicit *"Planned · Phase N"* notice and never display fabricated data.
+> **Status: active development (Phase 4 of 12).** The core DNS engine (DoH, DoT, DNSCrypt via `dnscrypt-proxy`, UDP/TCP),
+> local DNS proxy (`127.0.0.1` with port conflict & DNS loop detection), 6-step Windows network adapter DNS safety integration
+> (backup, SHA-256 verification, connectivity probe, automatic rollback, emergency restore, crash recovery),
+> background service (`JustCryptDns.Service`), Named Pipe IPC, system tray integration, Windows startup registration,
+> window transparency (Mica / Acrylic / DWM Blur), appearance customization, and localization work.
+> Pages for modules scheduled in Phase 5+ show an explicit *"Planned · Phase N"* notice and never display fabricated data.
 
 ## Features implemented so far
 
@@ -19,12 +20,15 @@ Advanced DNS security, smart routing and gaming DNS optimization suite for Windo
 | Independent background service (`JustCryptDns.Service`) + ACL-secured Named Pipe IPC (`JustCryptDns.Ipc.v1`) | ✅ |
 | System tray icon (`Shell_NotifyIconW`, no WinForms) with themed context menu & close behavior (Minimize to tray / Exit / Ask every time) | ✅ |
 | Windows startup integration (`HKCU\...\Run`, idempotent, `--minimized` support) | ✅ |
+| Core DNS engine: DNS over HTTPS (RFC 8484), DNS over TLS (RFC 7858), DNSCrypt v2 (`dnscrypt-proxy`), and UDP/TCP | ✅ |
+| Local DNS proxy (`127.0.0.1`, configurable IP/port, IPv4 & IPv6, port conflict detection & DNS loop guard) | ✅ |
+| Windows adapter DNS integration & 6-step safety (backup, SHA-256 check, apply, probe, auto-rollback, emergency restore, crash recovery) | ✅ |
 | English / Vietnamese UI, switchable without restart | ✅ |
-| Versioned JSON settings (schema v3) with atomic save, backup, corruption recovery and migration | ✅ |
+| Versioned JSON settings (schema v4) with atomic save, backup, corruption recovery and migration | ✅ |
 | Rolling, size-capped logs (Serilog) | ✅ |
-| Dashboard: real local adapter info (adapter, IP, gateway, current DNS, IPv4/IPv6), event-driven refresh | ✅ |
+| Dashboard & DNS Manager: live DNS engine controls, real latency & query counters, local adapter status | ✅ |
 | Single-instance guard (second launch activates the first window) | ✅ |
-| DNS engine | Phase 4+ |
+| Full Resolver Library, Smart Routing, Filtering, Cache, Gaming, Failover, Diagnostics | Phase 5+ |
 
 See the full roadmap in [docs/ROADMAP.md](docs/ROADMAP.md).
 

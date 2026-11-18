@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:ipc="clr-namespace:JustCryptDns.Core.Ipc;assembly=JustCryptDns.Core"
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
              d:DataContext="{d:DesignInstance Type=vm:DashboardViewModel}">
@@ -29,7 +30,7 @@
             <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Dashboard}" />
             <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Dashboard_Subtitle}" Margin="0,4,0,22" />
 
-            <!-- Protection status: reported honestly as inactive until the engine exists. -->
+            <!-- Protection status -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Card.Gap}">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -42,38 +43,83 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource Brush.NeutralSubtle}" VerticalAlignment="Top">
-                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEA18;" FontSize="24" Foreground="{DynamicResource Brush.Neutral}" />
+                    <Border Width="56" Height="56" CornerRadius="28" VerticalAlignment="Top">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource Brush.NeutralSubtle}" />
+                                <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Neutral}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Running}">
+                                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Degraded}">
+                                        <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEA18;" FontSize="24"
+                                   Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
                     </Border>
 
                     <StackPanel Grid.Column="1" Margin="18,0,24,0" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Protection_Title}" />
-                        <TextBlock Text="{l:Loc Dash_Protection_Inactive}" FontSize="{DynamicResource Font.Size.Hero}" FontWeight="SemiBold" Margin="0,2,0,4"
-                                   FontFamily="{StaticResource Font.Display}" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Protection_InactiveDetail}" MaxWidth="560" HorizontalAlignment="Left" />
+                        <TextBlock FontSize="{DynamicResource Font.Size.Hero}" FontWeight="SemiBold" Margin="0,2,0,4"
+                                   FontFamily="{StaticResource Font.Display}">
+                            <TextBlock.Text>
+                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="EngineState_">
+                                    <Binding Path="EngineState" />
+                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <TextBlock MaxWidth="560" HorizontalAlignment="Left">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Setter Property="Text" Value="{l:Loc Dash_Protection_StoppedDetail}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                            <Setter Property="Text" Value="{l:Loc Dash_Protection_RunningDetail}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
 
                     <Button Grid.Column="2" Style="{StaticResource Button.Primary}" VerticalAlignment="Center" Padding="20,10"
-                            IsEnabled="{Binding IsEngineAvailable}"
-                            ToolTipService.ShowOnDisabled="True" ToolTip="{l:Loc Dash_EngineUnavailableTip}">
+                            Command="{Binding ToggleEngineCommand}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE768;" FontSize="13" Margin="0,0,8,0" />
-                            <TextBlock Text="{l:Loc Dash_StartEngine}" />
+                            <TextBlock>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="{l:Loc Dash_StartEngine}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                                <Setter Property="Text" Value="{l:Loc DnsMgr_StopEngine}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                     </Button>
 
                     <UniformGrid Grid.Row="1" Grid.ColumnSpan="3" Rows="1" Margin="0,22,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Protocol}" />
-                            <TextBlock Style="{StaticResource ValueText}" Foreground="{DynamicResource Brush.TextSecondary}" Text="{l:Loc Common_NotAvailable}" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding ActiveProtocol}" />
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Resolver}" />
-                            <TextBlock Style="{StaticResource ValueText}" Foreground="{DynamicResource Brush.TextSecondary}" Text="{l:Loc Common_NotAvailable}" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding ActiveResolverName}" />
                         </StackPanel>
                         <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_GamingMode}" />
-                            <TextBlock Style="{StaticResource ValueText}" Foreground="{DynamicResource Brush.TextSecondary}" Text="{l:Loc Common_NotAvailable}" />
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc DnsMgr_LocalProxy}" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding ListenEndpoint}" />
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Filtering}" />
@@ -83,21 +129,21 @@
                 </Grid>
             </Border>
 
-            <!-- Engine metrics: no data until the engine produces real numbers. -->
+            <!-- Engine metrics -->
             <UniformGrid x:Name="Metrics" Margin="{DynamicResource Card.GridCompensation}"
                          Columns="{Binding ActualWidth, RelativeSource={RelativeSource Self}, Converter={StaticResource WidthToColumns}}">
                 <Border Style="{StaticResource MetricCard}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Latency}" />
-                        <TextBlock Style="{StaticResource Text.Metric}" Text="—" Margin="0,6,0,2" Foreground="{DynamicResource Brush.TextTertiary}" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Metric_NoData}" />
+                        <TextBlock Style="{StaticResource Text.Metric}" Text="{Binding LatencyDisplay}" Margin="0,6,0,2" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ActiveResolverName}" />
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource MetricCard}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Queries}" />
-                        <TextBlock Style="{StaticResource Text.Metric}" Text="—" Margin="0,6,0,2" Foreground="{DynamicResource Brush.TextTertiary}" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Metric_NoData}" />
+                        <TextBlock Style="{StaticResource Text.Metric}" Text="{Binding TotalQueriesDisplay}" Margin="0,6,0,2" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ListenEndpoint}" />
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource MetricCard}">

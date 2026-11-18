@@ -5,6 +5,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using JustCryptDns.App.Localization;
 using JustCryptDns.App.ViewModels;
+using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using Microsoft.Extensions.Logging;
 
@@ -45,6 +46,8 @@ public sealed class TrayIconService : ITrayIconService
     private const int IdiApplication = 32512;
 
     private readonly IServiceClient _serviceClient;
+    private readonly IDnsEngine? _localEngine;
+    private readonly IWindowsDnsManager? _windowsDns;
     private readonly INavigationService _navigation;
     private readonly ILogger<TrayIconService> _logger;
     private readonly uint _taskbarCreatedMsg;
@@ -58,11 +61,15 @@ public sealed class TrayIconService : ITrayIconService
     public TrayIconService(
         IServiceClient serviceClient,
         INavigationService navigation,
-        ILogger<TrayIconService> logger)
+        ILogger<TrayIconService> logger,
+        IDnsEngine? localEngine = null,
+        IWindowsDnsManager? windowsDns = null)
     {
         _serviceClient = serviceClient;
         _navigation = navigation;
         _logger = logger;
+        _localEngine = localEngine;
+        _windowsDns = windowsDns;
         _taskbarCreatedMsg = RegisterWindowMessageW("TaskbarCreated");
     }
 
@@ -208,10 +215,11 @@ public sealed class TrayIconService : ITrayIconService
     {
         var loc = LocalizationManager.Instance;
         var status = _serviceClient.LastStatus;
-        var engineImplemented = status?.IsEngineImplemented == true;
-        var engineEnabled = status?.IsEngineEnabled == true;
+        var localStats = _localEngine?.GetStats();
+        var engineEnabled = status?.IsEngineEnabled == true
+            || localStats?.State is DnsEngineState.Running or DnsEngineState.Degraded;
         var gamingEnabled = status?.IsGamingModeEnabled == true;
-        var resolverText = status?.ActiveResolverName ?? loc["Common_NotAvailable"];
+        var resolverText = status?.ActiveResolverName ?? localStats?.ActiveResolverName ?? loc["Common_NotAvailable"];
 
         var menu = new ContextMenu();
 
@@ -223,15 +231,22 @@ public sealed class TrayIconService : ITrayIconService
         var dnsLabel = engineEnabled ? loc["Tray_DisableDns"] : loc["Tray_EnableDns"];
         var dnsItem = CreateItem("\uEA18", dnsLabel, async () =>
         {
-            await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, !engineEnabled)).ConfigureAwait(false);
+            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            {
+                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, !engineEnabled)).ConfigureAwait(false);
+            }
+            else if (_localEngine is not null)
+            {
+                if (engineEnabled)
+                {
+                    await _localEngine.StopAsync().ConfigureAwait(false);
+                }
+                else
+                {
+                    await _localEngine.StartAsync().ConfigureAwait(false);
+                }
+            }
         });
-        dnsItem.IsEnabled = engineImplemented;
-        if (!engineImplemented)
-        {
-            dnsItem.ToolTip = loc["Dash_EngineUnavailableTip"];
-            ToolTipService.SetShowOnDisabled(dnsItem, true);
-        }
-
         menu.Items.Add(dnsItem);
 
         var gamingLabel = gamingEnabled ? loc["Tray_DisableGaming"] : loc["Tray_EnableGaming"];
@@ -244,13 +259,20 @@ public sealed class TrayIconService : ITrayIconService
         var resolverItem = CreateItem("\uE8F1", loc.Format("Tray_ActiveResolver", resolverText), () =>
         {
             OpenRequested?.Invoke(this, EventArgs.Empty);
-            _navigation.Navigate(PageKeys.Resolvers);
+            _navigation.Navigate(PageKeys.DnsManager);
         });
         menu.Items.Add(resolverItem);
 
         var restoreItem = CreateItem("\uE777", loc["Tray_RestoreDns"], async () =>
         {
-            await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.RestoreOriginalDns)).ConfigureAwait(false);
+            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            {
+                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.RestoreOriginalDns)).ConfigureAwait(false);
+            }
+            else if (_windowsDns is not null)
+            {
+                await _windowsDns.RestoreOriginalDnsAsync().ConfigureAwait(false);
+            }
         });
         menu.Items.Add(restoreItem);
 

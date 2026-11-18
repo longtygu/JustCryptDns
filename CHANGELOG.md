@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 4 — Core DNS engine & Windows DNS safety integration
+- **RFC 1035 wire-format parser & encoder (`DnsPacket`):** bounds-checked header/question/RR parsing with pointer-compression jump cap (`MaxCompressionJumps = 16`), EDNS0 `DO` support, transaction ID rewriting, and synthetic error responses (`SERVFAIL`, `REFUSED`, `NXDOMAIN`).
+- **Multi-protocol upstream DNS clients:**
+  - **DNS over HTTPS (`DohDnsUpstream`, RFC 8484):** pooled HTTP/2 `SocketsHttpHandler` with direct bootstrap IP connection (`ConnectCallback`) so DoH never loops back through OS DNS.
+  - **DNS over TLS (`DotDnsUpstream`, RFC 7858):** port 853 `SslStream` with strict TLS 1.2/1.3 SNI and X.509 certificate verification.
+  - **Traditional DNS over UDP/TCP (`UdpTcpDnsUpstream`):** UDP with automatic TCP retry on truncation (`TC=1`).
+  - **DNSCrypt v2 (`DnsCryptProxyManager` & `DnsCryptUpstream`):** manages official `dnscrypt-proxy` child process, generates self-contained `dnscrypt-proxy.toml` (including static `sdns://` stamps), detects version, installs/updates from official GitHub releases, and automatically recovers from crashes.
+- **Local DNS proxy (`LocalDnsProxy`, `PortConflictDetector`, `DnsLoopGuard`):** UDP/TCP listener on configurable loopback IP/port (default `127.0.0.1:53`, optional `::1`), pre-bind port conflict detection with suggested free port, and self-forwarding DNS loop prevention.
+- **6-step Windows Network Safety (`WindowsNetworkDnsService`):** adapter detection, `dns-backup.json` creation with SHA-256 `IntegrityHash` verification, adapter DNS configuration, connectivity verification probe, automatic rollback on failure, Emergency Restore DNS, and startup crash recovery.
+- **DNS Manager UI & Dashboard integration:** full **DNS Manager** page and live **Dashboard** engine controls, real query counters and latency, schema v4 (`MigrationV3ToV4`), and 76 offline unit tests.
+
 ### Phase 3 — Background service, system tray & startup integration
 - **Independent background service (`JustCryptDns.Service`):** Windows Service (`JustCryptDnsService`) and console host built on `Microsoft.Extensions.Hosting.WindowsServices`, with rolling `service-YYYYMMDD.log` logs and graceful shutdown.
 - **Secure local IPC (`JustCryptDns.Ipc.v1`):** length-prefixed (256 KB max) versioned JSON protocol over a Named Pipe with explicit `PipeSecurity` ACLs (grants LocalSystem, Administrators, owner, and local AuthenticatedUsers; explicitly denies `NetworkSid`), backed by `NamedPipeIpcServer` and non-blocking `NamedPipeServiceClient`.

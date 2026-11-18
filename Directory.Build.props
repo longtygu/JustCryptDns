@@ -17,6 +17,6 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
-    <NoWarn>$(NoWarn);CA1848;CA1716;CA1805;CA1515;CA2007;CA1873</NoWarn>
+    <NoWarn>$(NoWarn);CA1848;CA1716;CA1805;CA1515;CA2007;CA1873;CA1720</NoWarn>
   </PropertyGroup>
 </Project>

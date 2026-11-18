@@ -1,6 +1,9 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using JustCryptDns.App.Services;
 using JustCryptDns.Core.Interfaces;
+using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -15,54 +18,64 @@ public enum IpFamilyStatus
 }
 
 /// <summary>
-/// Dashboard. In Phase 1 only local adapter information is real; engine metrics are explicitly reported as unavailable.
+/// Dashboard displaying verified DNS engine state, real query metrics, and local network adapter status.
 /// </summary>
 public sealed partial class DashboardViewModel : PageViewModel
 {
     private readonly INetworkInfoService _network;
+    private readonly IDnsEngine _dnsEngine;
+    private readonly INavigationService _navigation;
     private readonly ILogger<DashboardViewModel> _logger;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
 
-    [ObservableProperty]
-    private NetworkAdapterInfo? _primaryAdapter;
+    [ObservableProperty] private NetworkAdapterInfo? _primaryAdapter;
+    [ObservableProperty] private LocalConnectivity _connectivity = LocalConnectivity.Offline;
+    [ObservableProperty] private IpFamilyStatus _ipv4Status;
+    [ObservableProperty] private IpFamilyStatus _ipv6Status;
+    [ObservableProperty] private DateTimeOffset? _lastUpdated;
+    [ObservableProperty] private bool _hasSnapshot;
 
-    [ObservableProperty]
-    private LocalConnectivity _connectivity = LocalConnectivity.Offline;
+    [ObservableProperty] private DnsEngineState _engineState = DnsEngineState.Stopped;
+    [ObservableProperty] private DnsProtocol _activeProtocol = DnsProtocol.DnsOverHttps;
+    [ObservableProperty] private string _activeResolverName = string.Empty;
+    [ObservableProperty] private string _listenEndpoint = "127.0.0.1:53";
+    [ObservableProperty] private string _latencyDisplay = "—";
+    [ObservableProperty] private string _totalQueriesDisplay = "—";
+    [ObservableProperty] private string? _engineError;
 
-    [ObservableProperty]
-    private IpFamilyStatus _ipv4Status;
-
-    [ObservableProperty]
-    private IpFamilyStatus _ipv6Status;
-
-    [ObservableProperty]
-    private DateTimeOffset? _lastUpdated;
-
-    [ObservableProperty]
-    private bool _hasSnapshot;
-
-    public DashboardViewModel(INetworkInfoService network, ILogger<DashboardViewModel> logger)
+    public DashboardViewModel(
+        INetworkInfoService network,
+        IDnsEngine dnsEngine,
+        INavigationService navigation,
+        ILogger<DashboardViewModel> logger)
         : base("Nav_Dashboard", "Page_Dashboard_Subtitle")
     {
         _network = network;
+        _dnsEngine = dnsEngine;
+        _navigation = navigation;
         _logger = logger;
         _ui = SynchronizationContext.Current;
+        ApplyEngineStats(dnsEngine.GetStats());
     }
 
-    /// <summary>The DNS engine is implemented in Phase 4; until then it is reported as unavailable.</summary>
-    public bool IsEngineAvailable => false;
+    public bool IsEngineAvailable => true;
+
+    public bool IsEngineRunning => EngineState is DnsEngineState.Running or DnsEngineState.Degraded;
 
     public override void OnNavigatedTo()
     {
         _cts = new CancellationTokenSource();
         _network.NetworkChanged += OnNetworkChanged;
+        _dnsEngine.StateChanged += OnEngineStateChanged;
+        ApplyEngineStats(_dnsEngine.GetStats());
         _ = RefreshCommand.ExecuteAsync(null);
     }
 
     public override void OnNavigatedFrom()
     {
         _network.NetworkChanged -= OnNetworkChanged;
+        _dnsEngine.StateChanged -= OnEngineStateChanged;
         _cts?.Cancel();
     }
 
@@ -71,12 +84,34 @@ public sealed partial class DashboardViewModel : PageViewModel
         if (disposing)
         {
             _network.NetworkChanged -= OnNetworkChanged;
+            _dnsEngine.StateChanged -= OnEngineStateChanged;
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
         }
 
         base.Dispose(disposing);
+    }
+
+    partial void OnEngineStateChanged(DnsEngineState value) => OnPropertyChanged(nameof(IsEngineRunning));
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ToggleEngineAsync()
+    {
+        if (IsEngineRunning)
+        {
+            await _dnsEngine.StopAsync();
+        }
+        else
+        {
+            var (ok, _) = await _dnsEngine.StartAsync();
+            if (!ok)
+            {
+                _navigation.Navigate(PageKeys.DnsManager);
+            }
+        }
+
+        ApplyEngineStats(_dnsEngine.GetStats());
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
@@ -113,6 +148,19 @@ public sealed partial class DashboardViewModel : PageViewModel
         HasSnapshot = true;
     }
 
+    internal void ApplyEngineStats(DnsEngineRuntimeStats stats)
+    {
+        EngineState = stats.State;
+        ActiveProtocol = stats.ActiveProtocol;
+        ActiveResolverName = stats.ActiveResolverName;
+        ListenEndpoint = stats.ListenEndpoint;
+        LatencyDisplay = stats.LastLatencyMs is { } ms ? string.Create(CultureInfo.InvariantCulture, $"{ms:0.#} ms") : "—";
+        TotalQueriesDisplay = stats.TotalQueries > 0 || IsEngineRunning
+            ? stats.TotalQueries.ToString("N0", CultureInfo.CurrentCulture)
+            : "—";
+        EngineError = stats.LastError;
+    }
+
     internal static IpFamilyStatus EvaluateIPv4(NetworkAdapterInfo? adapter)
     {
         if (adapter is null || adapter.IPv4Addresses.Count == 0)
@@ -144,5 +192,17 @@ public sealed partial class DashboardViewModel : PageViewModel
         }
 
         _ui.Post(_ => _ = RefreshCommand.ExecuteAsync(null), null);
+    }
+
+    private void OnEngineStateChanged(object? sender, DnsEngineRuntimeStats stats)
+    {
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(() => ApplyEngineStats(stats));
+        }
+        else
+        {
+            ApplyEngineStats(stats);
+        }
     }
 }

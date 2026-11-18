@@ -93,9 +93,10 @@ public sealed partial class LocalizationResourceTests
         expected.AddRange(Enum.GetNames<JustCryptDns.App.Services.TransparencyLevel>().Select(n => "TransparencyLevel_" + n));
         expected.AddRange(Enum.GetNames<CloseBehavior>().Select(n => "CloseBehavior_" + n));
         expected.AddRange(Enum.GetNames<JustCryptDns.Core.Ipc.ServiceConnectionState>().Select(n => "ServiceState_" + n));
+        expected.AddRange(Enum.GetNames<JustCryptDns.Core.Ipc.DnsEngineState>().Select(n => "EngineState_" + n));
         expected.AddRange(LanguageCodes.All.Select(c => "Lang_" + c));
 
-        foreach (var page in new[] { "DnsManager", "Resolvers", "Routing", "Gaming", "Filtering", "Diagnostics", "Monitor" })
+        foreach (var page in new[] { "Resolvers", "Routing", "Gaming", "Filtering", "Diagnostics", "Monitor" })
         {
             var vm = new PlannedFeatureViewModel(page, 4, 4);
             expected.Add(vm.TitleKey);

@@ -21,3 +21,8 @@ public partial class AppearanceView : UserControl
 {
     public AppearanceView() => InitializeComponent();
 }
+
+public partial class DnsManagerView : UserControl
+{
+    public DnsManagerView() => InitializeComponent();
+}

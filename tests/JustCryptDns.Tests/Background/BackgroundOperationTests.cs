@@ -33,53 +33,75 @@ public sealed class BackgroundOperationTests : IDisposable
     public async Task NamedPipeIpc_RoundTripsStatusAndCommandsAndDetectsShutdown()
     {
         var pipeName = $"JustCryptDns.Test.{Guid.NewGuid():N}";
-        var store = new MemorySettingsStore(new AppSettings
-        {
-            General = { AutoStartDnsEngine = true, EnableGamingModeOnStartup = false },
-        });
-        var stateManager = new ServiceStateManager(store, NullLogger<ServiceStateManager>.Instance);
-        stateManager.InitializeFromSettings();
-
-        var server = new NamedPipeIpcServer(stateManager, NullLogger<NamedPipeIpcServer>.Instance, pipeName);
-        var client = new NamedPipeServiceClient(NullLogger<NamedPipeServiceClient>.Instance, pipeName);
-
-        server.Start();
+        var tempRoot = Path.Combine(Path.GetTempPath(), "jcd-ipc-test", Guid.NewGuid().ToString("N"));
+        var paths = new AppPaths(tempRoot);
+        paths.EnsureCreated();
         try
         {
-            var status = await client.RefreshStatusAsync();
-            Assert.NotNull(status);
-            Assert.Equal(ServiceConnectionState.Connected, client.ConnectionState);
-            Assert.Equal(DnsEngineState.NotImplemented, status!.EngineState);
-            Assert.False(status.IsGamingModeEnabled);
+            var freePort = JustCryptDns.DNS.Proxy.PortConflictDetector.GetEphemeralPort(System.Net.IPAddress.Loopback);
+            var store = new MemorySettingsStore(new AppSettings
+            {
+                General = { AutoStartDnsEngine = false, EnableGamingModeOnStartup = false },
+                Dns = { ListenPort = freePort },
+            });
+            using var settingsService = new JustCryptDns.Core.Services.SettingsService(store, NullLogger<JustCryptDns.Core.Services.SettingsService>.Instance);
+            using var netInfo = new JustCryptDns.Network.Monitoring.NetworkInfoService(NullLogger<JustCryptDns.Network.Monitoring.NetworkInfoService>.Instance);
+            var winDns = new WindowsNetworkDnsService(paths, netInfo, NullLogger<WindowsNetworkDnsService>.Instance);
+            await using var dnsCrypt = new JustCryptDns.DNS.DnsCrypt.DnsCryptProxyManager(paths, NullLogger<JustCryptDns.DNS.DnsCrypt.DnsCryptProxyManager>.Instance);
+            await using var dnsEngine = new JustCryptDns.DNS.Proxy.DnsEngineService(settingsService, dnsCrypt, winDns, NullLogger<JustCryptDns.DNS.Proxy.DnsEngineService>.Instance);
+            var stateManager = new ServiceStateManager(settingsService, dnsEngine, winDns, NullLogger<ServiceStateManager>.Instance);
+            await stateManager.InitializeFromSettingsAsync();
 
-            var gamingResponse = await client.SendAsync(new IpcRequest(IpcRequestKind.SetGamingMode, BoolValue: true));
-            Assert.NotNull(gamingResponse);
-            Assert.True(gamingResponse!.Success);
-            Assert.True(gamingResponse.Status.IsGamingModeEnabled);
+            var server = new NamedPipeIpcServer(stateManager, NullLogger<NamedPipeIpcServer>.Instance, pipeName);
+            var client = new NamedPipeServiceClient(NullLogger<NamedPipeServiceClient>.Instance, pipeName);
 
-            var engineResponse = await client.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, BoolValue: true));
-            Assert.NotNull(engineResponse);
-            Assert.False(engineResponse!.Success);
-            Assert.Equal("EngineNotImplemented", engineResponse.ErrorCode);
+            server.Start();
+            try
+            {
+                var status = await client.RefreshStatusAsync();
+                Assert.NotNull(status);
+                Assert.Equal(ServiceConnectionState.Connected, client.ConnectionState);
+                Assert.Equal(DnsEngineState.Stopped, status!.EngineState);
+                Assert.True(status.IsEngineImplemented);
+                Assert.False(status.IsGamingModeEnabled);
 
-            var restoreResponse = await client.SendAsync(new IpcRequest(IpcRequestKind.RestoreOriginalDns));
-            Assert.NotNull(restoreResponse);
-            Assert.True(restoreResponse!.Success);
+                var gamingResponse = await client.SendAsync(new IpcRequest(IpcRequestKind.SetGamingMode, BoolValue: true));
+                Assert.NotNull(gamingResponse);
+                Assert.True(gamingResponse!.Success);
+                Assert.True(gamingResponse.Status.IsGamingModeEnabled);
 
-            var badVersionResponse = await client.SendAsync(new IpcRequest(IpcRequestKind.GetStatus, ProtocolVersion: 99));
-            Assert.NotNull(badVersionResponse);
-            Assert.False(badVersionResponse!.Success);
-            Assert.Equal("ProtocolMismatch", badVersionResponse.ErrorCode);
+                var engineStart = await client.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, BoolValue: true));
+                Assert.NotNull(engineStart);
+                Assert.True(engineStart!.Success);
+                Assert.Equal(DnsEngineState.Running, engineStart.Status.EngineState);
+
+                var engineStop = await client.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, BoolValue: false));
+                Assert.NotNull(engineStop);
+                Assert.True(engineStop!.Success);
+                Assert.Equal(DnsEngineState.Stopped, engineStop.Status.EngineState);
+
+                var badVersionResponse = await client.SendAsync(new IpcRequest(IpcRequestKind.GetStatus, ProtocolVersion: 99));
+                Assert.NotNull(badVersionResponse);
+                Assert.False(badVersionResponse!.Success);
+                Assert.Equal("ProtocolMismatch", badVersionResponse.ErrorCode);
+            }
+            finally
+            {
+                await server.DisposeAsync();
+            }
+
+            // After server stops, client reports ServiceNotRunning.
+            var afterStop = await client.RefreshStatusAsync();
+            Assert.Null(afterStop);
+            Assert.Equal(ServiceConnectionState.ServiceNotRunning, client.ConnectionState);
         }
         finally
         {
-            await server.DisposeAsync();
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
         }
-
-        // After server stops, client reports ServiceNotRunning.
-        var afterStop = await client.RefreshStatusAsync();
-        Assert.Null(afterStop);
-        Assert.Equal(ServiceConnectionState.ServiceNotRunning, client.ConnectionState);
     }
 
     [Fact]

@@ -28,6 +28,8 @@ public enum IpcRequestKind
 {
     GetStatus,
     SetEngineEnabled,
+    RestartEngine,
+    ReloadConfiguration,
     SetGamingMode,
     RestoreOriginalDns,
 }
@@ -52,9 +54,19 @@ public sealed record ServiceStatusSnapshot
 
     public bool IsGamingModeEnabled { get; init; }
 
+    public string? ActiveResolverId { get; init; }
+
     public string? ActiveResolverName { get; init; }
 
     public string? ActiveProtocol { get; init; }
+
+    public string? ListenEndpoint { get; init; }
+
+    public long TotalQueries { get; init; }
+
+    public double? LastLatencyMs { get; init; }
+
+    public bool HasAdapterBackup { get; init; }
 
     public string? LastError { get; init; }
 }

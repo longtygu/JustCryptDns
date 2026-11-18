@@ -69,6 +69,19 @@ internal sealed class MigrationV2ToV3 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v4 adds <see cref="DnsSettings"/> (active resolver, local proxy endpoint, adapter integration, timeouts).
+/// </summary>
+internal sealed class MigrationV3ToV4 : ISettingsMigration
+{
+    public int FromVersion => 3;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by DnsSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -82,7 +95,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4()];
 
     public static int ReadVersion(JsonObject document)
     {

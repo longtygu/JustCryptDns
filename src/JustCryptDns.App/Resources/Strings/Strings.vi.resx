@@ -690,4 +690,106 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>Thoát</value>
   </data>
+  <data name="EngineState_NotImplemented" xml:space="preserve">
+    <value>Chưa khả dụng</value>
+  </data>
+  <data name="EngineState_Stopped" xml:space="preserve">
+    <value>Đã dừng</value>
+  </data>
+  <data name="EngineState_Starting" xml:space="preserve">
+    <value>Đang khởi động…</value>
+  </data>
+  <data name="EngineState_Running" xml:space="preserve">
+    <value>Đang bảo vệ (Đang chạy)</value>
+  </data>
+  <data name="EngineState_Degraded" xml:space="preserve">
+    <value>Suy giảm</value>
+  </data>
+  <data name="EngineState_Stopping" xml:space="preserve">
+    <value>Đang dừng…</value>
+  </data>
+  <data name="Dash_Protection_StoppedDetail" xml:space="preserve">
+    <value>Proxy DNS cục bộ của JustCryptDns hiện đang dừng. Nhấn Khởi động DNS engine để bật DNS mã hóa.</value>
+  </data>
+  <data name="Dash_Protection_RunningDetail" xml:space="preserve">
+    <value>Proxy DNS cục bộ đang hoạt động và chuyển tiếp truy vấn qua resolver đã chọn.</value>
+  </data>
+  <data name="DnsMgr_PortConflictTitle" xml:space="preserve">
+    <value>Phát hiện xung đột cổng cục bộ</value>
+  </data>
+  <data name="DnsMgr_UseSuggestedPort" xml:space="preserve">
+    <value>Dùng cổng {0}</value>
+  </data>
+  <data name="DnsMgr_EngineTitle" xml:space="preserve">
+    <value>DNS Engine &amp; Proxy cục bộ</value>
+  </data>
+  <data name="DnsMgr_TestResolver" xml:space="preserve">
+    <value>Kiểm tra resolver</value>
+  </data>
+  <data name="DnsMgr_Restart" xml:space="preserve">
+    <value>Khởi động lại</value>
+  </data>
+  <data name="DnsMgr_StopEngine" xml:space="preserve">
+    <value>Dừng DNS engine</value>
+  </data>
+  <data name="DnsMgr_LocalProxy" xml:space="preserve">
+    <value>Điểm cuối proxy cục bộ</value>
+  </data>
+  <data name="DnsMgr_SuccessFailed" xml:space="preserve">
+    <value>Thành công / Lỗi</value>
+  </data>
+  <data name="DnsMgr_ResolverSection" xml:space="preserve">
+    <value>Resolver đích đang dùng</value>
+  </data>
+  <data name="DnsMgr_ActiveResolver" xml:space="preserve">
+    <value>Resolver được chọn</value>
+  </data>
+  <data name="DnsMgr_ListenEndpointLabel" xml:space="preserve">
+    <value>Địa chỉ IP &amp; cổng lắng nghe</value>
+  </data>
+  <data name="DnsMgr_ListenEndpointDesc" xml:space="preserve">
+    <value>Mặc định là 127.0.0.1:53. Nếu một dịch vụ khác đang chiếm cổng 53, bạn có thể chọn cổng khác.</value>
+  </data>
+  <data name="DnsMgr_ListenPort" xml:space="preserve">
+    <value>Cổng lắng nghe</value>
+  </data>
+  <data name="DnsMgr_EnableIpv6" xml:space="preserve">
+    <value>Lắng nghe thêm IPv6 loopback (::1)</value>
+  </data>
+  <data name="DnsMgr_EnableIpv6Desc" xml:space="preserve">
+    <value>Chấp nhận thêm các truy vấn DNS trên ::1 ở cùng cổng.</value>
+  </data>
+  <data name="DnsMgr_WindowsSection" xml:space="preserve">
+    <value>Tích hợp bộ điều hợp mạng Windows &amp; an toàn</value>
+  </data>
+  <data name="DnsMgr_ConfigureAdapter" xml:space="preserve">
+    <value>Tự động cấu hình DNS cho bộ điều hợp Windows khi bật engine</value>
+  </data>
+  <data name="DnsMgr_ConfigureAdapterDesc" xml:space="preserve">
+    <value>Sao lưu DNS hiện tại kèm kiểm tra SHA-256, áp dụng proxy cục bộ, xác minh kết nối và tự động hoàn tác nếu lỗi.</value>
+  </data>
+  <data name="DnsMgr_EmergencyRestore" xml:space="preserve">
+    <value>Khôi phục DNS khẩn cấp</value>
+  </data>
+  <data name="DnsMgr_EmergencyRestoreDesc" xml:space="preserve">
+    <value>Khôi phục ngay lập tức cấu hình DNS gốc của bộ điều hợp mạng từ bản sao lưu hoặc đặt lại về DHCP.</value>
+  </data>
+  <data name="DnsMgr_DnsCryptSection" xml:space="preserve">
+    <value>Engine DNSCrypt (dnscrypt-proxy)</value>
+  </data>
+  <data name="DnsMgr_InstallUpdateDnsCrypt" xml:space="preserve">
+    <value>Cài đặt / Cập nhật</value>
+  </data>
+  <data name="DnsMgr_ProbeSuccess" xml:space="preserve">
+    <value>Đã xác minh {0} trong {1} ms.</value>
+  </data>
+  <data name="DnsMgr_InvalidPort" xml:space="preserve">
+    <value>Hãy nhập số cổng hợp lệ từ 1 đến 65535.</value>
+  </data>
+  <data name="DnsMgr_RestoreSuccess" xml:space="preserve">
+    <value>Đã khôi phục cài đặt DNS gốc cho bộ điều hợp mạng Windows.</value>
+  </data>
+  <data name="DnsMgr_DnsCryptInstalled" xml:space="preserve">
+    <value>Đã cài đặt dnscrypt-proxy ({0}).</value>
+  </data>
 </root>
