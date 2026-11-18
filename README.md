@@ -2,13 +2,14 @@
 
 Advanced DNS security, smart routing and gaming DNS optimization suite for Windows 10 22H2 / Windows 11 (x64).
 
-> **Status: active development (Phase 5 of 12).** The core DNS engine (DoH, DoT, DNSCrypt via `dnscrypt-proxy`, UDP/TCP),
+> **Status: active development (Phase 6 of 12).** The core DNS engine (DoH, DoT, DNSCrypt via `dnscrypt-proxy`, UDP/TCP),
 > complete Resolver Library (9 predefined providers across DoH, DoT, DNSCrypt & UDP/TCP, custom resolver CRUD, `sdns://` stamp & endpoint validation, primary/secondary assignment, resolver groups, profile import/export, live health & reliability checks),
+> Smart DNS Routing (domain-based Exact, Domain Suffix & Wildcard matching, prioritized rules, Gaming/Privacy/Security/Custom profiles, fallback resolver, interactive rule tester & live routing logs),
 > local DNS proxy (`127.0.0.1` with port conflict & DNS loop detection), 6-step Windows network adapter DNS safety integration
 > (backup, SHA-256 verification, connectivity probe, automatic rollback, emergency restore, crash recovery),
 > background service (`JustCryptDns.Service`), Named Pipe IPC, system tray integration, Windows startup registration,
 > window transparency (Mica / Acrylic / DWM Blur), appearance customization, and localization work.
-> Pages for modules scheduled in Phase 6+ show an explicit *"Planned · Phase N"* notice and never display fabricated data.
+> Pages for modules scheduled in Phase 7+ show an explicit *"Planned · Phase N"* notice and never display fabricated data.
 
 ## Features implemented so far
 
@@ -25,12 +26,13 @@ Advanced DNS security, smart routing and gaming DNS optimization suite for Windo
 | Local DNS proxy (`127.0.0.1`, configurable IP/port, IPv4 & IPv6, port conflict detection & DNS loop guard) | ✅ |
 | Windows adapter DNS integration & 6-step safety (backup, SHA-256 check, apply, probe, auto-rollback, emergency restore, crash recovery) | ✅ |
 | Complete Resolver Library: Cloudflare, Google, Quad9, OpenDNS, AdGuard, Control D, NextDNS, Mullvad, DNS0 + custom resolvers, groups, validation, JSON profile import/export & live health checks | ✅ |
+| Smart DNS Routing: domain-based rules (Exact, Domain & Subdomains, Wildcard), priority order, Gaming/Privacy/Security/Custom profiles, fallback resolver, visual rule editor, rule tester & live routing log | ✅ |
 | English / Vietnamese UI, switchable without restart | ✅ |
-| Versioned JSON settings (schema v5) with atomic save, backup, corruption recovery and migration | ✅ |
+| Versioned JSON settings (schema v6) with atomic save, backup, corruption recovery and migration | ✅ |
 | Rolling, size-capped logs (Serilog) | ✅ |
 | Dashboard & DNS Manager: live DNS engine controls, real latency & query counters, local adapter status | ✅ |
 | Single-instance guard (second launch activates the first window) | ✅ |
-| Smart Routing, Filtering, Cache, Gaming, Failover, Diagnostics | Phase 6+ |
+| Filtering, Cache, Gaming, Failover, Diagnostics | Phase 7+ |
 
 See the full roadmap in [docs/ROADMAP.md](docs/ROADMAP.md).
 

@@ -978,4 +978,85 @@
   <data name="Resolvers_Msg_Imported" xml:space="preserve">
     <value>Imported resolver profile ({0} custom resolvers).</value>
   </data>
+  <data name="RoutingMatch_DomainSuffix" xml:space="preserve">
+    <value>Domain &amp; subdomains</value>
+  </data>
+  <data name="RoutingMatch_Exact" xml:space="preserve">
+    <value>Exact domain</value>
+  </data>
+  <data name="RoutingMatch_Wildcard" xml:space="preserve">
+    <value>Wildcard (*)</value>
+  </data>
+  <data name="Routing_AddRule" xml:space="preserve">
+    <value>Add routing rule</value>
+  </data>
+  <data name="Routing_MasterToggle" xml:space="preserve">
+    <value>Domain-based smart DNS routing</value>
+  </data>
+  <data name="Routing_MasterToggle_Desc" xml:space="preserve">
+    <value>Routes DNS queries to specific upstream resolvers based on prioritized domain rules. Operates at the DNS domain level.</value>
+  </data>
+  <data name="Routing_ActiveProfile" xml:space="preserve">
+    <value>Active routing profile</value>
+  </data>
+  <data name="Routing_FallbackResolver" xml:space="preserve">
+    <value>Default fallback resolver</value>
+  </data>
+  <data name="Routing_NewProfile" xml:space="preserve">
+    <value>New profile</value>
+  </data>
+  <data name="Routing_Editor_Title" xml:space="preserve">
+    <value>Routing rule editor</value>
+  </data>
+  <data name="Routing_Field_RuleName" xml:space="preserve">
+    <value>Rule name</value>
+  </data>
+  <data name="Routing_Field_Pattern" xml:space="preserve">
+    <value>Domain pattern (e.g. steampowered.com or *.riotgames.com)</value>
+  </data>
+  <data name="Routing_Field_MatchKind" xml:space="preserve">
+    <value>Match type</value>
+  </data>
+  <data name="Routing_Field_TargetResolver" xml:space="preserve">
+    <value>Target resolver</value>
+  </data>
+  <data name="Routing_Field_Priority" xml:space="preserve">
+    <value>Priority (1–9999)</value>
+  </data>
+  <data name="Routing_Tester_Title" xml:space="preserve">
+    <value>Interactive rule tester</value>
+  </data>
+  <data name="Routing_Tester_Button" xml:space="preserve">
+    <value>Test domain</value>
+  </data>
+  <data name="Routing_Test_MatchedResult" xml:space="preserve">
+    <value>Domain '{0}' matched rule '{1}' ({2}) → routed to {3} ({4}).</value>
+  </data>
+  <data name="Routing_Test_FallbackResult" xml:space="preserve">
+    <value>Domain '{0}' did not match any enabled rule → routed to fallback {1} ({2}).</value>
+  </data>
+  <data name="Routing_Rules_Section" xml:space="preserve">
+    <value>Prioritized rules in current profile</value>
+  </data>
+  <data name="Routing_Log_Title" xml:space="preserve">
+    <value>Recent routing decisions</value>
+  </data>
+  <data name="Routing_Log_Clear" xml:space="preserve">
+    <value>Clear log</value>
+  </data>
+  <data name="Routing_Err_InvalidPriority" xml:space="preserve">
+    <value>Enter a valid priority between 1 and 9999 (lower number = higher priority).</value>
+  </data>
+  <data name="Routing_Msg_RuleSaved" xml:space="preserve">
+    <value>Saved routing rule '{0}'.</value>
+  </data>
+  <data name="Routing_Msg_RuleRemoved" xml:space="preserve">
+    <value>Removed routing rule '{0}'.</value>
+  </data>
+  <data name="Routing_Msg_ProfileCreated" xml:space="preserve">
+    <value>Created routing profile '{0}'.</value>
+  </data>
+  <data name="Routing_Msg_ProfileRemoved" xml:space="preserve">
+    <value>Removed routing profile '{0}'.</value>
+  </data>
 </root>

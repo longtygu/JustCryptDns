@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 6 — Smart DNS Routing
+- **Domain-based routing matcher (`RoutingMatcher`):** supports `Exact`, `DomainSuffix` (root domain + subdomains), and `Wildcard` (`*.domain.com`, `ads.*`, etc.) matching with pattern validation.
+- **Smart DNS routing service (`DnsRoutingService`, `IDnsRoutingService`):**
+  - Built-in routing profiles (**Gaming**, **Privacy**, **Security**, **Custom**) with starter domain rules (Steam, Riot Games, Epic Games, Battle.net, Wikipedia, Microsoft Identity, etc.) plus user-created custom profiles and per-profile fallback resolver configuration.
+  - Prioritized rule evaluation (`Priority` ascending, then match specificity, then pattern length), rule enable/disable, and bounded thread-safe routing decision log (`MaxLogEntries = 200`).
+- **Live proxy integration (`DnsEngineService`):** inspects incoming DNS queries by domain, dispatches each query to its matched rule's upstream resolver (or profile fallback resolver), and logs the real routing decision and latency.
+- **Smart Routing UI (`RoutingView`, `RoutingViewModel`):** profile & fallback selector, visual rule editor, interactive domain rule tester, live routing log, schema v6 (`MigrationV5ToV6`), and 87 offline unit tests.
+
 ### Phase 5 — Resolver Management & Provider Library
 - **Complete predefined resolver catalog (`BuiltInResolvers`):** 27 curated endpoints across all 9 required providers (**Cloudflare**, **Google Public DNS**, **Quad9**, **OpenDNS**, **AdGuard DNS**, **Control D**, **NextDNS**, **Mullvad DNS**, **DNS0**) covering DoH, DoT, DNSCrypt (`sdns://`), and UDP/TCP with accurate IPv4, secondary IPv4, IPv6, port, DNSSEC, No-Log policy, ECS, and filtering capability metadata (`None`, `Malware`, `AdsAndTrackers`, `Family`).
 - **Resolver validation (`ResolverValidator`):** validates IPv4/IPv6 addresses, port ranges, HTTPS URIs for DoH, TLS hostnames for DoT, IP addresses for UDP/TCP, and decodes/verifies `sdns://` Base64URL stamps and protocol bytes for DNSCrypt.

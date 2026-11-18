@@ -19,7 +19,7 @@ public sealed class PageFactory : IPageFactory
         PageKeys.Appearance => _services.GetRequiredService<AppearanceViewModel>(),
         PageKeys.DnsManager => _services.GetRequiredService<DnsManagerViewModel>(),
         PageKeys.Resolvers => _services.GetRequiredService<ResolverLibraryViewModel>(),
-        PageKeys.Routing => new PlannedFeatureViewModel(pageKey, phase: 6, featureCount: 4),
+        PageKeys.Routing => _services.GetRequiredService<RoutingViewModel>(),
         PageKeys.Filtering => new PlannedFeatureViewModel(pageKey, phase: 7, featureCount: 4),
         PageKeys.Gaming => new PlannedFeatureViewModel(pageKey, phase: 8, featureCount: 4),
         PageKeys.Diagnostics => new PlannedFeatureViewModel(pageKey, phase: 10, featureCount: 4),

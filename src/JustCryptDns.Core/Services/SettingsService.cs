@@ -28,7 +28,7 @@ public sealed class SettingsService : ISettingsService, IDisposable
         ArgumentNullException.ThrowIfNull(initial);
         _store = store;
         _logger = logger;
-        Current = initial.Settings;
+        Current = initial.Settings.Normalize();
         LoadOutcome = initial.Outcome;
         _deferredTimer = new Timer(_ => _ = SaveDeferredAsync(), null, Timeout.Infinite, Timeout.Infinite);
         _logger.LogInformation("Settings loaded: {Outcome} {Detail}", initial.Outcome, initial.Detail);

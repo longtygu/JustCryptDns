@@ -1,0 +1,277 @@
+<UserControl x:Class="JustCryptDns.App.Views.RoutingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
+             xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
+             xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1150"
+             d:DataContext="{d:DesignInstance Type=vm:RoutingViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="SectionCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+        </Style>
+        <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
+        </Style>
+        <Style x:Key="Divider" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Divider}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Margin" Value="0,14,0,14" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel Margin="32,4,32,32" MaxWidth="940">
+            <!-- Header & Add Rule Button -->
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Routing}" />
+                    <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Routing_Subtitle}" Margin="0,4,0,0" />
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding OpenAddRuleCommand}"
+                        Content="{l:Loc Routing_AddRule}" VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Status / Error Banners -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+            </Border>
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+            </Border>
+
+            <!-- Profile, Master Switch & Fallback Resolver Card -->
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{l:Loc Routing_MasterToggle}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Routing_MasterToggle_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsRoutingEnabled}"
+                                  AutomationProperties.Name="{l:Loc Routing_MasterToggle}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Routing_ActiveProfile}" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal">
+                                <ComboBox Width="200" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                                          DisplayMemberPath="Name" AutomationProperties.Name="{l:Loc Routing_ActiveProfile}" />
+                                <Button Command="{Binding RemoveSelectedProfileCommand}" Content="{l:Loc Common_Remove}" Margin="8,0,0,0"
+                                        Visibility="{Binding CanDeleteSelectedProfile, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Routing_FallbackResolver}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding AvailableResolvers}" SelectedItem="{Binding SelectedFallbackResolver}"
+                                      DisplayMemberPath="Name" AutomationProperties.Name="{l:Loc Routing_FallbackResolver}" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Routing_NewProfile}" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox Width="130" Text="{Binding NewProfileName, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="{l:Loc Routing_NewProfile}" />
+                                <Button Command="{Binding AddProfileCommand}" Content="+" Margin="6,0,0,0" Padding="12,6" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Visual Rule Editor Card -->
+            <Border Style="{StaticResource SectionCard}" BorderBrush="{DynamicResource Brush.Accent}"
+                    Visibility="{Binding IsRuleEditorOpen, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Routing_Editor_Title}" Margin="0,0,0,12" />
+
+                    <Border Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                            BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12"
+                            Visibility="{Binding RuleEditorError, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding RuleEditorError}" />
+                    </Border>
+
+                    <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Routing_Field_RuleName}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding RuleName, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="{l:Loc Routing_Field_RuleName}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Routing_Field_Pattern}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding RulePattern, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc Routing_Field_Pattern}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Routing_Field_MatchKind}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding MatchKinds}" SelectedItem="{Binding RuleMatchKind}"
+                                      AutomationProperties.Name="{l:Loc Routing_Field_MatchKind}" />
+                        </StackPanel>
+                    </UniformGrid>
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Routing_Field_TargetResolver}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding AvailableResolvers}" SelectedItem="{Binding RuleResolver}"
+                                      DisplayMemberPath="Name" AutomationProperties.Name="{l:Loc Routing_Field_TargetResolver}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Routing_Field_Priority}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding RulePriorityText, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc Routing_Field_Priority}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <Button Command="{Binding CancelRuleEditorCommand}" Content="{l:Loc Common_Cancel}" Margin="0,0,8,0" />
+                            <Button Style="{StaticResource Button.Primary}" Command="{Binding SaveRuleCommand}" Content="{l:Loc Common_Save}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Interactive Rule Tester -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Routing_Tester_Title}" Margin="0,8,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding TestDomainInput, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                 Margin="0,0,10,0" AutomationProperties.Name="{l:Loc Routing_Tester_Title}" />
+                        <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding TestDomainCommand}"
+                                Content="{l:Loc Routing_Tester_Button}" />
+                    </Grid>
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,12,0,0"
+                            Visibility="{Binding LastTestSummary, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding LastTestSummary}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Active Profile Rules -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Routing_Rules_Section}" Margin="0,8,0,10" />
+            <ItemsControl ItemsSource="{Binding ProfileRules}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:RoutingRuleItemViewModel}">
+                        <Border Style="{StaticResource SectionCard}" Padding="18,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="0,0,14,0">
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                               Text="{Binding Priority, StringFormat=#{0}}" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{Binding Name}" Margin="0,0,10,0" />
+                                        <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="0,0,8,0">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Brush.Accent}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                                        <Binding Path="MatchKindKey" />
+                                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Border>
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                                   Text="{Binding Pattern}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                    </WrapPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <TextBlock Style="{StaticResource Text.Caption}" Text="→ " />
+                                        <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding ResolverName}" Margin="0,0,6,0" />
+                                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ProtocolBadge, StringFormat=({0})}" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Command="{Binding DataContext.OpenEditRuleCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" Content="{l:Loc Common_Edit}" Margin="0,0,6,0" Padding="10,6" />
+                                    <Button Command="{Binding DataContext.RemoveRuleCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" Content="{l:Loc Common_Remove}" Margin="0,0,10,0" Padding="10,6" />
+                                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                              Command="{Binding DataContext.ToggleRuleEnabledCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              CommandParameter="{Binding}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Routing Log -->
+            <Grid Margin="0,12,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Routing_Log_Title}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Command="{Binding ClearLogsCommand}" Content="{l:Loc Routing_Log_Clear}" Padding="10,5" />
+            </Grid>
+            <Border Style="{StaticResource SectionCard}">
+                <ItemsControl ItemsSource="{Binding RecentLogs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:RoutingLogEntry}">
+                            <Grid Margin="0,4,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="95" />
+                                    <ColumnDefinition Width="65" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="170" />
+                                    <ColumnDefinition Width="210" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Foreground="{DynamicResource Brush.TextSecondary}"
+                                           Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Text="{Binding QueryType}" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Text="{Binding Domain}" TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
+                                <TextBlock Grid.Column="3" Style="{StaticResource Text.Caption}"
+                                           Text="{Binding MatchedRuleName}" TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
+                                <TextBlock Grid.Column="4" Style="{StaticResource Text.Caption}" FontWeight="SemiBold"
+                                           Text="{Binding ResolverName}" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

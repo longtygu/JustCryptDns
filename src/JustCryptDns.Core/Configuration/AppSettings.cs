@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library.</summary>
-    public const int CurrentSchemaVersion = 5;
+    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library. v6: Phase 6 smart routing.</summary>
+    public const int CurrentSchemaVersion = 6;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -25,6 +25,8 @@ public sealed class AppSettings
 
     public DnsSettings Dns { get; set; } = new();
 
+    public RoutingSettings Routing { get; set; } = new();
+
     public PerformanceSettings Performance { get; set; } = new();
 
     /// <summary>Normalizes out-of-range or missing values after deserialization.</summary>
@@ -33,10 +35,12 @@ public sealed class AppSettings
         General ??= new GeneralSettings();
         Appearance ??= new AppearanceSettings();
         Dns ??= new DnsSettings();
+        Routing ??= new RoutingSettings();
         Performance ??= new PerformanceSettings();
         General.Normalize();
         Appearance.Normalize();
         Dns.Normalize();
+        Routing.Normalize();
         Performance.Normalize();
         return this;
     }
@@ -302,6 +306,34 @@ public sealed class DnsSettings
         }
 
         QueryTimeoutMs = Math.Clamp(QueryTimeoutMs, 500, 15000);
+    }
+}
+
+public sealed class RoutingSettings
+{
+    public bool IsRoutingEnabled { get; set; } = true;
+
+    public string ActiveProfileId { get; set; } = BuiltInRoutingProfiles.GamingProfileId;
+
+    public List<DnsRoutingProfile> CustomProfiles { get; set; } = [];
+
+    public Dictionary<string, string> ProfileFallbackOverrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public List<DnsRoutingRule>? Rules { get; set; }
+
+    internal void Normalize()
+    {
+        if (string.IsNullOrWhiteSpace(ActiveProfileId))
+        {
+            ActiveProfileId = BuiltInRoutingProfiles.GamingProfileId;
+        }
+
+        CustomProfiles ??= [];
+        ProfileFallbackOverrides ??= new(StringComparer.OrdinalIgnoreCase);
+        if (Rules is null)
+        {
+            Rules = BuiltInRoutingProfiles.CreateDefaultRules().ToList();
+        }
     }
 }
 

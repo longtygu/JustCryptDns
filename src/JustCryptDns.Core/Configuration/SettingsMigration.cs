@@ -95,6 +95,19 @@ internal sealed class MigrationV4ToV5 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v6 adds <see cref="RoutingSettings"/> (domain-based routing profiles, rules, and fallback resolvers).
+/// </summary>
+internal sealed class MigrationV5ToV6 : ISettingsMigration
+{
+    public int FromVersion => 5;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by RoutingSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -108,7 +121,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6()];
 
     public static int ReadVersion(JsonObject document)
     {

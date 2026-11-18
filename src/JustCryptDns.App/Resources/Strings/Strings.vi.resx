@@ -978,4 +978,85 @@
   <data name="Resolvers_Msg_Imported" xml:space="preserve">
     <value>Đã nhập hồ sơ resolver ({0} resolver tùy chỉnh).</value>
   </data>
+  <data name="RoutingMatch_DomainSuffix" xml:space="preserve">
+    <value>Tên miền &amp; miền phụ</value>
+  </data>
+  <data name="RoutingMatch_Exact" xml:space="preserve">
+    <value>Khớp chính xác</value>
+  </data>
+  <data name="RoutingMatch_Wildcard" xml:space="preserve">
+    <value>Ký tự đại diện (*)</value>
+  </data>
+  <data name="Routing_AddRule" xml:space="preserve">
+    <value>Thêm quy tắc định tuyến</value>
+  </data>
+  <data name="Routing_MasterToggle" xml:space="preserve">
+    <value>Định tuyến DNS thông minh theo tên miền</value>
+  </data>
+  <data name="Routing_MasterToggle_Desc" xml:space="preserve">
+    <value>Định tuyến truy vấn DNS tới các resolver cụ thể theo quy tắc tên miền có độ ưu tiên. Hoạt động ở cấp tên miền DNS.</value>
+  </data>
+  <data name="Routing_ActiveProfile" xml:space="preserve">
+    <value>Hồ sơ định tuyến đang dùng</value>
+  </data>
+  <data name="Routing_FallbackResolver" xml:space="preserve">
+    <value>Resolver dự phòng mặc định</value>
+  </data>
+  <data name="Routing_NewProfile" xml:space="preserve">
+    <value>Hồ sơ mới</value>
+  </data>
+  <data name="Routing_Editor_Title" xml:space="preserve">
+    <value>Trình chỉnh sửa quy tắc định tuyến</value>
+  </data>
+  <data name="Routing_Field_RuleName" xml:space="preserve">
+    <value>Tên quy tắc</value>
+  </data>
+  <data name="Routing_Field_Pattern" xml:space="preserve">
+    <value>Mẫu tên miền (ví dụ: steampowered.com hoặc *.riotgames.com)</value>
+  </data>
+  <data name="Routing_Field_MatchKind" xml:space="preserve">
+    <value>Kiểu khớp</value>
+  </data>
+  <data name="Routing_Field_TargetResolver" xml:space="preserve">
+    <value>Resolver đích</value>
+  </data>
+  <data name="Routing_Field_Priority" xml:space="preserve">
+    <value>Độ ưu tiên (1–9999)</value>
+  </data>
+  <data name="Routing_Tester_Title" xml:space="preserve">
+    <value>Công cụ kiểm tra quy tắc</value>
+  </data>
+  <data name="Routing_Tester_Button" xml:space="preserve">
+    <value>Kiểm tra tên miền</value>
+  </data>
+  <data name="Routing_Test_MatchedResult" xml:space="preserve">
+    <value>Tên miền '{0}' khớp quy tắc '{1}' ({2}) → định tuyến tới {3} ({4}).</value>
+  </data>
+  <data name="Routing_Test_FallbackResult" xml:space="preserve">
+    <value>Tên miền '{0}' không khớp quy tắc nào đang bật → chuyển về dự phòng {1} ({2}).</value>
+  </data>
+  <data name="Routing_Rules_Section" xml:space="preserve">
+    <value>Quy tắc ưu tiên trong hồ sơ hiện tại</value>
+  </data>
+  <data name="Routing_Log_Title" xml:space="preserve">
+    <value>Nhật ký quyết định định tuyến gần đây</value>
+  </data>
+  <data name="Routing_Log_Clear" xml:space="preserve">
+    <value>Xóa nhật ký</value>
+  </data>
+  <data name="Routing_Err_InvalidPriority" xml:space="preserve">
+    <value>Hãy nhập độ ưu tiên từ 1 đến 9999 (số nhỏ hơn = ưu tiên cao hơn).</value>
+  </data>
+  <data name="Routing_Msg_RuleSaved" xml:space="preserve">
+    <value>Đã lưu quy tắc định tuyến '{0}'.</value>
+  </data>
+  <data name="Routing_Msg_RuleRemoved" xml:space="preserve">
+    <value>Đã xóa quy tắc định tuyến '{0}'.</value>
+  </data>
+  <data name="Routing_Msg_ProfileCreated" xml:space="preserve">
+    <value>Đã tạo hồ sơ định tuyến '{0}'.</value>
+  </data>
+  <data name="Routing_Msg_ProfileRemoved" xml:space="preserve">
+    <value>Đã xóa hồ sơ định tuyến '{0}'.</value>
+  </data>
 </root>

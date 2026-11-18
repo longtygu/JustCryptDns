@@ -72,7 +72,7 @@ flowchart LR
 | 3 | Service, tray, startup ✅ | Windows Service host, named-pipe IPC, tray icon + menu, close behavior, Run-key startup, start minimized | End-to-end Service+UI run, IPC round-trip tests |
 | 4 | DNS engine ✅ | Wire format, UDP/TCP/DoH/DoT upstreams, local proxy (port conflict + loop detection), dnscrypt-proxy download/verify/manage/update, Windows DNS apply/backup/verify/rollback, emergency restore | Real resolution through proxy, unit & live tests |
 | 5 | Resolver management ✅ | Provider catalog (validated), CRUD, groups, import/export, health checks, `sdns://` stamp validation | Tests + live checks |
-| 6 | Smart routing | Rule engine (exact/wildcard/suffix, priority), profiles, rule editor, rule tester, routing log | Tests |
+| 6 | Smart routing ✅ | Rule engine (exact/wildcard/suffix, priority), profiles, rule editor, rule tester, routing log | Tests + live proxy routing |
 | 7 | Filtering & cache | Blocklists (hosts/domain formats, validated), allowlist, temp exceptions, essential-domain protection, TTL cache (positive/negative, size cap, stats) | Tests |
 | 8 | Gaming | Benchmark (avg/min/max/P95/success/timeout/score), 3 selection profiles, gaming profiles, Gaming Mode (session pinning) | Tests + real benchmark |
 | 9 | Resilience | Failover policies, retry, UDP/TCP 53 blocking detection, handshake/DoH failure diagnostics, IPv4/IPv6 checks | Fault-injection tests |

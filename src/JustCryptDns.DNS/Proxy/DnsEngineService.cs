@@ -25,6 +25,7 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly IWindowsDnsManager _windowsDns;
     private readonly ILogger<DnsEngineService> _logger;
     private readonly IResolverLibraryService? _resolverLibrary;
+    private readonly IDnsRoutingService? _routingService;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
@@ -48,13 +49,15 @@ public sealed class DnsEngineService : IDnsEngine
         IWindowsDnsManager windowsDns,
         ILogger<DnsEngineService> logger,
         IEnumerable<IDnsUpstreamClient>? customUpstreams = null,
-        IResolverLibraryService? resolverLibrary = null)
+        IResolverLibraryService? resolverLibrary = null,
+        IDnsRoutingService? routingService = null)
     {
         _settings = settings;
         _dnsCryptManager = dnsCryptManager;
         _windowsDns = windowsDns;
         _logger = logger;
         _resolverLibrary = resolverLibrary;
+        _routingService = routingService;
 
         _defaultDoh = new DohDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
@@ -311,6 +314,18 @@ public sealed class DnsEngineService : IDnsEngine
     private async Task<byte[]> HandleClientQueryAsync(ReadOnlyMemory<byte> queryWire, CancellationToken cancellationToken)
     {
         var resolver = _activeResolver;
+        RoutingDecision? decision = null;
+        var queryType = "A";
+
+        if (_routingService is { IsRoutingEnabled: true }
+            && DnsPacket.TryParse(queryWire.Span, out var parsed)
+            && parsed is { PrimaryQuestionName.Length: > 0 })
+        {
+            queryType = parsed.PrimaryQuestionType.ToString();
+            decision = _routingService.ResolveForDomain(parsed.PrimaryQuestionName);
+            resolver = ResolveEndpoint(decision.ResolverId);
+        }
+
         if (!_upstreams.TryGetValue(resolver.Protocol, out var upstream))
         {
             return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.ServFail);
@@ -319,6 +334,11 @@ public sealed class DnsEngineService : IDnsEngine
         var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
         var result = await upstream.QueryAsync(queryWire, resolver, timeout, cancellationToken).ConfigureAwait(false);
         RecordQueryOutcome(result);
+
+        if (decision is not null && _routingService is not null)
+        {
+            _routingService.RecordRoutingLog(decision, queryType, result.Success ? result.LatencyMs : null);
+        }
 
         return result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize
             ? result.ResponseBytes

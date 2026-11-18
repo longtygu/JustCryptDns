@@ -321,3 +321,30 @@ Resolvers_Msg_ProbingAll|Testing all enabled resolvers…|Đang kiểm tra tất
 Resolvers_Msg_ProbeAllDone|Health check complete: {0} of {1} resolvers online.|Hoàn tất kiểm tra: {0}/{1} resolver trực tuyến.
 Resolvers_Msg_Exported|Exported resolver profile to {0}.|Đã xuất hồ sơ resolver ra {0}.
 Resolvers_Msg_Imported|Imported resolver profile ({0} custom resolvers).|Đã nhập hồ sơ resolver ({0} resolver tùy chỉnh).
+RoutingMatch_DomainSuffix|Domain & subdomains|Tên miền & miền phụ
+RoutingMatch_Exact|Exact domain|Khớp chính xác
+RoutingMatch_Wildcard|Wildcard (*)|Ký tự đại diện (*)
+Routing_AddRule|Add routing rule|Thêm quy tắc định tuyến
+Routing_MasterToggle|Domain-based smart DNS routing|Định tuyến DNS thông minh theo tên miền
+Routing_MasterToggle_Desc|Routes DNS queries to specific upstream resolvers based on prioritized domain rules. Operates at the DNS domain level.|Định tuyến truy vấn DNS tới các resolver cụ thể theo quy tắc tên miền có độ ưu tiên. Hoạt động ở cấp tên miền DNS.
+Routing_ActiveProfile|Active routing profile|Hồ sơ định tuyến đang dùng
+Routing_FallbackResolver|Default fallback resolver|Resolver dự phòng mặc định
+Routing_NewProfile|New profile|Hồ sơ mới
+Routing_Editor_Title|Routing rule editor|Trình chỉnh sửa quy tắc định tuyến
+Routing_Field_RuleName|Rule name|Tên quy tắc
+Routing_Field_Pattern|Domain pattern (e.g. steampowered.com or *.riotgames.com)|Mẫu tên miền (ví dụ: steampowered.com hoặc *.riotgames.com)
+Routing_Field_MatchKind|Match type|Kiểu khớp
+Routing_Field_TargetResolver|Target resolver|Resolver đích
+Routing_Field_Priority|Priority (1–9999)|Độ ưu tiên (1–9999)
+Routing_Tester_Title|Interactive rule tester|Công cụ kiểm tra quy tắc
+Routing_Tester_Button|Test domain|Kiểm tra tên miền
+Routing_Test_MatchedResult|Domain '{0}' matched rule '{1}' ({2}) → routed to {3} ({4}).|Tên miền '{0}' khớp quy tắc '{1}' ({2}) → định tuyến tới {3} ({4}).
+Routing_Test_FallbackResult|Domain '{0}' did not match any enabled rule → routed to fallback {1} ({2}).|Tên miền '{0}' không khớp quy tắc nào đang bật → chuyển về dự phòng {1} ({2}).
+Routing_Rules_Section|Prioritized rules in current profile|Quy tắc ưu tiên trong hồ sơ hiện tại
+Routing_Log_Title|Recent routing decisions|Nhật ký quyết định định tuyến gần đây
+Routing_Log_Clear|Clear log|Xóa nhật ký
+Routing_Err_InvalidPriority|Enter a valid priority between 1 and 9999 (lower number = higher priority).|Hãy nhập độ ưu tiên từ 1 đến 9999 (số nhỏ hơn = ưu tiên cao hơn).
+Routing_Msg_RuleSaved|Saved routing rule '{0}'.|Đã lưu quy tắc định tuyến '{0}'.
+Routing_Msg_RuleRemoved|Removed routing rule '{0}'.|Đã xóa quy tắc định tuyến '{0}'.
+Routing_Msg_ProfileCreated|Created routing profile '{0}'.|Đã tạo hồ sơ định tuyến '{0}'.
+Routing_Msg_ProfileRemoved|Removed routing profile '{0}'.|Đã xóa hồ sơ định tuyến '{0}'.
