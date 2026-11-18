@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library. v6: Phase 6 smart routing. v7: Phase 7 filtering & cache.</summary>
-    public const int CurrentSchemaVersion = 7;
+    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library. v6: Phase 6 smart routing. v7: Phase 7 filtering & cache. v8: Phase 8 gaming optimization.</summary>
+    public const int CurrentSchemaVersion = 8;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -31,6 +31,8 @@ public sealed class AppSettings
 
     public CacheSettings Cache { get; set; } = new();
 
+    public GamingSettings Gaming { get; set; } = new();
+
     public PerformanceSettings Performance { get; set; } = new();
 
     /// <summary>Normalizes out-of-range or missing values after deserialization.</summary>
@@ -42,6 +44,7 @@ public sealed class AppSettings
         Routing ??= new RoutingSettings();
         Filtering ??= new FilteringSettings();
         Cache ??= new CacheSettings();
+        Gaming ??= new GamingSettings();
         Performance ??= new PerformanceSettings();
         General.Normalize();
         Appearance.Normalize();
@@ -49,6 +52,7 @@ public sealed class AppSettings
         Routing.Normalize();
         Filtering.Normalize();
         Cache.Normalize();
+        Gaming.Normalize();
         Performance.Normalize();
         return this;
     }
@@ -387,6 +391,34 @@ public sealed class CacheSettings
         MinPositiveTtlSeconds = Math.Clamp(MinPositiveTtlSeconds, 1, 3600);
         MaxPositiveTtlSeconds = Math.Clamp(MaxPositiveTtlSeconds, MinPositiveTtlSeconds, 86400);
         NegativeTtlSeconds = Math.Clamp(NegativeTtlSeconds, 5, 3600);
+    }
+}
+
+public sealed class GamingSettings
+{
+    public bool IsGamingModeEnabled { get; set; }
+
+    public GamingSelectionProfile SelectionProfile { get; set; } = GamingSelectionProfile.LowestLatency;
+
+    public string? ManualOverrideResolverId { get; set; }
+
+    public string ActiveGamingProfileId { get; set; } = BuiltInGamingProfiles.GeneralGamingId;
+
+    public List<GamingPlatformProfile> CustomGamingProfiles { get; set; } = [];
+
+    internal void Normalize()
+    {
+        if (!Enum.IsDefined(SelectionProfile))
+        {
+            SelectionProfile = GamingSelectionProfile.LowestLatency;
+        }
+
+        if (string.IsNullOrWhiteSpace(ActiveGamingProfileId))
+        {
+            ActiveGamingProfileId = BuiltInGamingProfiles.GeneralGamingId;
+        }
+
+        CustomGamingProfiles ??= [];
     }
 }
 

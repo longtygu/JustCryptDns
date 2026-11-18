@@ -12,6 +12,7 @@ using JustCryptDns.Infrastructure.Ipc;
 using JustCryptDns.Infrastructure.Logging;
 using JustCryptDns.Infrastructure.Storage;
 using JustCryptDns.Infrastructure.Windows;
+using JustCryptDns.Network.Gaming;
 using JustCryptDns.Network.Monitoring;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -57,6 +58,7 @@ public static class Program
             builder.Services.AddSingleton<IDnsFilteringService, DnsFilteringService>();
             builder.Services.AddSingleton<IDnsCacheService, DnsCacheService>();
             builder.Services.AddSingleton<IDnsEngine, DnsEngineService>();
+            builder.Services.AddSingleton<IGamingEngineService, GamingEngineService>();
             builder.Services.AddSingleton<ServiceStateManager>();
             builder.Services.AddSingleton<IServiceIpcHandler>(sp => sp.GetRequiredService<ServiceStateManager>());
             builder.Services.AddSingleton<NamedPipeIpcServer>();

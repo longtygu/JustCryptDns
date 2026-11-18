@@ -379,3 +379,21 @@ Cache_Clear|Clear cache|Xóa cache
 Cache_Stat_Entries|Entries / Capacity|Bản ghi / Sức chứa
 Cache_Stat_HitsMisses|Hits / Misses|Trúng / Trượt
 Cache_Stat_PosNeg|Positive / Negative|Dương / Âm
+Gaming_RunBenchmark|Run multi-domain benchmark|Chạy đo hiệu năng đa tên miền
+Gaming_Disclaimer_Title|Technical notice: DNS latency vs. in-game ping|Lưu ý kỹ thuật: Độ trễ DNS khác với ping trong game
+Gaming_Disclaimer_Body|DNS resolution only occurs when looking up a server hostname before connecting. Optimizing DNS prevents lookup stalls and timeouts, but does not reduce established game-session ping.|Phân giải DNS chỉ diễn ra khi tra cứu tên miền máy chủ trước khi kết nối. Tối ưu DNS giúp tránh khựng hoặc quá hạn khi tra cứu, nhưng không làm giảm ping của phiên game đã thiết lập.
+Gaming_SessionPinned|Session pinned|Đã ghim phiên
+Gaming_Mode_Desc|Activates the selected gaming routing profile, pins a reliable resolver to avoid mid-session switching, and keeps the DNS cache warm.|Kích hoạt hồ sơ định tuyến game đã chọn, ghim resolver ổn định để tránh chuyển đổi giữa chừng và duy trì bộ nhớ đệm DNS.
+Gaming_SelectedResolver|Gaming resolver|Resolver cho game
+Gaming_Profiles_Section|Smart resolver selection & gaming profiles|Lựa chọn resolver thông minh & hồ sơ game
+Gaming_PlatformProfile|Gaming platform profile|Hồ sơ nền tảng game
+Gaming_OptimizationProfile|Optimization profile|Chế độ tối ưu
+Gaming_ManualOverride|Manual resolver override|Ghi đè resolver thủ công
+Gaming_ProfileDomains|Monitored & routed gaming domains|Tên miền game được định tuyến & đo hiệu năng
+Gaming_CustomProfile_Name|New gaming profile|Tên hồ sơ game mới
+Gaming_CustomProfile_Domains|Domains (comma-separated)|Các tên miền (cách nhau bằng dấu phẩy)
+Gaming_Benchmark_Title|Multi-domain resolver benchmark results|Kết quả đo hiệu năng resolver đa tên miền
+Gaming_Bench_Running|Running repeated multi-domain benchmark across enabled resolvers…|Đang chạy bài đo lặp lại trên nhiều tên miền cho các resolver đang bật…
+Gaming_Bench_Progress|Testing resolver {0}/{1}: {2}…|Đang kiểm tra resolver {0}/{1}: {2}…
+Gaming_Bench_Recommended|Recommended: {0} (avg {1} ms, P95 {2} ms, reliability {3}).|Đề xuất: {0} (trung bình {1} ms, P95 {2} ms, điểm tin cậy {3}).
+Gaming_Bench_Done|Benchmark complete.|Hoàn tất đo hiệu năng.

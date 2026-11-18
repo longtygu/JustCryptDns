@@ -13,6 +13,7 @@ using JustCryptDns.DNS.Resolver;
 using JustCryptDns.DNS.Routing;
 using JustCryptDns.Infrastructure.Ipc;
 using JustCryptDns.Infrastructure.Windows;
+using JustCryptDns.Network.Gaming;
 using JustCryptDns.Network.Monitoring;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -46,6 +47,7 @@ public static class ServiceRegistration
         services.AddSingleton<IDnsFilteringService, DnsFilteringService>();
         services.AddSingleton<IDnsCacheService, DnsCacheService>();
         services.AddSingleton<IDnsEngine, DnsEngineService>();
+        services.AddSingleton<IGamingEngineService, GamingEngineService>();
 
         // UI services
         services.AddSingleton<IThemeService, ThemeService>();
@@ -64,6 +66,7 @@ public static class ServiceRegistration
         services.AddTransient<ResolverLibraryViewModel>();
         services.AddTransient<RoutingViewModel>();
         services.AddTransient<FilteringViewModel>();
+        services.AddTransient<GamingViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<AppearanceViewModel>();
 

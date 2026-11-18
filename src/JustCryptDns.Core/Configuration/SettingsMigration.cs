@@ -121,6 +121,19 @@ internal sealed class MigrationV6ToV7 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v8 adds <see cref="GamingSettings"/> (gaming optimization profiles, resolver selection criteria, and Gaming Mode).
+/// </summary>
+internal sealed class MigrationV7ToV8 : ISettingsMigration
+{
+    public int FromVersion => 7;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by GamingSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -134,7 +147,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8()];
 
     public static int ReadVersion(JsonObject document)
     {

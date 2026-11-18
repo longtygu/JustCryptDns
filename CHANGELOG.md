@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 8 — Gaming Low Latency Engine
+- **Multi-domain repeated resolver benchmark (`GamingEngineService`):** tests all enabled resolvers across multiple gaming domains (`steamcommunity.com`, `steampowered.com`, `riotgames.com`, `epicgames.com`, `battle.net`, etc.) over repeated rounds (never selecting a resolver based on a single response), computing average, min, max, P95, jitter, success rate, timeout rate, and a 0–100 reliability score.
+- **Smart Resolver Selection:** implements `LowestLatency`, `Balanced`, and `MaximumReliability` optimization profiles with optional manual resolver override.
+- **Gaming platform profiles (`BuiltInGamingProfiles`):** built-in profiles for **Steam**, **Riot Games**, **Epic Games**, **EA Games**, **Ubisoft Connect**, **Battle.net**, **General Gaming**, and **Custom**, plus user-defined custom gaming profiles.
+- **Gaming Mode & Session Pinning (`GamingView`, `GamingViewModel`):** activates gaming domain routing rules, warms/maintains the DNS cache, pins the selected gaming resolver during active sessions to prevent unnecessary mid-session switching, automatically recovers to the secondary failover resolver on degradation, and displays an explicit technical notice distinguishing DNS lookup latency from in-game session ping. Schema v8 (`MigrationV7ToV8`) and 95 offline unit tests.
+
 ### Phase 7 — DNS Filtering & Lightweight TTL-Aware DNS Cache
 - **DNS Filtering service (`DnsFilteringService`, `HostsFileParser`):**
   - Built-in blocklist categories (**Advertising**, **Tracking**, **Malware**, **Phishing**, **Telemetry**, **Custom**) with validated remote updates, local blocklist cache files, and hosts/domain/AdBlock (`||domain^`) file import.

@@ -1152,4 +1152,58 @@
   <data name="Cache_Stat_PosNeg" xml:space="preserve">
     <value>Dương / Âm</value>
   </data>
+  <data name="Gaming_RunBenchmark" xml:space="preserve">
+    <value>Chạy đo hiệu năng đa tên miền</value>
+  </data>
+  <data name="Gaming_Disclaimer_Title" xml:space="preserve">
+    <value>Lưu ý kỹ thuật: Độ trễ DNS khác với ping trong game</value>
+  </data>
+  <data name="Gaming_Disclaimer_Body" xml:space="preserve">
+    <value>Phân giải DNS chỉ diễn ra khi tra cứu tên miền máy chủ trước khi kết nối. Tối ưu DNS giúp tránh khựng hoặc quá hạn khi tra cứu, nhưng không làm giảm ping của phiên game đã thiết lập.</value>
+  </data>
+  <data name="Gaming_SessionPinned" xml:space="preserve">
+    <value>Đã ghim phiên</value>
+  </data>
+  <data name="Gaming_Mode_Desc" xml:space="preserve">
+    <value>Kích hoạt hồ sơ định tuyến game đã chọn, ghim resolver ổn định để tránh chuyển đổi giữa chừng và duy trì bộ nhớ đệm DNS.</value>
+  </data>
+  <data name="Gaming_SelectedResolver" xml:space="preserve">
+    <value>Resolver cho game</value>
+  </data>
+  <data name="Gaming_Profiles_Section" xml:space="preserve">
+    <value>Lựa chọn resolver thông minh &amp; hồ sơ game</value>
+  </data>
+  <data name="Gaming_PlatformProfile" xml:space="preserve">
+    <value>Hồ sơ nền tảng game</value>
+  </data>
+  <data name="Gaming_OptimizationProfile" xml:space="preserve">
+    <value>Chế độ tối ưu</value>
+  </data>
+  <data name="Gaming_ManualOverride" xml:space="preserve">
+    <value>Ghi đè resolver thủ công</value>
+  </data>
+  <data name="Gaming_ProfileDomains" xml:space="preserve">
+    <value>Tên miền game được định tuyến &amp; đo hiệu năng</value>
+  </data>
+  <data name="Gaming_CustomProfile_Name" xml:space="preserve">
+    <value>Tên hồ sơ game mới</value>
+  </data>
+  <data name="Gaming_CustomProfile_Domains" xml:space="preserve">
+    <value>Các tên miền (cách nhau bằng dấu phẩy)</value>
+  </data>
+  <data name="Gaming_Benchmark_Title" xml:space="preserve">
+    <value>Kết quả đo hiệu năng resolver đa tên miền</value>
+  </data>
+  <data name="Gaming_Bench_Running" xml:space="preserve">
+    <value>Đang chạy bài đo lặp lại trên nhiều tên miền cho các resolver đang bật…</value>
+  </data>
+  <data name="Gaming_Bench_Progress" xml:space="preserve">
+    <value>Đang kiểm tra resolver {0}/{1}: {2}…</value>
+  </data>
+  <data name="Gaming_Bench_Recommended" xml:space="preserve">
+    <value>Đề xuất: {0} (trung bình {1} ms, P95 {2} ms, điểm tin cậy {3}).</value>
+  </data>
+  <data name="Gaming_Bench_Done" xml:space="preserve">
+    <value>Hoàn tất đo hiệu năng.</value>
+  </data>
 </root>

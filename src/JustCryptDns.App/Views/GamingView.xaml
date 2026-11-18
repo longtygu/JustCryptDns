@@ -1,0 +1,237 @@
+<UserControl x:Class="JustCryptDns.App.Views.GamingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
+             xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
+             xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1200"
+             d:DataContext="{d:DesignInstance Type=vm:GamingViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="SectionCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+        </Style>
+        <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
+        </Style>
+        <Style x:Key="Divider" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Divider}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Margin" Value="0,14,0,14" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel Margin="32,4,32,32" MaxWidth="940">
+            <!-- Header & Benchmark Button -->
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Gaming}" />
+                    <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Gaming_Subtitle}" Margin="0,4,0,0" />
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding RunBenchmarkCommand}"
+                        Content="{l:Loc Gaming_RunBenchmark}" VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Honest Technical Notice -->
+            <Border Style="{StaticResource SectionCard}" Background="{DynamicResource Brush.SubtleHover}" Padding="16,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE946;" FontSize="18" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,12,0" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{l:Loc Gaming_Disclaimer_Title}" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Gaming_Disclaimer_Body}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Status / Error Banners -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+            </Border>
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+            </Border>
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.AccentSubtle}" BorderBrush="{DynamicResource Brush.Accent}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding BenchmarkProgressText, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding BenchmarkProgressText}" />
+            </Border>
+
+            <!-- Gaming Mode Control & Live DNS Statistics -->
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{l:Loc Dash_GamingMode}" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SuccessSubtle}" Margin="10,0,0,0"
+                                        Visibility="{Binding IsSessionPinned, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Success}" Text="{l:Loc Gaming_SessionPinned}" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Gaming_Mode_Desc}" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsGamingModeEnabled}"
+                                  AutomationProperties.Name="{l:Loc Dash_GamingMode}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <UniformGrid Rows="1" Columns="4">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Gaming_SelectedResolver}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding ActiveGamingResolverName}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Latency}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding LiveLatencyText}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_CacheHit}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding LiveCacheHitText}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Queries}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding LiveTotalQueries}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- Smart Resolver Selection & Gaming Profiles -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Gaming_Profiles_Section}" Margin="0,8,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Gaming_PlatformProfile}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding GamingProfiles}" SelectedItem="{Binding SelectedGamingProfile}"
+                                      DisplayMemberPath="Name" AutomationProperties.Name="{l:Loc Gaming_PlatformProfile}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Gaming_OptimizationProfile}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding OptimizationProfiles}" SelectedItem="{Binding SelectedOptimizationProfile}"
+                                      AutomationProperties.Name="{l:Loc Gaming_OptimizationProfile}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Gaming_ManualOverride}" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal">
+                                <ComboBox Width="180" ItemsSource="{Binding AvailableResolvers}" SelectedItem="{Binding SelectedOverrideResolver}"
+                                          DisplayMemberPath="Name" AutomationProperties.Name="{l:Loc Gaming_ManualOverride}" />
+                                <Button Command="{Binding ClearManualOverrideCommand}" Content="{l:Loc Backdrop_Auto}" Margin="6,0,0,0" Padding="10,6" />
+                            </StackPanel>
+                        </StackPanel>
+                    </UniformGrid>
+
+                    <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Gaming_ProfileDomains}" />
+                    <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                               Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding ActiveProfileDomainsPreview}" Margin="0,4,0,0" />
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="200" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,10,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Gaming_CustomProfile_Name}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding NewProfileName, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="{l:Loc Gaming_CustomProfile_Name}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Gaming_CustomProfile_Domains}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding NewProfileDomains, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc Gaming_CustomProfile_Domains}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Command="{Binding AddCustomProfileCommand}" Content="+" VerticalAlignment="Bottom" Padding="14,6" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Benchmark Results -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Gaming_Benchmark_Title}" Margin="0,8,0,10" />
+            <ItemsControl ItemsSource="{Binding BenchmarkResults}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type models:ResolverBenchmarkResult}">
+                        <Border Style="{StaticResource SectionCard}" Padding="18,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{Binding ResolverName}" Margin="0,0,10,0" />
+                                        <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="0,0,8,0">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Brush.Accent}" Text="{Binding Protocol}" />
+                                        </Border>
+                                        <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" Text="{Binding ReliabilityScore, StringFormat='Score {0:0.0}'}" />
+                                        </Border>
+                                    </WrapPanel>
+
+                                    <UniformGrid Rows="1" Columns="5" Margin="0,10,0,0">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource Text.Label}" Text="Avg / P95" />
+                                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Margin="0,2,0,0">
+                                                <Run Text="{Binding AverageLatencyMs, Mode=OneWay, StringFormat={}{0:0.0}}" />
+                                                <Run Text=" / " />
+                                                <Run Text="{Binding P95LatencyMs, Mode=OneWay, StringFormat={}{0:0.0} ms}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource Text.Label}" Text="Min / Max" />
+                                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Margin="0,2,0,0">
+                                                <Run Text="{Binding MinLatencyMs, Mode=OneWay, StringFormat={}{0:0.0}}" />
+                                                <Run Text=" / " />
+                                                <Run Text="{Binding MaxLatencyMs, Mode=OneWay, StringFormat={}{0:0.0} ms}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource Text.Label}" Text="Jitter" />
+                                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                                       Text="{Binding JitterMs, StringFormat={}{0:0.0} ms}" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource Text.Label}" Text="Success" />
+                                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                                       Text="{Binding SuccessRatePercent, StringFormat={}{0:0.0}%}" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource Text.Label}" Text="Timeout" />
+                                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                                       Text="{Binding TimeoutRatePercent, StringFormat={}{0:0.0}%}" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </UniformGrid>
+                                </StackPanel>
+
+                                <Button Grid.Column="1" VerticalAlignment="Center"
+                                        Command="{Binding DataContext.ApplyBenchmarkResolverCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}" Content="{l:Loc Common_Apply}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

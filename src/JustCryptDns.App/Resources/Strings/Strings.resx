@@ -1152,4 +1152,58 @@
   <data name="Cache_Stat_PosNeg" xml:space="preserve">
     <value>Positive / Negative</value>
   </data>
+  <data name="Gaming_RunBenchmark" xml:space="preserve">
+    <value>Run multi-domain benchmark</value>
+  </data>
+  <data name="Gaming_Disclaimer_Title" xml:space="preserve">
+    <value>Technical notice: DNS latency vs. in-game ping</value>
+  </data>
+  <data name="Gaming_Disclaimer_Body" xml:space="preserve">
+    <value>DNS resolution only occurs when looking up a server hostname before connecting. Optimizing DNS prevents lookup stalls and timeouts, but does not reduce established game-session ping.</value>
+  </data>
+  <data name="Gaming_SessionPinned" xml:space="preserve">
+    <value>Session pinned</value>
+  </data>
+  <data name="Gaming_Mode_Desc" xml:space="preserve">
+    <value>Activates the selected gaming routing profile, pins a reliable resolver to avoid mid-session switching, and keeps the DNS cache warm.</value>
+  </data>
+  <data name="Gaming_SelectedResolver" xml:space="preserve">
+    <value>Gaming resolver</value>
+  </data>
+  <data name="Gaming_Profiles_Section" xml:space="preserve">
+    <value>Smart resolver selection &amp; gaming profiles</value>
+  </data>
+  <data name="Gaming_PlatformProfile" xml:space="preserve">
+    <value>Gaming platform profile</value>
+  </data>
+  <data name="Gaming_OptimizationProfile" xml:space="preserve">
+    <value>Optimization profile</value>
+  </data>
+  <data name="Gaming_ManualOverride" xml:space="preserve">
+    <value>Manual resolver override</value>
+  </data>
+  <data name="Gaming_ProfileDomains" xml:space="preserve">
+    <value>Monitored &amp; routed gaming domains</value>
+  </data>
+  <data name="Gaming_CustomProfile_Name" xml:space="preserve">
+    <value>New gaming profile</value>
+  </data>
+  <data name="Gaming_CustomProfile_Domains" xml:space="preserve">
+    <value>Domains (comma-separated)</value>
+  </data>
+  <data name="Gaming_Benchmark_Title" xml:space="preserve">
+    <value>Multi-domain resolver benchmark results</value>
+  </data>
+  <data name="Gaming_Bench_Running" xml:space="preserve">
+    <value>Running repeated multi-domain benchmark across enabled resolvers…</value>
+  </data>
+  <data name="Gaming_Bench_Progress" xml:space="preserve">
+    <value>Testing resolver {0}/{1}: {2}…</value>
+  </data>
+  <data name="Gaming_Bench_Recommended" xml:space="preserve">
+    <value>Recommended: {0} (avg {1} ms, P95 {2} ms, reliability {3}).</value>
+  </data>
+  <data name="Gaming_Bench_Done" xml:space="preserve">
+    <value>Benchmark complete.</value>
+  </data>
 </root>
