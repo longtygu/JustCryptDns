@@ -259,3 +259,65 @@ DnsMgr_ProbeSuccess|Verified {0} in {1} ms.|Đã xác minh {0} trong {1} ms.
 DnsMgr_InvalidPort|Enter a valid port between 1 and 65535.|Hãy nhập số cổng hợp lệ từ 1 đến 65535.
 DnsMgr_RestoreSuccess|Original Windows adapter DNS settings have been restored.|Đã khôi phục cài đặt DNS gốc cho bộ điều hợp mạng Windows.
 DnsMgr_DnsCryptInstalled|Installed dnscrypt-proxy ({0}).|Đã cài đặt dnscrypt-proxy ({0}).
+Common_Save|Save|Lưu
+Common_Edit|Edit|Sửa
+Common_Remove|Remove|Xóa
+FilteringCap_None|Unfiltered|Không lọc
+FilteringCap_Malware|Malware & phishing filter|Lọc mã độc & lừa đảo
+FilteringCap_AdsAndTrackers|Ad & tracker filter|Lọc quảng cáo & theo dõi
+FilteringCap_Family|Family & adult filter|Lọc gia đình & nội dung nhạy cảm
+Resolvers_AddCustom|Add custom resolver|Thêm resolver tùy chỉnh
+Resolvers_CheckAllHealth|Check all health|Kiểm tra tất cả
+Resolvers_ImportProfile|Import profile|Nhập hồ sơ
+Resolvers_ExportProfile|Export profile|Xuất hồ sơ
+Resolvers_PrimaryTitle|Primary resolver|Resolver chính
+Resolvers_SecondaryTitle|Secondary failover resolver|Resolver dự phòng phụ
+Resolvers_Stat_Total|Total resolvers|Tổng số resolver
+Resolvers_Stat_Enabled|Enabled|Đang bật
+Resolvers_Stat_Encrypted|Encrypted|Có mã hóa
+Resolvers_Stat_Custom|Custom|Tùy chỉnh
+Resolvers_Editor_Title|Resolver configuration|Cấu hình resolver
+Resolvers_Field_Name|Display name|Tên hiển thị
+Resolvers_Field_Provider|Provider|Nhà cung cấp
+Resolvers_Field_Protocol|Protocol|Giao thức
+Resolvers_Field_Endpoint|Endpoint (https://, hostname, sdns:// or IP)|Điểm cuối (https://, tên miền, sdns:// hoặc IP)
+Resolvers_Field_PrimaryIpv4|Primary IPv4|IPv4 chính
+Resolvers_Field_SecondaryIpv4|Secondary IPv4 (optional)|IPv4 phụ (tùy chọn)
+Resolvers_Field_PrimaryIpv6|Primary IPv6 (optional)|IPv6 chính (tùy chọn)
+Resolvers_Field_Group|Group|Nhóm
+Resolvers_Field_Filtering|Filtering capability|Khả năng lọc
+Resolvers_Field_Features|Security & filtering|Bảo mật & bộ lọc
+Resolvers_Badge_NoLog|No-log policy|Chính sách không lưu nhật ký
+Resolvers_Badge_Primary|Primary|Chính
+Resolvers_Badge_Secondary|Secondary|Phụ
+Resolvers_Badge_Custom|Custom|Tùy chỉnh
+Resolvers_Filter_Search|Search by name, provider, endpoint or IP|Tìm theo tên, nhà cung cấp, điểm cuối hoặc IP
+Resolvers_NewGroup|New group|Nhóm mới
+Resolvers_Action_SetPrimary|Set primary|Đặt làm chính
+Resolvers_Action_SetSecondary|Set secondary|Đặt làm phụ
+Resolvers_Metric_Availability|Availability & latency|Khả dụng & độ trễ
+Resolvers_Metric_Reliability|Reliability score|Điểm tin cậy
+Resolvers_Status_Online|Online|Trực tuyến
+Resolvers_Status_Unreachable|Unreachable|Không phản hồi
+Resolvers_Status_Untested|Not tested|Chưa kiểm tra
+Resolvers_Err_NameRequired|Resolver display name is required.|Vui lòng nhập tên hiển thị cho resolver.
+Resolvers_Err_ProviderRequired|Provider name is required.|Vui lòng nhập tên nhà cung cấp.
+Resolvers_Err_InvalidPort|Enter a valid port between 1 and 65535.|Hãy nhập số cổng hợp lệ từ 1 đến 65535.
+Resolvers_Err_InvalidIpv4|Enter a valid primary IPv4 address (e.g. 1.1.1.1).|Hãy nhập địa chỉ IPv4 chính hợp lệ (ví dụ: 1.1.1.1).
+Resolvers_Err_InvalidSecondaryIpv4|Secondary IPv4 address is not valid.|Địa chỉ IPv4 phụ không hợp lệ.
+Resolvers_Err_InvalidIpv6|Primary IPv6 address is not a valid IPv6 address.|Địa chỉ IPv6 chính không hợp lệ.
+Resolvers_Err_EndpointRequired|Endpoint is required.|Vui lòng nhập điểm cuối (endpoint).
+Resolvers_Err_InvalidDohUri|DoH endpoint must be a valid https:// URL.|Điểm cuối DoH phải là địa chỉ URL https:// hợp lệ.
+Resolvers_Err_InvalidDotHost|DoT endpoint must be a valid TLS hostname.|Điểm cuối DoT phải là tên máy chủ TLS hợp lệ.
+Resolvers_Err_InvalidStamp|DNSCrypt endpoint must be a valid sdns:// stamp.|Điểm cuối DNSCrypt phải là chuỗi sdns:// hợp lệ.
+Resolvers_Err_InvalidUdpIp|UDP/TCP endpoint must be a valid IP address.|Điểm cuối UDP/TCP phải là địa chỉ IP hợp lệ.
+Resolvers_Err_NotFound|Resolver was not found in the library.|Không tìm thấy resolver trong thư viện.
+Resolvers_Msg_Saved|Saved resolver '{0}'.|Đã lưu resolver '{0}'.
+Resolvers_Msg_Removed|Removed custom resolver '{0}'.|Đã xóa resolver tùy chỉnh '{0}'.
+Resolvers_Msg_PrimarySet|Primary resolver set to '{0}'.|Đã đặt '{0}' làm resolver chính.
+Resolvers_Msg_SecondarySet|Secondary failover resolver set to '{0}'.|Đã đặt '{0}' làm resolver dự phòng phụ.
+Resolvers_Msg_ProbeOk|{0} responded in {1} ms.|{0} phản hồi trong {1} ms.
+Resolvers_Msg_ProbingAll|Testing all enabled resolvers…|Đang kiểm tra tất cả resolver đang bật…
+Resolvers_Msg_ProbeAllDone|Health check complete: {0} of {1} resolvers online.|Hoàn tất kiểm tra: {0}/{1} resolver trực tuyến.
+Resolvers_Msg_Exported|Exported resolver profile to {0}.|Đã xuất hồ sơ resolver ra {0}.
+Resolvers_Msg_Imported|Imported resolver profile ({0} custom resolvers).|Đã nhập hồ sơ resolver ({0} resolver tùy chỉnh).

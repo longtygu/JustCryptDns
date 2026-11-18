@@ -82,6 +82,19 @@ internal sealed class MigrationV3ToV4 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v5 adds custom resolvers, disabled resolver IDs, secondary resolver, and resolver groups to <see cref="DnsSettings"/>.
+/// </summary>
+internal sealed class MigrationV4ToV5 : ISettingsMigration
+{
+    public int FromVersion => 4;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by DnsSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -95,7 +108,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5()];
 
     public static int ReadVersion(JsonObject document)
     {

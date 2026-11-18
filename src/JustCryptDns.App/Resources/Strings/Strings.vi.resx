@@ -792,4 +792,190 @@
   <data name="DnsMgr_DnsCryptInstalled" xml:space="preserve">
     <value>Đã cài đặt dnscrypt-proxy ({0}).</value>
   </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Lưu</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Sửa</value>
+  </data>
+  <data name="Common_Remove" xml:space="preserve">
+    <value>Xóa</value>
+  </data>
+  <data name="FilteringCap_None" xml:space="preserve">
+    <value>Không lọc</value>
+  </data>
+  <data name="FilteringCap_Malware" xml:space="preserve">
+    <value>Lọc mã độc &amp; lừa đảo</value>
+  </data>
+  <data name="FilteringCap_AdsAndTrackers" xml:space="preserve">
+    <value>Lọc quảng cáo &amp; theo dõi</value>
+  </data>
+  <data name="FilteringCap_Family" xml:space="preserve">
+    <value>Lọc gia đình &amp; nội dung nhạy cảm</value>
+  </data>
+  <data name="Resolvers_AddCustom" xml:space="preserve">
+    <value>Thêm resolver tùy chỉnh</value>
+  </data>
+  <data name="Resolvers_CheckAllHealth" xml:space="preserve">
+    <value>Kiểm tra tất cả</value>
+  </data>
+  <data name="Resolvers_ImportProfile" xml:space="preserve">
+    <value>Nhập hồ sơ</value>
+  </data>
+  <data name="Resolvers_ExportProfile" xml:space="preserve">
+    <value>Xuất hồ sơ</value>
+  </data>
+  <data name="Resolvers_PrimaryTitle" xml:space="preserve">
+    <value>Resolver chính</value>
+  </data>
+  <data name="Resolvers_SecondaryTitle" xml:space="preserve">
+    <value>Resolver dự phòng phụ</value>
+  </data>
+  <data name="Resolvers_Stat_Total" xml:space="preserve">
+    <value>Tổng số resolver</value>
+  </data>
+  <data name="Resolvers_Stat_Enabled" xml:space="preserve">
+    <value>Đang bật</value>
+  </data>
+  <data name="Resolvers_Stat_Encrypted" xml:space="preserve">
+    <value>Có mã hóa</value>
+  </data>
+  <data name="Resolvers_Stat_Custom" xml:space="preserve">
+    <value>Tùy chỉnh</value>
+  </data>
+  <data name="Resolvers_Editor_Title" xml:space="preserve">
+    <value>Cấu hình resolver</value>
+  </data>
+  <data name="Resolvers_Field_Name" xml:space="preserve">
+    <value>Tên hiển thị</value>
+  </data>
+  <data name="Resolvers_Field_Provider" xml:space="preserve">
+    <value>Nhà cung cấp</value>
+  </data>
+  <data name="Resolvers_Field_Protocol" xml:space="preserve">
+    <value>Giao thức</value>
+  </data>
+  <data name="Resolvers_Field_Endpoint" xml:space="preserve">
+    <value>Điểm cuối (https://, tên miền, sdns:// hoặc IP)</value>
+  </data>
+  <data name="Resolvers_Field_PrimaryIpv4" xml:space="preserve">
+    <value>IPv4 chính</value>
+  </data>
+  <data name="Resolvers_Field_SecondaryIpv4" xml:space="preserve">
+    <value>IPv4 phụ (tùy chọn)</value>
+  </data>
+  <data name="Resolvers_Field_PrimaryIpv6" xml:space="preserve">
+    <value>IPv6 chính (tùy chọn)</value>
+  </data>
+  <data name="Resolvers_Field_Group" xml:space="preserve">
+    <value>Nhóm</value>
+  </data>
+  <data name="Resolvers_Field_Filtering" xml:space="preserve">
+    <value>Khả năng lọc</value>
+  </data>
+  <data name="Resolvers_Field_Features" xml:space="preserve">
+    <value>Bảo mật &amp; bộ lọc</value>
+  </data>
+  <data name="Resolvers_Badge_NoLog" xml:space="preserve">
+    <value>Chính sách không lưu nhật ký</value>
+  </data>
+  <data name="Resolvers_Badge_Primary" xml:space="preserve">
+    <value>Chính</value>
+  </data>
+  <data name="Resolvers_Badge_Secondary" xml:space="preserve">
+    <value>Phụ</value>
+  </data>
+  <data name="Resolvers_Badge_Custom" xml:space="preserve">
+    <value>Tùy chỉnh</value>
+  </data>
+  <data name="Resolvers_Filter_Search" xml:space="preserve">
+    <value>Tìm theo tên, nhà cung cấp, điểm cuối hoặc IP</value>
+  </data>
+  <data name="Resolvers_NewGroup" xml:space="preserve">
+    <value>Nhóm mới</value>
+  </data>
+  <data name="Resolvers_Action_SetPrimary" xml:space="preserve">
+    <value>Đặt làm chính</value>
+  </data>
+  <data name="Resolvers_Action_SetSecondary" xml:space="preserve">
+    <value>Đặt làm phụ</value>
+  </data>
+  <data name="Resolvers_Metric_Availability" xml:space="preserve">
+    <value>Khả dụng &amp; độ trễ</value>
+  </data>
+  <data name="Resolvers_Metric_Reliability" xml:space="preserve">
+    <value>Điểm tin cậy</value>
+  </data>
+  <data name="Resolvers_Status_Online" xml:space="preserve">
+    <value>Trực tuyến</value>
+  </data>
+  <data name="Resolvers_Status_Unreachable" xml:space="preserve">
+    <value>Không phản hồi</value>
+  </data>
+  <data name="Resolvers_Status_Untested" xml:space="preserve">
+    <value>Chưa kiểm tra</value>
+  </data>
+  <data name="Resolvers_Err_NameRequired" xml:space="preserve">
+    <value>Vui lòng nhập tên hiển thị cho resolver.</value>
+  </data>
+  <data name="Resolvers_Err_ProviderRequired" xml:space="preserve">
+    <value>Vui lòng nhập tên nhà cung cấp.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidPort" xml:space="preserve">
+    <value>Hãy nhập số cổng hợp lệ từ 1 đến 65535.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidIpv4" xml:space="preserve">
+    <value>Hãy nhập địa chỉ IPv4 chính hợp lệ (ví dụ: 1.1.1.1).</value>
+  </data>
+  <data name="Resolvers_Err_InvalidSecondaryIpv4" xml:space="preserve">
+    <value>Địa chỉ IPv4 phụ không hợp lệ.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidIpv6" xml:space="preserve">
+    <value>Địa chỉ IPv6 chính không hợp lệ.</value>
+  </data>
+  <data name="Resolvers_Err_EndpointRequired" xml:space="preserve">
+    <value>Vui lòng nhập điểm cuối (endpoint).</value>
+  </data>
+  <data name="Resolvers_Err_InvalidDohUri" xml:space="preserve">
+    <value>Điểm cuối DoH phải là địa chỉ URL https:// hợp lệ.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidDotHost" xml:space="preserve">
+    <value>Điểm cuối DoT phải là tên máy chủ TLS hợp lệ.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidStamp" xml:space="preserve">
+    <value>Điểm cuối DNSCrypt phải là chuỗi sdns:// hợp lệ.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidUdpIp" xml:space="preserve">
+    <value>Điểm cuối UDP/TCP phải là địa chỉ IP hợp lệ.</value>
+  </data>
+  <data name="Resolvers_Err_NotFound" xml:space="preserve">
+    <value>Không tìm thấy resolver trong thư viện.</value>
+  </data>
+  <data name="Resolvers_Msg_Saved" xml:space="preserve">
+    <value>Đã lưu resolver '{0}'.</value>
+  </data>
+  <data name="Resolvers_Msg_Removed" xml:space="preserve">
+    <value>Đã xóa resolver tùy chỉnh '{0}'.</value>
+  </data>
+  <data name="Resolvers_Msg_PrimarySet" xml:space="preserve">
+    <value>Đã đặt '{0}' làm resolver chính.</value>
+  </data>
+  <data name="Resolvers_Msg_SecondarySet" xml:space="preserve">
+    <value>Đã đặt '{0}' làm resolver dự phòng phụ.</value>
+  </data>
+  <data name="Resolvers_Msg_ProbeOk" xml:space="preserve">
+    <value>{0} phản hồi trong {1} ms.</value>
+  </data>
+  <data name="Resolvers_Msg_ProbingAll" xml:space="preserve">
+    <value>Đang kiểm tra tất cả resolver đang bật…</value>
+  </data>
+  <data name="Resolvers_Msg_ProbeAllDone" xml:space="preserve">
+    <value>Hoàn tất kiểm tra: {0}/{1} resolver trực tuyến.</value>
+  </data>
+  <data name="Resolvers_Msg_Exported" xml:space="preserve">
+    <value>Đã xuất hồ sơ resolver ra {0}.</value>
+  </data>
+  <data name="Resolvers_Msg_Imported" xml:space="preserve">
+    <value>Đã nhập hồ sơ resolver ({0} resolver tùy chỉnh).</value>
+  </data>
 </root>

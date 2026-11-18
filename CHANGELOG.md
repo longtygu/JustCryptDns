@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 5 — Resolver Management & Provider Library
+- **Complete predefined resolver catalog (`BuiltInResolvers`):** 27 curated endpoints across all 9 required providers (**Cloudflare**, **Google Public DNS**, **Quad9**, **OpenDNS**, **AdGuard DNS**, **Control D**, **NextDNS**, **Mullvad DNS**, **DNS0**) covering DoH, DoT, DNSCrypt (`sdns://`), and UDP/TCP with accurate IPv4, secondary IPv4, IPv6, port, DNSSEC, No-Log policy, ECS, and filtering capability metadata (`None`, `Malware`, `AdsAndTrackers`, `Family`).
+- **Resolver validation (`ResolverValidator`):** validates IPv4/IPv6 addresses, port ranges, HTTPS URIs for DoH, TLS hostnames for DoT, IP addresses for UDP/TCP, and decodes/verifies `sdns://` Base64URL stamps and protocol bytes for DNSCrypt.
+- **Resolver Library service (`ResolverLibraryService`, `IResolverLibraryService`):**
+  - Full CRUD for custom resolvers (`AddCustomResolverAsync`, `UpdateResolverAsync`, `RemoveCustomResolverAsync`), enable/disable per resolver, primary and secondary failover resolver assignment with pre-activation validation, and built-in + custom resolver groups (`General`, `Privacy`, `Security`, `Gaming`, `Ad-Blocking`, plus user-created groups).
+  - JSON resolver profile export and validated import (`ExportProfileJson`, `ImportProfileJsonAsync`).
+  - Live health & reliability checks (`CheckHealthAsync`, `CheckAllEnabledHealthAsync`) computing real latency and a `0–100%` reliability score from probe success rate and latency responsiveness.
+- **Resolver Library UI (`ResolverLibraryView`, `ResolverLibraryViewModel`):** search, group & protocol filtering, inline custom resolver editor, one-click Primary/Secondary assignment integrated with `IDnsEngine`, single & batch health checks, profile import/export dialogs, schema v5 (`MigrationV4ToV5`), and 83 offline unit tests.
+
 ### Phase 4 — Core DNS engine & Windows DNS safety integration
 - **RFC 1035 wire-format parser & encoder (`DnsPacket`):** bounds-checked header/question/RR parsing with pointer-compression jump cap (`MaxCompressionJumps = 16`), EDNS0 `DO` support, transaction ID rewriting, and synthetic error responses (`SERVFAIL`, `REFUSED`, `NXDOMAIN`).
 - **Multi-protocol upstream DNS clients:**

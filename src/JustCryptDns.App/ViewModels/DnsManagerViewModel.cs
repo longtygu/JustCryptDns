@@ -16,6 +16,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     private readonly IDnsCryptProxyManager _dnsCrypt;
     private readonly IWindowsDnsManager _windowsDns;
     private readonly ISettingsService _settings;
+    private readonly IResolverLibraryService? _resolverLibrary;
     private readonly SynchronizationContext? _ui;
     private bool _loading;
 
@@ -42,18 +43,22 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         IDnsEngine dnsEngine,
         IDnsCryptProxyManager dnsCrypt,
         IWindowsDnsManager windowsDns,
-        ISettingsService settings)
+        ISettingsService settings,
+        IResolverLibraryService? resolverLibrary = null)
         : base("Nav_DnsManager", "Page_DnsManager_Subtitle")
     {
         _dnsEngine = dnsEngine;
         _dnsCrypt = dnsCrypt;
         _windowsDns = windowsDns;
         _settings = settings;
+        _resolverLibrary = resolverLibrary;
         _ui = SynchronizationContext.Current;
 
         var dns = settings.Current.Dns;
         _loading = true;
-        _selectedResolver = BuiltInResolvers.GetByIdOrDefault(dns.ActiveResolverId);
+        _selectedResolver = _resolverLibrary is not null
+            ? _resolverLibrary.GetByIdOrDefault(dns.ActiveResolverId)
+            : BuiltInResolvers.GetByIdOrDefault(dns.ActiveResolverId);
         _listenAddress = dns.ListenAddress;
         _listenPortText = dns.ListenPort.ToString(CultureInfo.InvariantCulture);
         _enableIpv6 = dns.EnableIpv6;
@@ -64,7 +69,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         ApplyStats(dnsEngine.GetStats());
     }
 
-    public IReadOnlyList<DnsResolverEndpoint> Resolvers => BuiltInResolvers.All;
+    public IReadOnlyList<DnsResolverEndpoint> Resolvers =>
+        _resolverLibrary is not null ? _resolverLibrary.GetEnabled() : BuiltInResolvers.All;
 
     public string DnsCryptPath { get; }
 

@@ -1,0 +1,366 @@
+<UserControl x:Class="JustCryptDns.App.Views.ResolverLibraryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
+             xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1100"
+             d:DataContext="{d:DesignInstance Type=vm:ResolverLibraryViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="SectionCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+        </Style>
+        <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
+        </Style>
+        <Style x:Key="Divider" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Divider}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Margin" Value="0,14,0,14" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel Margin="32,4,32,32" MaxWidth="940">
+            <!-- Header & Top Actions -->
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Resolvers}" />
+                    <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Resolvers_Subtitle}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding ImportProfileCommand}" Content="{l:Loc Resolvers_ImportProfile}" Margin="0,0,8,0" />
+                    <Button Command="{Binding ExportProfileCommand}" Content="{l:Loc Resolvers_ExportProfile}" Margin="0,0,8,0" />
+                    <Button Command="{Binding CheckAllHealthCommand}" Content="{l:Loc Resolvers_CheckAllHealth}" Margin="0,0,8,0" />
+                    <Button Style="{StaticResource Button.Primary}" Command="{Binding OpenAddResolverCommand}" Content="{l:Loc Resolvers_AddCustom}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Status / Error Banners -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+            </Border>
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+            </Border>
+
+            <!-- Summary & Active Primary / Secondary Card -->
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_PrimaryTitle}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding PrimaryResolver.Name}" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="10,0,0,0">
+                                    <TextBlock FontSize="{DynamicResource Font.Size.Small}" Foreground="{DynamicResource Brush.Accent}"
+                                               FontWeight="SemiBold" Text="{Binding PrimaryResolver.Provider}" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                       Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding PrimaryResolver.Endpoint}"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_SecondaryTitle}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding SecondaryResolver.Name}" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="10,0,0,0">
+                                    <TextBlock FontSize="{DynamicResource Font.Size.Small}" Foreground="{DynamicResource Brush.TextSecondary}"
+                                               FontWeight="SemiBold" Text="{Binding SecondaryResolver.Provider}" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                       Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding SecondaryResolver.Endpoint}"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <UniformGrid Rows="1" Columns="4">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Stat_Total}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding TotalCount}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Stat_Enabled}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding EnabledCount}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Stat_Encrypted}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding EncryptedCount}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Stat_Custom}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding CustomCount}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- Custom Resolver Editor Card -->
+            <Border Style="{StaticResource SectionCard}" BorderBrush="{DynamicResource Brush.Accent}"
+                    Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Resolvers_Editor_Title}" Margin="0,0,0,14" />
+
+                    <Border Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                            BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12"
+                            Visibility="{Binding EditorErrorMessage, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding EditorErrorMessage}" />
+                    </Border>
+
+                    <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Name}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding EditorName, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="{l:Loc Resolvers_Field_Name}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Provider}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding EditorProvider, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="{l:Loc Resolvers_Field_Provider}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Protocol}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding Protocols}" SelectedItem="{Binding EditorProtocol}"
+                                      AutomationProperties.Name="{l:Loc Resolvers_Field_Protocol}" />
+                        </StackPanel>
+                    </UniformGrid>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Endpoint}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding EditorEndpoint, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc Resolvers_Field_Endpoint}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc DnsMgr_ListenPort}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding EditorPortText, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc DnsMgr_ListenPort}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_PrimaryIpv4}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding EditorPrimaryIp, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc Resolvers_Field_PrimaryIpv4}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_SecondaryIpv4}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding EditorSecondaryIp, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc Resolvers_Field_SecondaryIpv4}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_PrimaryIpv6}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding EditorPrimaryIpv6, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc Resolvers_Field_PrimaryIpv6}" />
+                        </StackPanel>
+                    </UniformGrid>
+
+                    <UniformGrid Columns="4" Rows="1" Margin="0,0,0,14">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Group}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding AvailableGroups}" SelectedItem="{Binding EditorGroupName}"
+                                      AutomationProperties.Name="{l:Loc Resolvers_Field_Group}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Filtering}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding FilteringCapabilities}" SelectedItem="{Binding EditorFiltering}"
+                                      AutomationProperties.Name="{l:Loc Resolvers_Field_Filtering}" />
+                        </StackPanel>
+                        <StackPanel VerticalAlignment="Bottom" Margin="0,0,12,4">
+                            <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding EditorSupportsDnssec}"
+                                      Content="DNSSEC" />
+                        </StackPanel>
+                        <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,4">
+                            <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding EditorNoLogPolicy}"
+                                      Content="{l:Loc Resolvers_Badge_NoLog}" />
+                        </StackPanel>
+                    </UniformGrid>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Command="{Binding CancelEditorCommand}" Content="{l:Loc Common_Cancel}" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding SaveEditorCommand}" Content="{l:Loc Common_Save}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Search, Group & Protocol Filter Bar -->
+            <Border Style="{StaticResource SectionCard}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Filter_Search}" Margin="0,0,0,4" />
+                        <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="{l:Loc Resolvers_Filter_Search}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Group}" Margin="0,0,0,4" />
+                        <ComboBox ItemsSource="{Binding GroupFilterOptions}" SelectedItem="{Binding SelectedGroupFilter}"
+                                  MinWidth="140" AutomationProperties.Name="{l:Loc Resolvers_Field_Group}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,12,0">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Protocol}" Margin="0,0,0,4" />
+                        <ComboBox ItemsSource="{Binding ProtocolFilterOptions}" SelectedItem="{Binding SelectedProtocolFilter}"
+                                  MinWidth="120" AutomationProperties.Name="{l:Loc Resolvers_Field_Protocol}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="3">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_NewGroup}" Margin="0,0,0,4" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox Width="110" Text="{Binding NewGroupName, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="{l:Loc Resolvers_NewGroup}" />
+                            <Button Command="{Binding AddGroupCommand}" Content="+" Margin="6,0,0,0" Padding="12,6" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Resolver Catalog List -->
+            <ItemsControl ItemsSource="{Binding FilteredResolvers}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:ResolverItemViewModel}">
+                        <Border Style="{StaticResource SectionCard}" Padding="20,16">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel VerticalAlignment="Center">
+                                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{Binding Name}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="0,0,6,0">
+                                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Brush.Accent}" Text="{Binding ProtocolBadge}" />
+                                            </Border>
+                                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="0,0,6,0">
+                                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" Text="{Binding Provider}" />
+                                            </Border>
+                                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="0,0,6,0">
+                                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" Text="{Binding GroupName}" />
+                                            </Border>
+                                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SuccessSubtle}" Margin="0,0,6,0"
+                                                    Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Brush.Success}" Text="{l:Loc Resolvers_Badge_Primary}" />
+                                            </Border>
+                                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.WarningSubtle}" Margin="0,0,6,0"
+                                                    Visibility="{Binding IsSecondary, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Brush.Warning}" Text="{l:Loc Resolvers_Badge_Secondary}" />
+                                            </Border>
+                                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="0,0,6,0"
+                                                    Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" Text="{l:Loc Resolvers_Badge_Custom}" />
+                                            </Border>
+                                        </WrapPanel>
+
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                                   Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding Endpoint}"
+                                                   Margin="0,5,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Command="{Binding DataContext.CheckSingleHealthCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" Content="{l:Loc DnsMgr_TestResolver}" Margin="0,0,6,0" Padding="10,6" />
+                                        <Button Command="{Binding DataContext.SetPrimaryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" Content="{l:Loc Resolvers_Action_SetPrimary}" Margin="0,0,6,0" Padding="10,6"
+                                                IsEnabled="{Binding IsEnabled}" />
+                                        <Button Command="{Binding DataContext.SetSecondaryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" Content="{l:Loc Resolvers_Action_SetSecondary}" Margin="0,0,6,0" Padding="10,6"
+                                                IsEnabled="{Binding IsEnabled}" />
+                                        <Button Command="{Binding DataContext.OpenEditResolverCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" Content="{l:Loc Common_Edit}" Margin="0,0,6,0" Padding="10,6" />
+                                        <Button Command="{Binding DataContext.RemoveResolverCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" Content="{l:Loc Common_Remove}" Margin="0,0,10,0" Padding="10,6"
+                                                Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibility}}" />
+                                        <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                                  Command="{Binding DataContext.ToggleEnabledCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                  CommandParameter="{Binding}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border Style="{StaticResource Divider}" Margin="0,10,0,10" />
+
+                                <UniformGrid Rows="1" Columns="5">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="IPv4" />
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Ipv4Display}" Margin="0,3,0,0" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="IPv6" />
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Ipv6Display}" Margin="0,3,0,0"
+                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Field_Features}" />
+                                        <WrapPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Style="{StaticResource Text.Caption}" Margin="0,0,8,0">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                                        <Binding Path="FilteringKey" />
+                                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text="• DNSSEC" Margin="0,0,6,0"
+                                                       Visibility="{Binding SupportsDnssec, Converter={StaticResource BoolToVisibility}}" />
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text="• No-Log"
+                                                       Visibility="{Binding NoLogPolicy, Converter={StaticResource BoolToVisibility}}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Metric_Availability}" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                                        <Binding Path="AvailabilityKey" />
+                                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text=" (" />
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding LatencyText}" />
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text=")" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_Metric_Reliability}" />
+                                        <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding ReliabilityText}" Margin="0,3,0,0" />
+                                    </StackPanel>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

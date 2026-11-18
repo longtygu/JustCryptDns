@@ -792,4 +792,190 @@
   <data name="DnsMgr_DnsCryptInstalled" xml:space="preserve">
     <value>Installed dnscrypt-proxy ({0}).</value>
   </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Common_Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="FilteringCap_None" xml:space="preserve">
+    <value>Unfiltered</value>
+  </data>
+  <data name="FilteringCap_Malware" xml:space="preserve">
+    <value>Malware &amp; phishing filter</value>
+  </data>
+  <data name="FilteringCap_AdsAndTrackers" xml:space="preserve">
+    <value>Ad &amp; tracker filter</value>
+  </data>
+  <data name="FilteringCap_Family" xml:space="preserve">
+    <value>Family &amp; adult filter</value>
+  </data>
+  <data name="Resolvers_AddCustom" xml:space="preserve">
+    <value>Add custom resolver</value>
+  </data>
+  <data name="Resolvers_CheckAllHealth" xml:space="preserve">
+    <value>Check all health</value>
+  </data>
+  <data name="Resolvers_ImportProfile" xml:space="preserve">
+    <value>Import profile</value>
+  </data>
+  <data name="Resolvers_ExportProfile" xml:space="preserve">
+    <value>Export profile</value>
+  </data>
+  <data name="Resolvers_PrimaryTitle" xml:space="preserve">
+    <value>Primary resolver</value>
+  </data>
+  <data name="Resolvers_SecondaryTitle" xml:space="preserve">
+    <value>Secondary failover resolver</value>
+  </data>
+  <data name="Resolvers_Stat_Total" xml:space="preserve">
+    <value>Total resolvers</value>
+  </data>
+  <data name="Resolvers_Stat_Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Resolvers_Stat_Encrypted" xml:space="preserve">
+    <value>Encrypted</value>
+  </data>
+  <data name="Resolvers_Stat_Custom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="Resolvers_Editor_Title" xml:space="preserve">
+    <value>Resolver configuration</value>
+  </data>
+  <data name="Resolvers_Field_Name" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="Resolvers_Field_Provider" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="Resolvers_Field_Protocol" xml:space="preserve">
+    <value>Protocol</value>
+  </data>
+  <data name="Resolvers_Field_Endpoint" xml:space="preserve">
+    <value>Endpoint (https://, hostname, sdns:// or IP)</value>
+  </data>
+  <data name="Resolvers_Field_PrimaryIpv4" xml:space="preserve">
+    <value>Primary IPv4</value>
+  </data>
+  <data name="Resolvers_Field_SecondaryIpv4" xml:space="preserve">
+    <value>Secondary IPv4 (optional)</value>
+  </data>
+  <data name="Resolvers_Field_PrimaryIpv6" xml:space="preserve">
+    <value>Primary IPv6 (optional)</value>
+  </data>
+  <data name="Resolvers_Field_Group" xml:space="preserve">
+    <value>Group</value>
+  </data>
+  <data name="Resolvers_Field_Filtering" xml:space="preserve">
+    <value>Filtering capability</value>
+  </data>
+  <data name="Resolvers_Field_Features" xml:space="preserve">
+    <value>Security &amp; filtering</value>
+  </data>
+  <data name="Resolvers_Badge_NoLog" xml:space="preserve">
+    <value>No-log policy</value>
+  </data>
+  <data name="Resolvers_Badge_Primary" xml:space="preserve">
+    <value>Primary</value>
+  </data>
+  <data name="Resolvers_Badge_Secondary" xml:space="preserve">
+    <value>Secondary</value>
+  </data>
+  <data name="Resolvers_Badge_Custom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="Resolvers_Filter_Search" xml:space="preserve">
+    <value>Search by name, provider, endpoint or IP</value>
+  </data>
+  <data name="Resolvers_NewGroup" xml:space="preserve">
+    <value>New group</value>
+  </data>
+  <data name="Resolvers_Action_SetPrimary" xml:space="preserve">
+    <value>Set primary</value>
+  </data>
+  <data name="Resolvers_Action_SetSecondary" xml:space="preserve">
+    <value>Set secondary</value>
+  </data>
+  <data name="Resolvers_Metric_Availability" xml:space="preserve">
+    <value>Availability &amp; latency</value>
+  </data>
+  <data name="Resolvers_Metric_Reliability" xml:space="preserve">
+    <value>Reliability score</value>
+  </data>
+  <data name="Resolvers_Status_Online" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="Resolvers_Status_Unreachable" xml:space="preserve">
+    <value>Unreachable</value>
+  </data>
+  <data name="Resolvers_Status_Untested" xml:space="preserve">
+    <value>Not tested</value>
+  </data>
+  <data name="Resolvers_Err_NameRequired" xml:space="preserve">
+    <value>Resolver display name is required.</value>
+  </data>
+  <data name="Resolvers_Err_ProviderRequired" xml:space="preserve">
+    <value>Provider name is required.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidPort" xml:space="preserve">
+    <value>Enter a valid port between 1 and 65535.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidIpv4" xml:space="preserve">
+    <value>Enter a valid primary IPv4 address (e.g. 1.1.1.1).</value>
+  </data>
+  <data name="Resolvers_Err_InvalidSecondaryIpv4" xml:space="preserve">
+    <value>Secondary IPv4 address is not valid.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidIpv6" xml:space="preserve">
+    <value>Primary IPv6 address is not a valid IPv6 address.</value>
+  </data>
+  <data name="Resolvers_Err_EndpointRequired" xml:space="preserve">
+    <value>Endpoint is required.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidDohUri" xml:space="preserve">
+    <value>DoH endpoint must be a valid https:// URL.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidDotHost" xml:space="preserve">
+    <value>DoT endpoint must be a valid TLS hostname.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidStamp" xml:space="preserve">
+    <value>DNSCrypt endpoint must be a valid sdns:// stamp.</value>
+  </data>
+  <data name="Resolvers_Err_InvalidUdpIp" xml:space="preserve">
+    <value>UDP/TCP endpoint must be a valid IP address.</value>
+  </data>
+  <data name="Resolvers_Err_NotFound" xml:space="preserve">
+    <value>Resolver was not found in the library.</value>
+  </data>
+  <data name="Resolvers_Msg_Saved" xml:space="preserve">
+    <value>Saved resolver '{0}'.</value>
+  </data>
+  <data name="Resolvers_Msg_Removed" xml:space="preserve">
+    <value>Removed custom resolver '{0}'.</value>
+  </data>
+  <data name="Resolvers_Msg_PrimarySet" xml:space="preserve">
+    <value>Primary resolver set to '{0}'.</value>
+  </data>
+  <data name="Resolvers_Msg_SecondarySet" xml:space="preserve">
+    <value>Secondary failover resolver set to '{0}'.</value>
+  </data>
+  <data name="Resolvers_Msg_ProbeOk" xml:space="preserve">
+    <value>{0} responded in {1} ms.</value>
+  </data>
+  <data name="Resolvers_Msg_ProbingAll" xml:space="preserve">
+    <value>Testing all enabled resolvers…</value>
+  </data>
+  <data name="Resolvers_Msg_ProbeAllDone" xml:space="preserve">
+    <value>Health check complete: {0} of {1} resolvers online.</value>
+  </data>
+  <data name="Resolvers_Msg_Exported" xml:space="preserve">
+    <value>Exported resolver profile to {0}.</value>
+  </data>
+  <data name="Resolvers_Msg_Imported" xml:space="preserve">
+    <value>Imported resolver profile ({0} custom resolvers).</value>
+  </data>
 </root>

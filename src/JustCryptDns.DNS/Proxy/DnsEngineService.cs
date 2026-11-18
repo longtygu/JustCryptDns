@@ -24,6 +24,7 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly IDnsCryptProxyManager _dnsCryptManager;
     private readonly IWindowsDnsManager _windowsDns;
     private readonly ILogger<DnsEngineService> _logger;
+    private readonly IResolverLibraryService? _resolverLibrary;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
@@ -46,12 +47,14 @@ public sealed class DnsEngineService : IDnsEngine
         IDnsCryptProxyManager dnsCryptManager,
         IWindowsDnsManager windowsDns,
         ILogger<DnsEngineService> logger,
-        IEnumerable<IDnsUpstreamClient>? customUpstreams = null)
+        IEnumerable<IDnsUpstreamClient>? customUpstreams = null,
+        IResolverLibraryService? resolverLibrary = null)
     {
         _settings = settings;
         _dnsCryptManager = dnsCryptManager;
         _windowsDns = windowsDns;
         _logger = logger;
+        _resolverLibrary = resolverLibrary;
 
         _defaultDoh = new DohDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
@@ -66,7 +69,7 @@ public sealed class DnsEngineService : IDnsEngine
         IEnumerable<IDnsUpstreamClient> active = list is { Count: > 0 } ? list : defaultClients;
         _upstreams = active.ToDictionary(u => u.Protocol);
         var dns = _settings.Current.Dns;
-        _activeResolver = BuiltInResolvers.GetByIdOrDefault(dns.ActiveResolverId);
+        _activeResolver = ResolveEndpoint(dns.ActiveResolverId);
         _listenEndpoint = $"{dns.ListenAddress}:{dns.ListenPort}";
     }
 
@@ -75,7 +78,7 @@ public sealed class DnsEngineService : IDnsEngine
     public DnsEngineRuntimeStats GetStats()
     {
         var dns = _settings.Current.Dns;
-        var resolver = BuiltInResolvers.GetByIdOrDefault(dns.ActiveResolverId);
+        var resolver = ResolveEndpoint(dns.ActiveResolverId);
         return new DnsEngineRuntimeStats
         {
             State = _state,
@@ -107,7 +110,7 @@ public sealed class DnsEngineService : IDnsEngine
             SetState(DnsEngineState.Starting, error: null, conflict: null);
 
             var dns = _settings.Current.Dns;
-            _activeResolver = BuiltInResolvers.GetByIdOrDefault(dns.ActiveResolverId);
+            _activeResolver = ResolveEndpoint(dns.ActiveResolverId);
             if (!IPAddress.TryParse(dns.ListenAddress, out var listenIp))
             {
                 listenIp = IPAddress.Loopback;
@@ -230,7 +233,13 @@ public sealed class DnsEngineService : IDnsEngine
 
     public async Task<(bool Success, string? Error)> SwitchResolverAsync(string resolverId, CancellationToken cancellationToken = default)
     {
-        var resolver = BuiltInResolvers.GetByIdOrDefault(resolverId);
+        var resolver = ResolveEndpoint(resolverId);
+        var validation = ResolverValidator.Validate(resolver);
+        if (!validation.IsValid)
+        {
+            return (false, validation.ErrorMessage);
+        }
+
         await _settings.UpdateAsync(s => s.Dns.ActiveResolverId = resolver.Id, cancellationToken).ConfigureAwait(false);
         _activeResolver = resolver;
 
@@ -265,7 +274,7 @@ public sealed class DnsEngineService : IDnsEngine
 
     public async Task<DnsQueryResult> ProbeActiveResolverAsync(CancellationToken cancellationToken = default)
     {
-        var resolver = BuiltInResolvers.GetByIdOrDefault(_settings.Current.Dns.ActiveResolverId);
+        var resolver = ResolveEndpoint(_settings.Current.Dns.ActiveResolverId);
         var query = DnsPacket.CreateQuery("example.com", DnsRecordType.A);
         var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
 
@@ -367,6 +376,11 @@ public sealed class DnsEngineService : IDnsEngine
         _portConflict = conflict;
         RaiseStateChanged();
     }
+
+    private DnsResolverEndpoint ResolveEndpoint(string? resolverId) =>
+        _resolverLibrary is not null
+            ? _resolverLibrary.GetByIdOrDefault(resolverId)
+            : BuiltInResolvers.GetByIdOrDefault(resolverId);
 
     private void RaiseStateChanged() => StateChanged?.Invoke(this, GetStats());
 }

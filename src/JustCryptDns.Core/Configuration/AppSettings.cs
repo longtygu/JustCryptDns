@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine.</summary>
-    public const int CurrentSchemaVersion = 4;
+    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library.</summary>
+    public const int CurrentSchemaVersion = 5;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -248,6 +248,16 @@ public sealed class DnsSettings
 
     public string ActiveResolverId { get; set; } = BuiltInResolvers.DefaultResolverId;
 
+    public string SecondaryResolverId { get; set; } = BuiltInResolvers.DefaultSecondaryResolverId;
+
+    public List<DnsResolverEndpoint> CustomResolvers { get; set; } = [];
+
+    public List<string> DisabledResolverIds { get; set; } = [];
+
+    public Dictionary<string, string> ResolverGroupOverrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public List<string> CustomGroups { get; set; } = [];
+
     public string ListenAddress { get; set; } = DefaultListenAddress;
 
     public int ListenPort { get; set; } = DefaultListenPort;
@@ -268,6 +278,16 @@ public sealed class DnsSettings
         {
             ActiveResolverId = BuiltInResolvers.DefaultResolverId;
         }
+
+        if (string.IsNullOrWhiteSpace(SecondaryResolverId))
+        {
+            SecondaryResolverId = BuiltInResolvers.DefaultSecondaryResolverId;
+        }
+
+        CustomResolvers ??= [];
+        DisabledResolverIds ??= [];
+        ResolverGroupOverrides ??= new(StringComparer.OrdinalIgnoreCase);
+        CustomGroups ??= [];
 
         if (!IPAddress.TryParse(ListenAddress, out var ip) || !IPAddress.IsLoopback(ip))
         {

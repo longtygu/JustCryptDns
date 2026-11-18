@@ -4,6 +4,7 @@ using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Services;
 using JustCryptDns.DNS.DnsCrypt;
 using JustCryptDns.DNS.Proxy;
+using JustCryptDns.DNS.Resolver;
 using JustCryptDns.Infrastructure.Ipc;
 using JustCryptDns.Infrastructure.Logging;
 using JustCryptDns.Infrastructure.Storage;
@@ -48,6 +49,7 @@ public static class Program
             builder.Services.AddSingleton<INetworkInfoService, NetworkInfoService>();
             builder.Services.AddSingleton<IWindowsDnsManager, WindowsNetworkDnsService>();
             builder.Services.AddSingleton<IDnsCryptProxyManager, DnsCryptProxyManager>();
+            builder.Services.AddSingleton<IResolverLibraryService, ResolverLibraryService>();
             builder.Services.AddSingleton<IDnsEngine, DnsEngineService>();
             builder.Services.AddSingleton<ServiceStateManager>();
             builder.Services.AddSingleton<IServiceIpcHandler>(sp => sp.GetRequiredService<ServiceStateManager>());

@@ -7,6 +7,7 @@ using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Services;
 using JustCryptDns.DNS.DnsCrypt;
 using JustCryptDns.DNS.Proxy;
+using JustCryptDns.DNS.Resolver;
 using JustCryptDns.Infrastructure.Ipc;
 using JustCryptDns.Infrastructure.Windows;
 using JustCryptDns.Network.Monitoring;
@@ -37,6 +38,7 @@ public static class ServiceRegistration
         services.AddSingleton<INetworkInfoService, NetworkInfoService>();
         services.AddSingleton<IWindowsDnsManager, WindowsNetworkDnsService>();
         services.AddSingleton<IDnsCryptProxyManager, DnsCryptProxyManager>();
+        services.AddSingleton<IResolverLibraryService, ResolverLibraryService>();
         services.AddSingleton<IDnsEngine, DnsEngineService>();
 
         // UI services
@@ -53,6 +55,7 @@ public static class ServiceRegistration
         // Pages: transient, created on navigation and disposed when left.
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<DnsManagerViewModel>();
+        services.AddTransient<ResolverLibraryViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<AppearanceViewModel>();
 
