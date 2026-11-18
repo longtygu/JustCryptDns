@@ -16,3 +16,8 @@ public partial class SettingsView : UserControl
 {
     public SettingsView() => InitializeComponent();
 }
+
+public partial class AppearanceView : UserControl
+{
+    public AppearanceView() => InitializeComponent();
+}

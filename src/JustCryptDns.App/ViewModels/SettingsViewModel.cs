@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Infrastructure.Windows;
 using Microsoft.Extensions.Logging;
@@ -12,6 +13,7 @@ namespace JustCryptDns.App.ViewModels;
 public sealed partial class SettingsViewModel : PageViewModel
 {
     private readonly ISettingsService _settings;
+    private readonly INavigationService _navigation;
     private readonly ILogger<SettingsViewModel> _logger;
     private bool _loading;
 
@@ -25,10 +27,11 @@ public sealed partial class SettingsViewModel : PageViewModel
     [ObservableProperty]
     private string? _saveError;
 
-    public SettingsViewModel(ISettingsService settings, IAppPaths paths, ILogger<SettingsViewModel> logger)
+    public SettingsViewModel(ISettingsService settings, INavigationService navigation, IAppPaths paths, ILogger<SettingsViewModel> logger)
         : base("Nav_Settings", "Page_Settings_Subtitle")
     {
         _settings = settings;
+        _navigation = navigation;
         _logger = logger;
         _loading = true;
         _selectedLanguage = settings.Current.General.Language;
@@ -54,6 +57,26 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public bool ShowLoadWarning { get; }
 
+    public override void OnNavigatedTo()
+    {
+        _settings.SaveFailed += OnSaveFailed;
+    }
+
+    public override void OnNavigatedFrom()
+    {
+        _settings.SaveFailed -= OnSaveFailed;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _settings.SaveFailed -= OnSaveFailed;
+        }
+
+        base.Dispose(disposing);
+    }
+
     partial void OnSelectedLanguageChanged(string value)
     {
         if (!_loading && LanguageCodes.IsSupported(value))
@@ -69,6 +92,9 @@ public sealed partial class SettingsViewModel : PageViewModel
             _ = SaveAsync(s => s.Appearance.Theme = value);
         }
     }
+
+    [RelayCommand]
+    private void OpenAppearance() => _navigation.Navigate(PageKeys.Appearance);
 
     [RelayCommand]
     private void OpenFolder(string? path)
@@ -88,6 +114,8 @@ public sealed partial class SettingsViewModel : PageViewModel
             _logger.LogWarning(ex, "Could not open folder {Path}", path);
         }
     }
+
+    private void OnSaveFailed(object? sender, Exception ex) => SaveError = ex.Message;
 
     private async Task SaveAsync(Action<AppSettings> mutate)
     {

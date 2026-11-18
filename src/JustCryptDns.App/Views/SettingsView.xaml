@@ -9,11 +9,10 @@
              d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
     <UserControl.Resources>
         <Style x:Key="SettingCard" TargetType="Border" BasedOn="{StaticResource Card}">
-            <Setter Property="Margin" Value="0,0,0,12" />
-            <Setter Property="Padding" Value="24,20" />
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
         </Style>
         <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
-            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
         </Style>
     </UserControl.Resources>
 
@@ -24,14 +23,14 @@
 
             <!-- Notices -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
-                    Padding="16,12" Margin="0,0,0,12" Visibility="{Binding ShowLoadWarning, Converter={StaticResource BoolToVisibility}}">
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="{Binding ShowLoadWarning, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,12,0" />
                     <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc Settings_LoadWarning}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
-                    Padding="16,12" Margin="0,0,0,12" Visibility="{Binding SaveError, Converter={StaticResource NullToVisibility}}">
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="{Binding SaveError, Converter={StaticResource NullToVisibility}}">
                 <TextBlock Style="{StaticResource Text.Body}">
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Settings_SaveError">
@@ -97,14 +96,28 @@
                                              IsChecked="{Binding Theme, Converter={StaticResource EnumEquals}, ConverterParameter=Light}" />
                                 <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Theme" Content="{l:Loc Theme_System}"
                                              IsChecked="{Binding Theme, Converter={StaticResource EnumEquals}, ConverterParameter=System}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Theme" Content="{l:Loc Theme_Custom}"
+                                             IsChecked="{Binding Theme, Converter={StaticResource EnumEquals}, ConverterParameter=Custom}" />
                             </StackPanel>
                         </Border>
                     </Grid>
                     <Border BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,1,0,0" Margin="0,16,0,0" Padding="0,14,0,0">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE946;" FontSize="14" Foreground="{DynamicResource Brush.TextTertiary}" Margin="2,0,12,0" />
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_AppearanceMore}" />
-                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_AppearanceLink_Title}" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_AppearanceLink_Desc}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding OpenAppearanceCommand}" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{l:Loc Settings_OpenAppearance}" />
+                                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE76C;" FontSize="11" Margin="8,0,0,0" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
                     </Border>
                 </StackPanel>
             </Border>

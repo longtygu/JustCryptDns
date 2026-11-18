@@ -12,7 +12,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>v1: Phase 1 (language, theme, accent, sidebar). v2: Phase 2 appearance options.</summary>
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -73,18 +74,107 @@ public enum AppTheme
     Dark,
     Light,
     System,
+
+    /// <summary>A Dark or Light base palette tinted with <see cref="AppearanceSettings.CustomTintColor"/>.</summary>
+    Custom,
+}
+
+/// <summary>Preferred window material. Unsupported choices fall back automatically.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<BackdropPreference>))]
+public enum BackdropPreference
+{
+    /// <summary>Acrylic on Windows 11 22H2+, blur on Windows 10.</summary>
+    Auto,
+    Mica,
+    Acrylic,
+    Blur,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<BackgroundStyle>))]
+public enum BackgroundStyle
+{
+    Plain,
+    AccentTint,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<CardDensity>))]
+public enum CardDensity
+{
+    Compact,
+    Comfortable,
+    Spacious,
+}
+
+/// <summary>Maps to <c>DWM_WINDOW_CORNER_PREFERENCE</c> (Windows 11 only).</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<WindowCornerStyle>))]
+public enum WindowCornerStyle
+{
+    Default,
+    Rounded,
+    RoundedSmall,
+    Square,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<TextSize>))]
+public enum TextSize
+{
+    Small,
+    Default,
+    Large,
+    ExtraLarge,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<AnimationLevel>))]
+public enum AnimationLevel
+{
+    Off,
+    Reduced,
+    Normal,
 }
 
 public sealed class AppearanceSettings
 {
     public const string DefaultAccentColor = "#4F8CFF";
+    public const int MaxTransparency = 90;
+    public const int MinUiScale = 80;
+    public const int MaxUiScale = 150;
 
     public AppTheme Theme { get; set; } = AppTheme.Dark;
+
+    /// <summary>Base palette for <see cref="AppTheme.Custom"/>: Dark or Light.</summary>
+    public AppTheme CustomBaseTheme { get; set; } = AppTheme.Dark;
+
+    /// <summary>Surface tint for <see cref="AppTheme.Custom"/> as <c>#RRGGBB</c>.</summary>
+    public string CustomTintColor { get; set; } = "#7B5CFF";
 
     /// <summary>Accent color as <c>#RRGGBB</c>.</summary>
     public string AccentColor { get; set; } = DefaultAccentColor;
 
+    /// <summary>Use the Windows accent color instead of <see cref="AccentColor"/>.</summary>
+    public bool UseSystemAccent { get; set; }
+
+    /// <summary>Master switch; when false the window is opaque regardless of <see cref="Transparency"/>.</summary>
+    public bool TransparencyEnabled { get; set; } = true;
+
+    /// <summary>Window transparency in percent: 0 (opaque) – 90 (highly transparent).</summary>
+    public int Transparency { get; set; }
+
+    public BackdropPreference Backdrop { get; set; } = BackdropPreference.Auto;
+
+    public BackgroundStyle Background { get; set; } = BackgroundStyle.Plain;
+
     public bool SidebarCollapsed { get; set; }
+
+    public CardDensity Density { get; set; } = CardDensity.Comfortable;
+
+    public WindowCornerStyle CornerStyle { get; set; } = WindowCornerStyle.Default;
+
+    /// <summary>Additional UI scale in percent (80–150) on top of Windows DPI scaling.</summary>
+    public int UiScalePercent { get; set; } = 100;
+
+    public TextSize TextSize { get; set; } = TextSize.Default;
+
+    public AnimationLevel Animations { get; set; } = AnimationLevel.Normal;
 
     internal void Normalize()
     {
@@ -93,10 +183,29 @@ public sealed class AppearanceSettings
             Theme = AppTheme.Dark;
         }
 
+        if (CustomBaseTheme is not (AppTheme.Dark or AppTheme.Light))
+        {
+            CustomBaseTheme = AppTheme.Dark;
+        }
+
         if (!ColorText.IsValidRgb(AccentColor))
         {
             AccentColor = DefaultAccentColor;
         }
+
+        if (!ColorText.IsValidRgb(CustomTintColor))
+        {
+            CustomTintColor = "#7B5CFF";
+        }
+
+        Transparency = Math.Clamp(Transparency, 0, MaxTransparency);
+        UiScalePercent = Math.Clamp(UiScalePercent, MinUiScale, MaxUiScale);
+        Backdrop = Enum.IsDefined(Backdrop) ? Backdrop : BackdropPreference.Auto;
+        Background = Enum.IsDefined(Background) ? Background : BackgroundStyle.Plain;
+        Density = Enum.IsDefined(Density) ? Density : CardDensity.Comfortable;
+        CornerStyle = Enum.IsDefined(CornerStyle) ? CornerStyle : WindowCornerStyle.Default;
+        TextSize = Enum.IsDefined(TextSize) ? TextSize : TextSize.Default;
+        Animations = Enum.IsDefined(Animations) ? Animations : AnimationLevel.Normal;
     }
 }
 
@@ -146,5 +255,27 @@ public static class ColorText
         }
 
         return true;
+    }
+
+    /// <summary>Accepts <c>RRGGBB</c>, <c>#RRGGBB</c> or <c>#RGB</c> (any case) and returns <c>#RRGGBB</c> upper-case, or null.</summary>
+    public static string? NormalizeRgb(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var text = value.Trim();
+        if (!text.StartsWith('#'))
+        {
+            text = "#" + text;
+        }
+
+        if (text.Length == 4)
+        {
+            text = string.Concat("#", text[1], text[1], text[2], text[2], text[3], text[3]);
+        }
+
+        return IsValidRgb(text) ? text.ToUpperInvariant() : null;
     }
 }

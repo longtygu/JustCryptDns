@@ -47,4 +47,16 @@ public interface ISettingsService
 
     /// <summary>Applies <paramref name="mutate"/>, normalizes, persists and raises <see cref="Changed"/>.</summary>
     Task UpdateAsync(Action<AppSettings> mutate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies <paramref name="mutate"/> and raises <see cref="Changed"/> immediately; persistence is debounced so rapid
+    /// changes (sliders, live previews) cause a single disk write. Failures are reported through <see cref="SaveFailed"/>.
+    /// </summary>
+    void UpdateDeferred(Action<AppSettings> mutate);
+
+    /// <summary>Writes any pending deferred change now (call on shutdown).</summary>
+    Task FlushAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Raised (possibly on a pool thread) when a deferred save fails.</summary>
+    event EventHandler<Exception>? SaveFailed;
 }

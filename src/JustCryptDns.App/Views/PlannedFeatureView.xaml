@@ -26,10 +26,10 @@
                 </TextBlock.Text>
             </TextBlock>
 
-            <Border Style="{StaticResource Card}" Padding="28" MaxWidth="820" HorizontalAlignment="Left">
+            <Border Style="{StaticResource Card}" MaxWidth="820" HorizontalAlignment="Left">
                 <StackPanel>
                     <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}">
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Brush.AccentText}">
+                        <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.AccentText}">
                             <TextBlock.Text>
                                 <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Planned_Badge">
                                     <Binding Path="Phase" />
@@ -38,8 +38,8 @@
                             </TextBlock.Text>
                         </TextBlock>
                     </Border>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" FontSize="17" Text="{l:Loc Planned_Heading}" Margin="0,16,0,6" />
-                    <TextBlock Style="{StaticResource Text.Caption}" FontSize="13" Text="{l:Loc Planned_Body}" Margin="0,0,0,16" />
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" FontSize="{DynamicResource Font.Size.Heading}" Text="{l:Loc Planned_Heading}" Margin="0,16,0,6" />
+                    <TextBlock Style="{StaticResource Text.Caption}" FontSize="{DynamicResource Font.Size.Body}" Text="{l:Loc Planned_Body}" Margin="0,0,0,16" />
 
                     <ItemsControl ItemsSource="{Binding FeatureKeys}" Focusable="False">
                         <ItemsControl.ItemTemplate>

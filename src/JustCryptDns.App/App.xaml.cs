@@ -79,6 +79,11 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _logger.LogInformation("JustCryptDns UI exiting with code {Code}.", e.ApplicationExitCode);
+        if (_services?.GetService<ISettingsService>() is { } settings)
+        {
+            settings.FlushAsync().GetAwaiter().GetResult();
+        }
+
         _services?.Dispose();
         _instanceGuard?.Dispose();
         LoggingSetup.Shutdown();
@@ -87,7 +92,7 @@ public partial class App : Application
 
     private void ApplyPresentation(AppSettings settings)
     {
-        _services!.GetRequiredService<IThemeService>().Apply(settings.Appearance.Theme, settings.Appearance.AccentColor);
+        _services!.GetRequiredService<IAppearanceService>().Apply(settings.Appearance);
         LocalizationManager.Instance.SetLanguage(settings.General.Language);
         LoggingSetup.SetLevel(settings.Performance.LogLevel);
     }

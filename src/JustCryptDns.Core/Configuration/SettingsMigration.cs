@@ -42,6 +42,20 @@ internal sealed class MigrationV0ToV1 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v2 adds appearance options (transparency, backdrop, density, scaling, text size, animations, corners, custom theme).
+/// All new properties have safe defaults, so existing values are kept unchanged.
+/// </summary>
+internal sealed class MigrationV1ToV2 : ISettingsMigration
+{
+    public int FromVersion => 1;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by AppearanceSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -54,7 +68,7 @@ public sealed class SettingsMigrator
 
     public int TargetVersion { get; }
 
-    public static IEnumerable<ISettingsMigration> DefaultMigrations() => [new MigrationV0ToV1()];
+    public static IEnumerable<ISettingsMigration> DefaultMigrations() => [new MigrationV0ToV1(), new MigrationV1ToV2()];
 
     public static int ReadVersion(JsonObject document)
     {

@@ -110,6 +110,19 @@ public sealed class JsonSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Load_V1File_IsMigratedToV2()
+    {
+        await File.WriteAllTextAsync(_paths.SettingsFile, """{ "schemaVersion": 1, "appearance": { "theme": "Light", "accentColor": "#22C55E" } }""");
+
+        var result = CreateStore().Load();
+
+        Assert.Equal(SettingsLoadOutcome.Migrated, result.Outcome);
+        Assert.Equal(AppTheme.Light, result.Settings.Appearance.Theme);
+        Assert.Equal("#22C55E", result.Settings.Appearance.AccentColor);
+        Assert.Equal(AppSettings.CurrentSchemaVersion, result.Settings.SchemaVersion);
+    }
+
+    [Fact]
     public async Task Load_UnversionedFile_IsMigrated()
     {
         await File.WriteAllTextAsync(_paths.SettingsFile, """{ "appearance": { "theme": "Light" } }""");

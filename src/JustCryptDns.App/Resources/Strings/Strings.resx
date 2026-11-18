@@ -348,8 +348,218 @@
   <data name="Theme_System" xml:space="preserve">
     <value>System</value>
   </data>
-  <data name="Settings_AppearanceMore" xml:space="preserve">
-    <value>Transparency, accent color, scaling and more appearance options arrive in Phase 2.</value>
+  <data name="Theme_Custom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="Common_Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Settings_AppearanceLink_Title" xml:space="preserve">
+    <value>Advanced appearance &amp; transparency</value>
+  </data>
+  <data name="Settings_AppearanceLink_Desc" xml:space="preserve">
+    <value>Adjust window transparency (0–90 %), backdrop material, accent color, scaling, text size, density and motion.</value>
+  </data>
+  <data name="Settings_OpenAppearance" xml:space="preserve">
+    <value>Customize appearance</value>
+  </data>
+  <data name="Appearance_Title" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Page_Appearance_Subtitle" xml:space="preserve">
+    <value>Customize theme, window transparency, accent colors, layout density, scaling and motion.</value>
+  </data>
+  <data name="Appearance_CustomBase" xml:space="preserve">
+    <value>Base palette</value>
+  </data>
+  <data name="Appearance_CustomBase_Desc" xml:space="preserve">
+    <value>Choose the base luminance before applying the surface tint.</value>
+  </data>
+  <data name="Appearance_CustomTint" xml:space="preserve">
+    <value>Surface tint color</value>
+  </data>
+  <data name="Appearance_Accent" xml:space="preserve">
+    <value>Accent color</value>
+  </data>
+  <data name="Appearance_Accent_Desc" xml:space="preserve">
+    <value>Used for primary actions, active indicators and highlights.</value>
+  </data>
+  <data name="Appearance_UseSystemAccent" xml:space="preserve">
+    <value>Use Windows accent color</value>
+  </data>
+  <data name="Appearance_CustomHex" xml:space="preserve">
+    <value>Custom hex (#RRGGBB)</value>
+  </data>
+  <data name="Appearance_InvalidHex" xml:space="preserve">
+    <value>Enter a valid color such as #4F8CFF.</value>
+  </data>
+  <data name="Appearance_Transparency" xml:space="preserve">
+    <value>Window transparency</value>
+  </data>
+  <data name="Appearance_Transparency_Desc" xml:space="preserve">
+    <value>0 % is fully opaque; up to 90 % lets the desktop shine through using Windows composition.</value>
+  </data>
+  <data name="Appearance_Readability" xml:space="preserve">
+    <value>Cards and text automatically preserve contrast so controls stay readable at every level.</value>
+  </data>
+  <data name="Appearance_Material" xml:space="preserve">
+    <value>Backdrop material</value>
+  </data>
+  <data name="Appearance_Material_Desc" xml:space="preserve">
+    <value>Mica and Acrylic require Windows 11 22H2+; Windows 10 uses DWM blur automatically.</value>
+  </data>
+  <data name="Backdrop_Auto" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="Backdrop_Mica" xml:space="preserve">
+    <value>Mica</value>
+  </data>
+  <data name="Backdrop_Acrylic" xml:space="preserve">
+    <value>Acrylic</value>
+  </data>
+  <data name="Backdrop_Blur" xml:space="preserve">
+    <value>Blur</value>
+  </data>
+  <data name="Appearance_Status" xml:space="preserve">
+    <value>Active material:</value>
+  </data>
+  <data name="BackdropKind_None" xml:space="preserve">
+    <value>Opaque (none)</value>
+  </data>
+  <data name="BackdropKind_Mica" xml:space="preserve">
+    <value>Windows 11 Mica</value>
+  </data>
+  <data name="BackdropKind_Acrylic" xml:space="preserve">
+    <value>Windows 11 Acrylic</value>
+  </data>
+  <data name="BackdropKind_Blur" xml:space="preserve">
+    <value>Windows DWM Blur</value>
+  </data>
+  <data name="BackdropStatus_Active" xml:space="preserve">
+    <value>· active</value>
+  </data>
+  <data name="BackdropStatus_Disabled" xml:space="preserve">
+    <value>· transparency disabled</value>
+  </data>
+  <data name="BackdropStatus_ZeroTransparency" xml:space="preserve">
+    <value>· slider at 0 % (opaque)</value>
+  </data>
+  <data name="BackdropStatus_Unsupported" xml:space="preserve">
+    <value>· not supported on this system (opaque fallback)</value>
+  </data>
+  <data name="BackdropStatus_ApiFailed" xml:space="preserve">
+    <value>· composition API unavailable (opaque fallback)</value>
+  </data>
+  <data name="BackdropStatus_WindowNotReady" xml:space="preserve">
+    <value>· initializing window handle</value>
+  </data>
+  <data name="TransparencyLevel_Opaque" xml:space="preserve">
+    <value>Opaque</value>
+  </data>
+  <data name="TransparencyLevel_Slight" xml:space="preserve">
+    <value>Slightly transparent</value>
+  </data>
+  <data name="TransparencyLevel_Moderate" xml:space="preserve">
+    <value>Moderate transparency</value>
+  </data>
+  <data name="TransparencyLevel_Strong" xml:space="preserve">
+    <value>Strong transparency</value>
+  </data>
+  <data name="TransparencyLevel_High" xml:space="preserve">
+    <value>Highly transparent</value>
+  </data>
+  <data name="Appearance_Background" xml:space="preserve">
+    <value>Background style</value>
+  </data>
+  <data name="Appearance_Background_Desc" xml:space="preserve">
+    <value>Optional subtle radial glow in the current accent color.</value>
+  </data>
+  <data name="Background_Plain" xml:space="preserve">
+    <value>Plain</value>
+  </data>
+  <data name="Background_AccentTint" xml:space="preserve">
+    <value>Accent glow</value>
+  </data>
+  <data name="Appearance_Layout" xml:space="preserve">
+    <value>Layout &amp; geometry</value>
+  </data>
+  <data name="Appearance_Sidebar" xml:space="preserve">
+    <value>Sidebar mode</value>
+  </data>
+  <data name="Sidebar_Expanded" xml:space="preserve">
+    <value>Expanded</value>
+  </data>
+  <data name="Sidebar_Compact" xml:space="preserve">
+    <value>Compact</value>
+  </data>
+  <data name="Appearance_Density" xml:space="preserve">
+    <value>Card density</value>
+  </data>
+  <data name="Density_Compact" xml:space="preserve">
+    <value>Compact</value>
+  </data>
+  <data name="Density_Comfortable" xml:space="preserve">
+    <value>Comfortable</value>
+  </data>
+  <data name="Density_Spacious" xml:space="preserve">
+    <value>Spacious</value>
+  </data>
+  <data name="Appearance_Corners" xml:space="preserve">
+    <value>Window corners</value>
+  </data>
+  <data name="Appearance_Corners_Unsupported" xml:space="preserve">
+    <value>Hardware-rounded window corners require Windows 11.</value>
+  </data>
+  <data name="Corners_Default" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Corners_Rounded" xml:space="preserve">
+    <value>Rounded</value>
+  </data>
+  <data name="Corners_RoundedSmall" xml:space="preserve">
+    <value>Small round</value>
+  </data>
+  <data name="Corners_Square" xml:space="preserve">
+    <value>Square</value>
+  </data>
+  <data name="Appearance_UiScale" xml:space="preserve">
+    <value>Interface scaling</value>
+  </data>
+  <data name="Appearance_UiScale_Desc" xml:space="preserve">
+    <value>Scales the interface independently on top of Windows DPI scaling (80 % – 150 %).</value>
+  </data>
+  <data name="Appearance_TextSize" xml:space="preserve">
+    <value>Font size</value>
+  </data>
+  <data name="TextSize_Small" xml:space="preserve">
+    <value>Small</value>
+  </data>
+  <data name="TextSize_Default" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="TextSize_Large" xml:space="preserve">
+    <value>Large</value>
+  </data>
+  <data name="TextSize_ExtraLarge" xml:space="preserve">
+    <value>Extra large</value>
+  </data>
+  <data name="Appearance_Animations" xml:space="preserve">
+    <value>Animation intensity</value>
+  </data>
+  <data name="Appearance_Animations_Desc" xml:space="preserve">
+    <value>Controls page transition speed or disables motion completely.</value>
+  </data>
+  <data name="Animations_Off" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Animations_Reduced" xml:space="preserve">
+    <value>Reduced</value>
+  </data>
+  <data name="Animations_Normal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="Appearance_Reset" xml:space="preserve">
+    <value>Reset appearance to defaults</value>
   </data>
   <data name="Settings_About" xml:space="preserve">
     <value>About</value>

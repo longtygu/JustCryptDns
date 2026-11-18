@@ -1,3 +1,4 @@
+using JustCryptDns.App.Services;
 using JustCryptDns.App.ViewModels;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Services;
@@ -47,18 +48,19 @@ public sealed class ShellViewModelTests
         }
     }
 
-    private static (ShellViewModel Shell, FakeFactory Factory, MemoryStore Store) Create()
+    private static (ShellViewModel Shell, FakeFactory Factory, MemoryStore Store, SettingsService Settings, NavigationService Nav) Create()
     {
         var factory = new FakeFactory();
         var store = new MemoryStore();
         var settings = new SettingsService(store, NullLogger<SettingsService>.Instance);
-        return (new ShellViewModel(factory, settings, NullLogger<ShellViewModel>.Instance), factory, store);
+        var nav = new NavigationService();
+        return (new ShellViewModel(factory, settings, nav, NullLogger<ShellViewModel>.Instance), factory, store, settings, nav);
     }
 
     [Fact]
     public void StartsOnDashboard()
     {
-        var (shell, factory, _) = Create();
+        var (shell, factory, _, _, _) = Create();
 
         Assert.Equal(PageKeys.Dashboard, shell.CurrentPageKey);
         Assert.Single(factory.Created);
@@ -68,7 +70,7 @@ public sealed class ShellViewModelTests
     [Fact]
     public void Navigating_DeactivatesAndDisposesPreviousPage()
     {
-        var (shell, factory, _) = Create();
+        var (shell, factory, _, _, _) = Create();
         var dashboard = factory.Created[0];
 
         shell.NavigateTo(PageKeys.Gaming);
@@ -80,7 +82,7 @@ public sealed class ShellViewModelTests
     [Fact]
     public void FooterAndMainSelections_AreMutuallyExclusive()
     {
-        var (shell, _, _) = Create();
+        var (shell, _, _, _, _) = Create();
 
         shell.NavigateTo(PageKeys.Settings);
         Assert.Null(shell.SelectedNavItem);
@@ -92,9 +94,26 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
+    public void SubPageNavigation_HighlightsParentSidebarItem_AndCanReturnToParent()
+    {
+        var (shell, _, _, _, nav) = Create();
+
+        nav.Navigate(PageKeys.Appearance);
+
+        Assert.Equal(PageKeys.Appearance, shell.CurrentPageKey);
+        Assert.Null(shell.SelectedNavItem);
+        Assert.Equal(PageKeys.Settings, shell.SelectedFooterItem?.Key);
+
+        nav.Navigate(PageKeys.Settings);
+
+        Assert.Equal(PageKeys.Settings, shell.CurrentPageKey);
+        Assert.Equal(PageKeys.Settings, shell.SelectedFooterItem?.Key);
+    }
+
+    [Fact]
     public void ReselectingSamePage_DoesNotRecreateIt()
     {
-        var (shell, factory, _) = Create();
+        var (shell, factory, _, _, _) = Create();
 
         shell.NavigateTo(PageKeys.Dashboard);
 
@@ -102,11 +121,12 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public void ToggleSidebar_PersistsState()
+    public async Task ToggleSidebar_PersistsState()
     {
-        var (shell, _, store) = Create();
+        var (shell, _, store, settings, _) = Create();
 
         shell.ToggleSidebarCommand.Execute(null);
+        await settings.FlushAsync();
 
         Assert.True(shell.IsSidebarCollapsed);
         Assert.True(store.Saved?.Appearance.SidebarCollapsed);
@@ -115,7 +135,7 @@ public sealed class ShellViewModelTests
     [Fact]
     public void AllNineSectionsArePresent()
     {
-        var (shell, _, _) = Create();
+        var (shell, _, _, _, _) = Create();
         var keys = shell.NavItems.Concat(shell.FooterItems).Select(i => i.Key).ToList();
 
         Assert.Equal(

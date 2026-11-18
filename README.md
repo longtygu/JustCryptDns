@@ -2,8 +2,8 @@
 
 Advanced DNS security, smart routing and gaming DNS optimization suite for Windows 10 22H2 / Windows 11 (x64).
 
-> **Status: early development (Phase 1 of 12).** The application shell, theming, localization, settings and
-> local network information work. The DNS engine itself (DoH/DoT/DNSCrypt, local proxy) arrives in Phase 4.
+> **Status: early development (Phase 2 of 12).** The application shell, theming, window transparency (Mica / Acrylic / DWM Blur),
+> full appearance customization, localization, settings and local network information work. The DNS engine itself (DoH/DoT/DNSCrypt, local proxy) arrives in Phase 4.
 > Pages for modules not yet built show an explicit *"Planned · Phase N"* notice and never display fabricated data.
 
 ## Features implemented so far
@@ -11,13 +11,14 @@ Advanced DNS security, smart routing and gaming DNS optimization suite for Windo
 | Area | Status |
 |---|---|
 | Modern WPF shell (custom chrome, collapsible sidebar, 9 sections) | ✅ |
-| Dark / Light / System theme, runtime switching, accent color engine | ✅ |
+| Dark / Light / System / Custom theme, runtime switching, WCAG-checked accent color engine | ✅ |
+| Window transparency (0–90 %) with Windows 11 Mica/Acrylic & Windows 10 DWM Blur + graceful fallback | ✅ |
+| Dedicated Appearance page (accent presets & hex input, Windows accent sync, UI scale 80–150 %, font size, card density, animation intensity, window corners, background glow, reset) | ✅ |
 | English / Vietnamese UI, switchable without restart | ✅ |
-| Versioned JSON settings with atomic save, backup, corruption recovery and migration | ✅ |
+| Versioned JSON settings (schema v2) with atomic save, backup, corruption recovery and migration | ✅ |
 | Rolling, size-capped logs (Serilog) | ✅ |
 | Dashboard: real local adapter info (adapter, IP, gateway, current DNS, IPv4/IPv6), event-driven refresh | ✅ |
 | Single-instance guard (second launch activates the first window) | ✅ |
-| Appearance page, window transparency (Acrylic / Mica / blur) | Phase 2 |
 | Background service, tray, startup | Phase 3 |
 | DNS engine | Phase 4+ |
 
@@ -69,4 +70,4 @@ No telemetry is collected. Nothing leaves the computer.
 
 ## License
 
-To be decided (see open decisions in the roadmap).
+Released under the [MIT License](LICENSE).

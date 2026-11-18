@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media;
 using JustCryptDns.App.Localization;
+using JustCryptDns.App.Services;
 using JustCryptDns.App.ViewModels;
 
 namespace JustCryptDns.App.Views;
@@ -13,8 +13,11 @@ public partial class MainWindow : Window
     private const int SmCyFrame = 33;
     private const int SmCxPaddedBorder = 92;
 
-    public MainWindow(ShellViewModel viewModel)
+    private readonly IAppearanceService _appearance;
+
+    public MainWindow(ShellViewModel viewModel, IAppearanceService appearance)
     {
+        _appearance = appearance;
         InitializeComponent();
         DataContext = viewModel;
         StateChanged += (_, _) => UpdateMaximizedState();
@@ -24,6 +27,7 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
+        _appearance.AttachWindow(this);
         UpdateMaximizedState();
     }
 
@@ -67,6 +71,16 @@ public partial class MainWindow : Window
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
+
+    private void OnNavListMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ListBox { SelectedItem: NavItem item }
+            && DataContext is ShellViewModel vm
+            && vm.CurrentPageKey != item.Key)
+        {
+            vm.NavigateTo(item.Key);
+        }
+    }
 
     [DllImport("user32.dll")]
     private static extern int GetSystemMetrics(int index);

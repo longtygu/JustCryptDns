@@ -53,6 +53,7 @@ public static class PageKeys
     public const string Diagnostics = "Diagnostics";
     public const string Monitor = "Monitor";
     public const string Settings = "Settings";
+    public const string Appearance = "Appearance";
 }
 
 public interface IPageFactory

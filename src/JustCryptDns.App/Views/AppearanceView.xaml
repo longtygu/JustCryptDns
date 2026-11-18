@@ -1,0 +1,425 @@
+<UserControl x:Class="JustCryptDns.App.Views.AppearanceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
+             xmlns:svc="clr-namespace:JustCryptDns.App.Services"
+             xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="1400"
+             d:DataContext="{d:DesignInstance Type=vm:AppearanceViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="SettingCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+        </Style>
+        <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
+        </Style>
+        <Style x:Key="RowIcon" TargetType="TextBlock" BasedOn="{StaticResource Text.Icon}">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="Margin" Value="0,0,16,0" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Width" Value="20" />
+        </Style>
+        <Style x:Key="Divider" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Divider}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Margin" Value="36,16,0,16" />
+        </Style>
+        <ItemsPanelTemplate x:Key="SwatchPanel">
+            <WrapPanel />
+        </ItemsPanelTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel Margin="32,4,32,32" MaxWidth="900">
+            <Button Style="{StaticResource Button.Subtle}" HorizontalAlignment="Left" Padding="6,4" Margin="-6,0,0,4" Command="{Binding BackCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72B;" FontSize="12" Margin="0,0,8,0" Foreground="{DynamicResource Brush.TextSecondary}" />
+                    <TextBlock Text="{l:Loc Nav_Settings}" Foreground="{DynamicResource Brush.TextSecondary}" />
+                </StackPanel>
+            </Button>
+            <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Appearance_Title}" />
+            <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Appearance_Subtitle}" Margin="0,4,0,22" />
+
+            <!-- Theme -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_Theme}" Margin="0,0,0,10" />
+            <Border Style="{StaticResource SettingCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE790;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_Theme}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_Theme_Desc}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource SegmentHost}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Theme" Content="{l:Loc Theme_Dark}"
+                                             IsChecked="{Binding Theme, Converter={StaticResource EnumEquals}, ConverterParameter=Dark}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Theme" Content="{l:Loc Theme_Light}"
+                                             IsChecked="{Binding Theme, Converter={StaticResource EnumEquals}, ConverterParameter=Light}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Theme" Content="{l:Loc Theme_System}"
+                                             IsChecked="{Binding Theme, Converter={StaticResource EnumEquals}, ConverterParameter=System}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Theme" Content="{l:Loc Theme_Custom}"
+                                             IsChecked="{Binding Theme, Converter={StaticResource EnumEquals}, ConverterParameter=Custom}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Visibility="{Binding IsCustomTheme, Converter={StaticResource BoolToVisibility}}">
+                        <Border Style="{StaticResource Divider}" />
+                        <Grid Margin="36,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_CustomBase}" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_CustomBase_Desc}" />
+                            </StackPanel>
+                            <Border Grid.Column="1" Style="{StaticResource SegmentHost}">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton Style="{StaticResource Radio.Segment}" GroupName="CustomBase" Content="{l:Loc Theme_Dark}"
+                                                 IsChecked="{Binding CustomBaseTheme, Converter={StaticResource EnumEquals}, ConverterParameter=Dark}" />
+                                    <RadioButton Style="{StaticResource Radio.Segment}" GroupName="CustomBase" Content="{l:Loc Theme_Light}"
+                                                 IsChecked="{Binding CustomBaseTheme, Converter={StaticResource EnumEquals}, ConverterParameter=Light}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_CustomTint}" Margin="36,16,0,8" />
+                        <ItemsControl ItemsSource="{Binding TintSwatches}" ItemsPanel="{StaticResource SwatchPanel}" Margin="36,0,0,0" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:ColorSwatch}">
+                                    <Button Style="{StaticResource Button.Swatch}" ToolTip="{Binding Hex}" AutomationProperties.Name="{Binding Hex}"
+                                            Command="{Binding DataContext.SelectTintCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding Hex}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Accent color -->
+            <Border Style="{StaticResource SettingCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE2B1;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_Accent}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_Accent_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="2" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding UseSystemAccent}"
+                                  Content="{l:Loc Appearance_UseSystemAccent}" VerticalAlignment="Center" />
+                    </Grid>
+                    <Border Style="{StaticResource Divider}" />
+                    <StackPanel Margin="36,0,0,0" IsEnabled="{Binding UseSystemAccent, Converter={StaticResource InverseBool}}">
+                        <ItemsControl ItemsSource="{Binding AccentSwatches}" ItemsPanel="{StaticResource SwatchPanel}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:ColorSwatch}">
+                                    <Button Style="{StaticResource Button.Swatch}" ToolTip="{Binding Hex}" AutomationProperties.Name="{Binding Hex}"
+                                            Command="{Binding DataContext.SelectAccentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding Hex}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_CustomHex}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBox Width="120" Text="{Binding AccentInput, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     AutomationProperties.Name="{l:Loc Appearance_CustomHex}">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Enter" Command="{Binding ApplyAccentInputCommand}" />
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Button Content="{l:Loc Common_Apply}" Margin="8,0,0,0" Command="{Binding ApplyAccentInputCommand}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                       Text="{l:Loc Appearance_InvalidHex}" Visibility="{Binding IsAccentInputInvalid, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Transparency -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Appearance_Transparency}" Margin="0,16,0,10" />
+            <Border Style="{StaticResource SettingCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xF0E2;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_Transparency}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_Transparency_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="2" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding TransparencyEnabled}"
+                                  IsEnabled="{Binding IsTransparencySupported}" VerticalAlignment="Center"
+                                  AutomationProperties.Name="{l:Loc Appearance_Transparency}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid Margin="36,0,0,0" IsEnabled="{Binding TransparencyEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Slider Minimum="0" Maximum="90" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10"
+                                Value="{Binding Transparency}" IsEnabled="{Binding IsTransparencySupported}"
+                                AutomationProperties.Name="{l:Loc Appearance_Transparency}" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="16,0,0,0" MinWidth="150" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding Transparency, StringFormat={}{0} %}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="TransparencyLevel_">
+                                        <Binding Path="TransparencyLevel" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextTertiary}"
+                                   Text="{l:Loc Appearance_Readability}" Margin="0,6,0,0" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid Margin="36,0,0,0" IsEnabled="{Binding TransparencyEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_Material}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_Material_Desc}" />
+                        </StackPanel>
+                        <Border Grid.Column="1" Style="{StaticResource SegmentHost}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Backdrop" Content="{l:Loc Backdrop_Auto}"
+                                             IsChecked="{Binding Backdrop, Converter={StaticResource EnumEquals}, ConverterParameter=Auto}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Backdrop" Content="{l:Loc Backdrop_Mica}" IsEnabled="{Binding IsMicaSupported}"
+                                             IsChecked="{Binding Backdrop, Converter={StaticResource EnumEquals}, ConverterParameter=Mica}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Backdrop" Content="{l:Loc Backdrop_Acrylic}" IsEnabled="{Binding IsAcrylicSupported}"
+                                             IsChecked="{Binding Backdrop, Converter={StaticResource EnumEquals}, ConverterParameter=Acrylic}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Backdrop" Content="{l:Loc Backdrop_Blur}" IsEnabled="{Binding IsBlurSupported}"
+                                             IsChecked="{Binding Backdrop, Converter={StaticResource EnumEquals}, ConverterParameter=Blur}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Live status of what is actually applied -->
+                    <Border Margin="36,16,0,0" CornerRadius="6" Padding="12,8" Background="{DynamicResource Brush.SubtleHover}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE946;" FontSize="14" Margin="0,0,10,0" Foreground="{DynamicResource Brush.TextSecondary}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_Status}" Margin="0,0,6,0" />
+                            <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="BackdropKind_">
+                                        <Binding Path="ActiveBackdrop" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <TextBlock Style="{StaticResource Text.Caption}" Margin="6,0,0,0">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="BackdropStatus_">
+                                        <Binding Path="BackdropStatus" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Background -->
+            <Border Style="{StaticResource SettingCard}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource RowIcon}" Text="&#xE91B;" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_Background}" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_Background_Desc}" />
+                    </StackPanel>
+                    <Border Grid.Column="2" Style="{StaticResource SegmentHost}" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Background" Content="{l:Loc Background_Plain}"
+                                         IsChecked="{Binding Background, Converter={StaticResource EnumEquals}, ConverterParameter=Plain}" />
+                            <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Background" Content="{l:Loc Background_AccentTint}"
+                                         IsChecked="{Binding Background, Converter={StaticResource EnumEquals}, ConverterParameter=AccentTint}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Layout -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Appearance_Layout}" Margin="0,16,0,10" />
+            <Border Style="{StaticResource SettingCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE700;" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_Sidebar}" VerticalAlignment="Center" />
+                        <Border Grid.Column="2" Style="{StaticResource SegmentHost}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Sidebar" Content="{l:Loc Sidebar_Expanded}"
+                                             IsChecked="{Binding SidebarCollapsed, Converter={StaticResource BoolEquals}, ConverterParameter=False}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Sidebar" Content="{l:Loc Sidebar_Compact}"
+                                             IsChecked="{Binding SidebarCollapsed, Converter={StaticResource BoolEquals}, ConverterParameter=True}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xF0E3;" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_Density}" VerticalAlignment="Center" />
+                        <Border Grid.Column="2" Style="{StaticResource SegmentHost}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Density" Content="{l:Loc Density_Compact}"
+                                             IsChecked="{Binding Density, Converter={StaticResource EnumEquals}, ConverterParameter=Compact}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Density" Content="{l:Loc Density_Comfortable}"
+                                             IsChecked="{Binding Density, Converter={StaticResource EnumEquals}, ConverterParameter=Comfortable}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Density" Content="{l:Loc Density_Spacious}"
+                                             IsChecked="{Binding Density, Converter={StaticResource EnumEquals}, ConverterParameter=Spacious}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE71A;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_Corners}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_Corners_Unsupported}"
+                                       Visibility="{Binding IsCornerStyleSupported, Converter={StaticResource InverseBoolToVisibility}}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource SegmentHost}" IsEnabled="{Binding IsCornerStyleSupported}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Corners" Content="{l:Loc Corners_Default}"
+                                             IsChecked="{Binding CornerStyle, Converter={StaticResource EnumEquals}, ConverterParameter=Default}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Corners" Content="{l:Loc Corners_Rounded}"
+                                             IsChecked="{Binding CornerStyle, Converter={StaticResource EnumEquals}, ConverterParameter=Rounded}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Corners" Content="{l:Loc Corners_RoundedSmall}"
+                                             IsChecked="{Binding CornerStyle, Converter={StaticResource EnumEquals}, ConverterParameter=RoundedSmall}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Corners" Content="{l:Loc Corners_Square}"
+                                             IsChecked="{Binding CornerStyle, Converter={StaticResource EnumEquals}, ConverterParameter=Square}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Scaling and text -->
+            <Border Style="{StaticResource SettingCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE740;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_UiScale}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_UiScale_Desc}" />
+                        </StackPanel>
+                        <Slider Grid.Column="2" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10"
+                                Value="{Binding UiScalePercent, Delay=400}" VerticalAlignment="Center"
+                                AutomationProperties.Name="{l:Loc Appearance_UiScale}" />
+                        <TextBlock Grid.Column="3" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Margin="12,0,0,0" MinWidth="48" VerticalAlignment="Center"
+                                   Text="{Binding UiScalePercent, StringFormat={}{0} %}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE8D2;" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_TextSize}" VerticalAlignment="Center" />
+                        <Border Grid.Column="2" Style="{StaticResource SegmentHost}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="TextSize" Content="{l:Loc TextSize_Small}"
+                                             IsChecked="{Binding TextSize, Converter={StaticResource EnumEquals}, ConverterParameter=Small}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="TextSize" Content="{l:Loc TextSize_Default}"
+                                             IsChecked="{Binding TextSize, Converter={StaticResource EnumEquals}, ConverterParameter=Default}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="TextSize" Content="{l:Loc TextSize_Large}"
+                                             IsChecked="{Binding TextSize, Converter={StaticResource EnumEquals}, ConverterParameter=Large}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="TextSize" Content="{l:Loc TextSize_ExtraLarge}"
+                                             IsChecked="{Binding TextSize, Converter={StaticResource EnumEquals}, ConverterParameter=ExtraLarge}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE916;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_Animations}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_Animations_Desc}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource SegmentHost}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Animations" Content="{l:Loc Animations_Off}"
+                                             IsChecked="{Binding Animations, Converter={StaticResource EnumEquals}, ConverterParameter=Off}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Animations" Content="{l:Loc Animations_Reduced}"
+                                             IsChecked="{Binding Animations, Converter={StaticResource EnumEquals}, ConverterParameter=Reduced}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="Animations" Content="{l:Loc Animations_Normal}"
+                                             IsChecked="{Binding Animations, Converter={StaticResource EnumEquals}, ConverterParameter=Normal}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Button HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding ResetCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE777;" FontSize="13" Margin="0,0,8,0" />
+                    <TextBlock Text="{l:Loc Appearance_Reset}" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

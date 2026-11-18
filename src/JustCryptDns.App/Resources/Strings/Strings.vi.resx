@@ -348,8 +348,218 @@
   <data name="Theme_System" xml:space="preserve">
     <value>Hệ thống</value>
   </data>
-  <data name="Settings_AppearanceMore" xml:space="preserve">
-    <value>Độ trong suốt, màu nhấn, tỉ lệ hiển thị và các tùy chọn giao diện khác sẽ có ở Giai đoạn 2.</value>
+  <data name="Theme_Custom" xml:space="preserve">
+    <value>Tùy chỉnh</value>
+  </data>
+  <data name="Common_Apply" xml:space="preserve">
+    <value>Áp dụng</value>
+  </data>
+  <data name="Settings_AppearanceLink_Title" xml:space="preserve">
+    <value>Tùy chỉnh giao diện &amp; độ trong suốt</value>
+  </data>
+  <data name="Settings_AppearanceLink_Desc" xml:space="preserve">
+    <value>Điều chỉnh độ trong suốt cửa sổ (0–90 %), hiệu ứng nền, màu nhấn, tỉ lệ hiển thị, cỡ chữ, mật độ thẻ và chuyển động.</value>
+  </data>
+  <data name="Settings_OpenAppearance" xml:space="preserve">
+    <value>Tùy chỉnh giao diện</value>
+  </data>
+  <data name="Appearance_Title" xml:space="preserve">
+    <value>Giao diện</value>
+  </data>
+  <data name="Page_Appearance_Subtitle" xml:space="preserve">
+    <value>Tùy chỉnh chủ đề, độ trong suốt cửa sổ, màu nhấn, mật độ bố cục, tỉ lệ hiển thị và hiệu ứng chuyển động.</value>
+  </data>
+  <data name="Appearance_CustomBase" xml:space="preserve">
+    <value>Bảng màu gốc</value>
+  </data>
+  <data name="Appearance_CustomBase_Desc" xml:space="preserve">
+    <value>Chọn nền sáng hoặc tối trước khi pha màu bề mặt.</value>
+  </data>
+  <data name="Appearance_CustomTint" xml:space="preserve">
+    <value>Màu pha bề mặt</value>
+  </data>
+  <data name="Appearance_Accent" xml:space="preserve">
+    <value>Màu nhấn</value>
+  </data>
+  <data name="Appearance_Accent_Desc" xml:space="preserve">
+    <value>Dùng cho nút chính, chỉ báo đang hoạt động và điểm nhấn.</value>
+  </data>
+  <data name="Appearance_UseSystemAccent" xml:space="preserve">
+    <value>Dùng màu nhấn của Windows</value>
+  </data>
+  <data name="Appearance_CustomHex" xml:space="preserve">
+    <value>Mã màu tùy chỉnh (#RRGGBB)</value>
+  </data>
+  <data name="Appearance_InvalidHex" xml:space="preserve">
+    <value>Hãy nhập mã màu hợp lệ, ví dụ #4F8CFF.</value>
+  </data>
+  <data name="Appearance_Transparency" xml:space="preserve">
+    <value>Độ trong suốt cửa sổ</value>
+  </data>
+  <data name="Appearance_Transparency_Desc" xml:space="preserve">
+    <value>0 % là hoàn toàn đục; tối đa 90 % cho phép nhìn xuyên qua nền màn hình bằng hiệu ứng tổng hợp của Windows.</value>
+  </data>
+  <data name="Appearance_Readability" xml:space="preserve">
+    <value>Thẻ và văn bản tự động giữ độ tương phản để luôn dễ đọc ở mọi mức độ trong suốt.</value>
+  </data>
+  <data name="Appearance_Material" xml:space="preserve">
+    <value>Chất liệu nền trong suốt</value>
+  </data>
+  <data name="Appearance_Material_Desc" xml:space="preserve">
+    <value>Mica và Acrylic yêu cầu Windows 11 22H2+; Windows 10 tự động dùng hiệu ứng làm mờ DWM.</value>
+  </data>
+  <data name="Backdrop_Auto" xml:space="preserve">
+    <value>Tự động</value>
+  </data>
+  <data name="Backdrop_Mica" xml:space="preserve">
+    <value>Mica</value>
+  </data>
+  <data name="Backdrop_Acrylic" xml:space="preserve">
+    <value>Acrylic</value>
+  </data>
+  <data name="Backdrop_Blur" xml:space="preserve">
+    <value>Làm mờ</value>
+  </data>
+  <data name="Appearance_Status" xml:space="preserve">
+    <value>Chất liệu đang dùng:</value>
+  </data>
+  <data name="BackdropKind_None" xml:space="preserve">
+    <value>Nền đặc (không dùng)</value>
+  </data>
+  <data name="BackdropKind_Mica" xml:space="preserve">
+    <value>Mica (Windows 11)</value>
+  </data>
+  <data name="BackdropKind_Acrylic" xml:space="preserve">
+    <value>Acrylic (Windows 11)</value>
+  </data>
+  <data name="BackdropKind_Blur" xml:space="preserve">
+    <value>Làm mờ DWM (Windows)</value>
+  </data>
+  <data name="BackdropStatus_Active" xml:space="preserve">
+    <value>· đang hoạt động</value>
+  </data>
+  <data name="BackdropStatus_Disabled" xml:space="preserve">
+    <value>· đã tắt độ trong suốt</value>
+  </data>
+  <data name="BackdropStatus_ZeroTransparency" xml:space="preserve">
+    <value>· thanh trượt ở 0 % (nền đặc)</value>
+  </data>
+  <data name="BackdropStatus_Unsupported" xml:space="preserve">
+    <value>· hệ thống không hỗ trợ (chuyển về nền đặc)</value>
+  </data>
+  <data name="BackdropStatus_ApiFailed" xml:space="preserve">
+    <value>· API tổng hợp không khả dụng (chuyển về nền đặc)</value>
+  </data>
+  <data name="BackdropStatus_WindowNotReady" xml:space="preserve">
+    <value>· đang khởi tạo cửa sổ</value>
+  </data>
+  <data name="TransparencyLevel_Opaque" xml:space="preserve">
+    <value>Nền đặc</value>
+  </data>
+  <data name="TransparencyLevel_Slight" xml:space="preserve">
+    <value>Hơi trong suốt</value>
+  </data>
+  <data name="TransparencyLevel_Moderate" xml:space="preserve">
+    <value>Trong suốt vừa phải</value>
+  </data>
+  <data name="TransparencyLevel_Strong" xml:space="preserve">
+    <value>Trong suốt mạnh</value>
+  </data>
+  <data name="TransparencyLevel_High" xml:space="preserve">
+    <value>Rất trong suốt</value>
+  </data>
+  <data name="Appearance_Background" xml:space="preserve">
+    <value>Kiểu nền cửa sổ</value>
+  </data>
+  <data name="Appearance_Background_Desc" xml:space="preserve">
+    <value>Ánh sáng chuyển sắc nhẹ theo màu nhấn hiện tại ở góc cửa sổ.</value>
+  </data>
+  <data name="Background_Plain" xml:space="preserve">
+    <value>Đơn giản</value>
+  </data>
+  <data name="Background_AccentTint" xml:space="preserve">
+    <value>Ánh màu nhấn</value>
+  </data>
+  <data name="Appearance_Layout" xml:space="preserve">
+    <value>Bố cục &amp; hình học</value>
+  </data>
+  <data name="Appearance_Sidebar" xml:space="preserve">
+    <value>Chế độ thanh bên</value>
+  </data>
+  <data name="Sidebar_Expanded" xml:space="preserve">
+    <value>Mở rộng</value>
+  </data>
+  <data name="Sidebar_Compact" xml:space="preserve">
+    <value>Thu gọn</value>
+  </data>
+  <data name="Appearance_Density" xml:space="preserve">
+    <value>Mật độ thẻ</value>
+  </data>
+  <data name="Density_Compact" xml:space="preserve">
+    <value>Gọn</value>
+  </data>
+  <data name="Density_Comfortable" xml:space="preserve">
+    <value>Cân đối</value>
+  </data>
+  <data name="Density_Spacious" xml:space="preserve">
+    <value>Thoáng</value>
+  </data>
+  <data name="Appearance_Corners" xml:space="preserve">
+    <value>Góc cửa sổ</value>
+  </data>
+  <data name="Appearance_Corners_Unsupported" xml:space="preserve">
+    <value>Bo góc cửa sổ bằng phần cứng yêu cầu Windows 11.</value>
+  </data>
+  <data name="Corners_Default" xml:space="preserve">
+    <value>Mặc định</value>
+  </data>
+  <data name="Corners_Rounded" xml:space="preserve">
+    <value>Bo tròn</value>
+  </data>
+  <data name="Corners_RoundedSmall" xml:space="preserve">
+    <value>Bo nhỏ</value>
+  </data>
+  <data name="Corners_Square" xml:space="preserve">
+    <value>Vuông</value>
+  </data>
+  <data name="Appearance_UiScale" xml:space="preserve">
+    <value>Tỉ lệ giao diện</value>
+  </data>
+  <data name="Appearance_UiScale_Desc" xml:space="preserve">
+    <value>Phóng to/thu nhỏ giao diện độc lập trên tỉ lệ DPI của Windows (80 % – 150 %).</value>
+  </data>
+  <data name="Appearance_TextSize" xml:space="preserve">
+    <value>Cỡ chữ</value>
+  </data>
+  <data name="TextSize_Small" xml:space="preserve">
+    <value>Nhỏ</value>
+  </data>
+  <data name="TextSize_Default" xml:space="preserve">
+    <value>Mặc định</value>
+  </data>
+  <data name="TextSize_Large" xml:space="preserve">
+    <value>Lớn</value>
+  </data>
+  <data name="TextSize_ExtraLarge" xml:space="preserve">
+    <value>Rất lớn</value>
+  </data>
+  <data name="Appearance_Animations" xml:space="preserve">
+    <value>Mức độ chuyển động</value>
+  </data>
+  <data name="Appearance_Animations_Desc" xml:space="preserve">
+    <value>Điều chỉnh tốc độ chuyển trang hoặc tắt hoàn toàn hiệu ứng chuyển động.</value>
+  </data>
+  <data name="Animations_Off" xml:space="preserve">
+    <value>Tắt</value>
+  </data>
+  <data name="Animations_Reduced" xml:space="preserve">
+    <value>Giảm nhẹ</value>
+  </data>
+  <data name="Animations_Normal" xml:space="preserve">
+    <value>Bình thường</value>
+  </data>
+  <data name="Appearance_Reset" xml:space="preserve">
+    <value>Khôi phục giao diện mặc định</value>
   </data>
   <data name="Settings_About" xml:space="preserve">
     <value>Giới thiệu</value>

@@ -111,7 +111,77 @@ Settings_Theme_Desc|System follows the Windows app mode setting.|Theo hệ thố
 Theme_Dark|Dark|Tối
 Theme_Light|Light|Sáng
 Theme_System|System|Hệ thống
-Settings_AppearanceMore|Transparency, accent color, scaling and more appearance options arrive in Phase 2.|Độ trong suốt, màu nhấn, tỉ lệ hiển thị và các tùy chọn giao diện khác sẽ có ở Giai đoạn 2.
+Theme_Custom|Custom|Tùy chỉnh
+Common_Apply|Apply|Áp dụng
+Settings_AppearanceLink_Title|Advanced appearance & transparency|Tùy chỉnh giao diện & độ trong suốt
+Settings_AppearanceLink_Desc|Adjust window transparency (0–90 %), backdrop material, accent color, scaling, text size, density and motion.|Điều chỉnh độ trong suốt cửa sổ (0–90 %), hiệu ứng nền, màu nhấn, tỉ lệ hiển thị, cỡ chữ, mật độ thẻ và chuyển động.
+Settings_OpenAppearance|Customize appearance|Tùy chỉnh giao diện
+Appearance_Title|Appearance|Giao diện
+Page_Appearance_Subtitle|Customize theme, window transparency, accent colors, layout density, scaling and motion.|Tùy chỉnh chủ đề, độ trong suốt cửa sổ, màu nhấn, mật độ bố cục, tỉ lệ hiển thị và hiệu ứng chuyển động.
+Appearance_CustomBase|Base palette|Bảng màu gốc
+Appearance_CustomBase_Desc|Choose the base luminance before applying the surface tint.|Chọn nền sáng hoặc tối trước khi pha màu bề mặt.
+Appearance_CustomTint|Surface tint color|Màu pha bề mặt
+Appearance_Accent|Accent color|Màu nhấn
+Appearance_Accent_Desc|Used for primary actions, active indicators and highlights.|Dùng cho nút chính, chỉ báo đang hoạt động và điểm nhấn.
+Appearance_UseSystemAccent|Use Windows accent color|Dùng màu nhấn của Windows
+Appearance_CustomHex|Custom hex (#RRGGBB)|Mã màu tùy chỉnh (#RRGGBB)
+Appearance_InvalidHex|Enter a valid color such as #4F8CFF.|Hãy nhập mã màu hợp lệ, ví dụ #4F8CFF.
+Appearance_Transparency|Window transparency|Độ trong suốt cửa sổ
+Appearance_Transparency_Desc|0 % is fully opaque; up to 90 % lets the desktop shine through using Windows composition.|0 % là hoàn toàn đục; tối đa 90 % cho phép nhìn xuyên qua nền màn hình bằng hiệu ứng tổng hợp của Windows.
+Appearance_Readability|Cards and text automatically preserve contrast so controls stay readable at every level.|Thẻ và văn bản tự động giữ độ tương phản để luôn dễ đọc ở mọi mức độ trong suốt.
+Appearance_Material|Backdrop material|Chất liệu nền trong suốt
+Appearance_Material_Desc|Mica and Acrylic require Windows 11 22H2+; Windows 10 uses DWM blur automatically.|Mica và Acrylic yêu cầu Windows 11 22H2+; Windows 10 tự động dùng hiệu ứng làm mờ DWM.
+Backdrop_Auto|Auto|Tự động
+Backdrop_Mica|Mica|Mica
+Backdrop_Acrylic|Acrylic|Acrylic
+Backdrop_Blur|Blur|Làm mờ
+Appearance_Status|Active material:|Chất liệu đang dùng:
+BackdropKind_None|Opaque (none)|Nền đặc (không dùng)
+BackdropKind_Mica|Windows 11 Mica|Mica (Windows 11)
+BackdropKind_Acrylic|Windows 11 Acrylic|Acrylic (Windows 11)
+BackdropKind_Blur|Windows DWM Blur|Làm mờ DWM (Windows)
+BackdropStatus_Active|· active|· đang hoạt động
+BackdropStatus_Disabled|· transparency disabled|· đã tắt độ trong suốt
+BackdropStatus_ZeroTransparency|· slider at 0 % (opaque)|· thanh trượt ở 0 % (nền đặc)
+BackdropStatus_Unsupported|· not supported on this system (opaque fallback)|· hệ thống không hỗ trợ (chuyển về nền đặc)
+BackdropStatus_ApiFailed|· composition API unavailable (opaque fallback)|· API tổng hợp không khả dụng (chuyển về nền đặc)
+BackdropStatus_WindowNotReady|· initializing window handle|· đang khởi tạo cửa sổ
+TransparencyLevel_Opaque|Opaque|Nền đặc
+TransparencyLevel_Slight|Slightly transparent|Hơi trong suốt
+TransparencyLevel_Moderate|Moderate transparency|Trong suốt vừa phải
+TransparencyLevel_Strong|Strong transparency|Trong suốt mạnh
+TransparencyLevel_High|Highly transparent|Rất trong suốt
+Appearance_Background|Background style|Kiểu nền cửa sổ
+Appearance_Background_Desc|Optional subtle radial glow in the current accent color.|Ánh sáng chuyển sắc nhẹ theo màu nhấn hiện tại ở góc cửa sổ.
+Background_Plain|Plain|Đơn giản
+Background_AccentTint|Accent glow|Ánh màu nhấn
+Appearance_Layout|Layout & geometry|Bố cục & hình học
+Appearance_Sidebar|Sidebar mode|Chế độ thanh bên
+Sidebar_Expanded|Expanded|Mở rộng
+Sidebar_Compact|Compact|Thu gọn
+Appearance_Density|Card density|Mật độ thẻ
+Density_Compact|Compact|Gọn
+Density_Comfortable|Comfortable|Cân đối
+Density_Spacious|Spacious|Thoáng
+Appearance_Corners|Window corners|Góc cửa sổ
+Appearance_Corners_Unsupported|Hardware-rounded window corners require Windows 11.|Bo góc cửa sổ bằng phần cứng yêu cầu Windows 11.
+Corners_Default|System|Mặc định
+Corners_Rounded|Rounded|Bo tròn
+Corners_RoundedSmall|Small round|Bo nhỏ
+Corners_Square|Square|Vuông
+Appearance_UiScale|Interface scaling|Tỉ lệ giao diện
+Appearance_UiScale_Desc|Scales the interface independently on top of Windows DPI scaling (80 % – 150 %).|Phóng to/thu nhỏ giao diện độc lập trên tỉ lệ DPI của Windows (80 % – 150 %).
+Appearance_TextSize|Font size|Cỡ chữ
+TextSize_Small|Small|Nhỏ
+TextSize_Default|Default|Mặc định
+TextSize_Large|Large|Lớn
+TextSize_ExtraLarge|Extra large|Rất lớn
+Appearance_Animations|Animation intensity|Mức độ chuyển động
+Appearance_Animations_Desc|Controls page transition speed or disables motion completely.|Điều chỉnh tốc độ chuyển trang hoặc tắt hoàn toàn hiệu ứng chuyển động.
+Animations_Off|Off|Tắt
+Animations_Reduced|Reduced|Giảm nhẹ
+Animations_Normal|Normal|Bình thường
+Appearance_Reset|Reset appearance to defaults|Khôi phục giao diện mặc định
 Settings_About|About|Giới thiệu
 Settings_Version|Version|Phiên bản
 Settings_OS|Operating system|Hệ điều hành

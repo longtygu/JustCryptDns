@@ -13,7 +13,7 @@
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Brush.WindowBackground}"
         Foreground="{DynamicResource Brush.TextPrimary}"
-        FontFamily="{StaticResource Font.UI}" FontSize="13"
+        FontFamily="{StaticResource Font.UI}" FontSize="{DynamicResource Font.Size.Body}"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
         Icon="/Resources/AppIcon.ico">
 
@@ -64,7 +64,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Style="{StaticResource Text.Icon}" Text="{Binding Glyph}" FontSize="16" />
-                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13.5" TextTrimming="CharacterEllipsis"
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="{DynamicResource Font.Size.BodyLarge}" TextTrimming="CharacterEllipsis"
                            Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource LocKey}">
@@ -78,10 +78,15 @@
     </Window.Resources>
 
     <Grid x:Name="RootGrid">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+        <Border Background="{DynamicResource Brush.BackgroundDecoration}" IsHitTestVisible="False" />
+        <Grid x:Name="ScaledRoot">
+            <Grid.LayoutTransform>
+                <ScaleTransform ScaleX="{DynamicResource Ui.Scale}" ScaleY="{DynamicResource Ui.Scale}" />
+            </Grid.LayoutTransform>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
         <!-- Sidebar -->
         <Border x:Name="Sidebar" Grid.Column="0" Background="{DynamicResource Brush.Sidebar}"
@@ -114,20 +119,20 @@
                                 Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
                         <ContentPresenter ContentTemplate="{StaticResource Logo}" VerticalAlignment="Center" />
                         <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="{l:Loc App_Name}" FontSize="14" FontWeight="SemiBold" />
-                            <TextBlock Text="{l:Loc App_Tagline}" FontSize="11" Foreground="{DynamicResource Brush.TextTertiary}" />
+                            <TextBlock Text="{l:Loc App_Name}" FontSize="{DynamicResource Font.Size.AppName}" FontWeight="SemiBold" />
+                            <TextBlock Text="{l:Loc App_Tagline}" FontSize="{DynamicResource Font.Size.Small}" Foreground="{DynamicResource Brush.TextTertiary}" />
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
 
                 <ListBox Grid.Row="1" Style="{StaticResource Nav.List}" ItemContainerStyle="{StaticResource Nav.Item}"
                          ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNavItem}"
-                         ItemTemplate="{StaticResource NavItemTemplate}" />
+                         ItemTemplate="{StaticResource NavItemTemplate}" PreviewMouseLeftButtonUp="OnNavListMouseUp" />
 
                 <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,1,0,0" Padding="0,6,0,10">
                     <ListBox Style="{StaticResource Nav.List}" ItemContainerStyle="{StaticResource Nav.Item}"
                              ItemsSource="{Binding FooterItems}" SelectedItem="{Binding SelectedFooterItem}"
-                             ItemTemplate="{StaticResource NavItemTemplate}" />
+                             ItemTemplate="{StaticResource NavItemTemplate}" PreviewMouseLeftButtonUp="OnNavListMouseUp" />
                 </Border>
             </Grid>
         </Border>
@@ -152,6 +157,7 @@
             </StackPanel>
 
             <controls:AnimatedContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+        </Grid>
         </Grid>
     </Grid>
 </Window>

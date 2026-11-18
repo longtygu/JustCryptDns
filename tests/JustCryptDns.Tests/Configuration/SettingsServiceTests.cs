@@ -49,6 +49,24 @@ public sealed class SettingsServiceTests
         Assert.Equal(AppTheme.Light, service.Current.Appearance.Theme);
     }
 
+    [Fact]
+    public async Task UpdateDeferred_UpdatesCurrentImmediatelyAndFlushesOnce()
+    {
+        var store = new InMemoryStore();
+        using var service = new SettingsService(store, NullLogger<SettingsService>.Instance);
+
+        service.UpdateDeferred(s => s.Appearance.Transparency = 20);
+        service.UpdateDeferred(s => s.Appearance.Transparency = 45);
+        service.UpdateDeferred(s => s.Appearance.Transparency = 60);
+
+        Assert.Equal(60, service.Current.Appearance.Transparency);
+        Assert.Equal(0, store.SaveCount);
+
+        await service.FlushAsync();
+
+        Assert.Equal(1, store.SaveCount);
+    }
+
     private sealed class InMemoryStore : ISettingsStore
     {
         public int SaveCount { get; private set; }

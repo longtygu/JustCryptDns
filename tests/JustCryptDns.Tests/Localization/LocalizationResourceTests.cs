@@ -88,6 +88,9 @@ public sealed partial class LocalizationResourceTests
         expected.AddRange(Enum.GetNames<AdapterKind>().Select(n => "AdapterKind_" + n));
         expected.AddRange(Enum.GetNames<IpFamilyStatus>().Select(n => "IpStatus_" + n));
         expected.AddRange(Enum.GetNames<AppTheme>().Select(n => "Theme_" + n));
+        expected.AddRange(Enum.GetNames<JustCryptDns.App.Services.BackdropKind>().Select(n => "BackdropKind_" + n));
+        expected.AddRange(Enum.GetNames<JustCryptDns.App.Services.BackdropStatus>().Select(n => "BackdropStatus_" + n));
+        expected.AddRange(Enum.GetNames<JustCryptDns.App.Services.TransparencyLevel>().Select(n => "TransparencyLevel_" + n));
         expected.AddRange(LanguageCodes.All.Select(c => "Lang_" + c));
 
         foreach (var page in new[] { "DnsManager", "Resolvers", "Routing", "Gaming", "Filtering", "Diagnostics", "Monitor" })

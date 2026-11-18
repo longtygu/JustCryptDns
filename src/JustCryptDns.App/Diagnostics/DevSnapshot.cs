@@ -30,16 +30,43 @@ internal static class DevSnapshot
         window.ContentRendered += async (_, _) =>
         {
             Directory.CreateDirectory(dir);
-            foreach (var page in pages)
+            foreach (var raw in pages)
             {
+                var scrollBottom = raw.EndsWith(":bottom", StringComparison.OrdinalIgnoreCase);
+                var page = scrollBottom ? raw[..^7] : raw;
                 shell.NavigateTo(page);
                 await Task.Delay(1500); // allow async data + transition to settle
+                if (scrollBottom)
+                {
+                    FindScrollViewer(window)?.ScrollToEnd();
+                }
+
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
-                var path = Path.Combine(dir, $"{page}{suffix}.png");
+                var tag = scrollBottom ? "-bottom" : string.Empty;
+                var path = Path.Combine(dir, $"{page}{tag}{suffix}.png");
                 Save(window, path);
                 logger.LogInformation("Dev snapshot written: {Path}", path);
             }
         };
+    }
+
+    private static System.Windows.Controls.ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is System.Windows.Controls.ScrollViewer sv && sv.ScrollableHeight > 0)
+            {
+                return sv;
+            }
+
+            if (FindScrollViewer(child) is { } nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
     }
 
     private static void Save(Window window, string path)
@@ -55,11 +82,24 @@ internal static class DevSnapshot
         var bitmap = new RenderTargetBitmap(width, height, dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
 
         // Paint the window background first (it belongs to the Window, not the root element).
+        // When the window background is translucent, composite over a synthetic wallpaper gradient
+        // so automated PNG snapshots show the surface opacity hierarchy clearly.
+        var rect = new Rect(0, 0, root.ActualWidth, root.ActualHeight);
         var visual = new DrawingVisual();
         using (var context = visual.RenderOpen())
         {
-            context.DrawRectangle(window.Background, null, new Rect(0, 0, root.ActualWidth, root.ActualHeight));
-            context.DrawRectangle(new VisualBrush(root), null, new Rect(0, 0, root.ActualWidth, root.ActualHeight));
+            if (window.Background is SolidColorBrush { Color.A: < 255 })
+            {
+                var wallpaper = new LinearGradientBrush(
+                    Color.FromRgb(0x1E, 0x3A, 0x8A),
+                    Color.FromRgb(0x6D, 0x28, 0xD9),
+                    new Point(0, 0),
+                    new Point(1, 1));
+                context.DrawRectangle(wallpaper, null, rect);
+            }
+
+            context.DrawRectangle(window.Background, null, rect);
+            context.DrawRectangle(new VisualBrush(root), null, rect);
         }
 
         bitmap.Render(visual);

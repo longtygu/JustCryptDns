@@ -16,6 +16,7 @@ public sealed class PageFactory : IPageFactory
     {
         PageKeys.Dashboard => _services.GetRequiredService<DashboardViewModel>(),
         PageKeys.Settings => _services.GetRequiredService<SettingsViewModel>(),
+        PageKeys.Appearance => _services.GetRequiredService<AppearanceViewModel>(),
         PageKeys.DnsManager => new PlannedFeatureViewModel(pageKey, phase: 4, featureCount: 4),
         PageKeys.Resolvers => new PlannedFeatureViewModel(pageKey, phase: 5, featureCount: 4),
         PageKeys.Routing => new PlannedFeatureViewModel(pageKey, phase: 6, featureCount: 4),

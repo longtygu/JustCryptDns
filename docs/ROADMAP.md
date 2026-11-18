@@ -67,8 +67,8 @@ flowchart LR
 
 | # | Phase | Deliverables | Verification |
 |---|---|---|---|
-| 1 | Foundation & modern UI | Solution, DI, Serilog, versioned settings store, localization (en/vi), theme engine (dark/light/system), custom-chrome shell, collapsible sidebar, 9 pages, real network-adapter info on Dashboard, unit tests | Build, tests, launch + screenshot |
-| 2 | Appearance & transparency | Appearance page: theme, transparency 0–90 % (backdrop engine), accent picker, sidebar mode, UI scale, font size, animation intensity, density, corner style, background, reset | Visual verification on Win10; Win11 path guarded |
+| 1 | Foundation & modern UI ✅ | Solution, DI, Serilog, versioned settings store, localization (en/vi), theme engine (dark/light/system), custom-chrome shell, collapsible sidebar, 9 pages, real network-adapter info on Dashboard, unit tests | Build, tests, launch + screenshot |
+| 2 | Appearance & transparency ✅ | Appearance page: theme (incl. Custom), transparency 0–90 % (backdrop engine), accent picker, sidebar mode, UI scale, font size, animation intensity, density, corner style, background, reset | Visual verification on Win10; Win11 path guarded |
 | 3 | Service, tray, startup | Windows Service host, named-pipe IPC, tray icon + menu, close behavior, Run-key startup, start minimized | Install service locally (admin), IPC round-trip tests |
 | 4 | DNS engine | Wire format, UDP/TCP/DoH/DoT upstreams, local proxy (port conflict + loop detection), dnscrypt-proxy download/verify/manage/update, Windows DNS apply/backup/verify/rollback, emergency restore | Real resolution through proxy, nslookup against 127.0.0.1 |
 | 5 | Resolver management | Provider catalog (validated), CRUD, groups, import/export, health checks, dnscrypt `public-resolvers.md` parsing (signed) | Tests + live checks |
@@ -78,7 +78,7 @@ flowchart LR
 | 9 | Resilience | Failover policies, retry, UDP/TCP 53 blocking detection, handshake/DoH failure diagnostics, IPv4/IPv6 checks | Fault-injection tests |
 | 10 | Diagnostics & monitor | Diagnostics page tools (lookup, DNSSEC, DoH/DNSCrypt test, comparison, leak test, propagation), virtualized live query log | Manual + tests |
 | 11 | Resource optimization | Monitoring modes, perf diagnostics mode, measurements of RAM/CPU/startup | Recorded measurements |
-| 12 | Testing & release | Remaining tests, self-contained publish, installer (Inno Setup proposed), portable ZIP, docs, licenses | Clean-machine install test |
+| 12 | Testing & release | Remaining tests, self-contained publish, installer (Inno Setup), portable ZIP, docs, licenses | Clean-machine install test |
 
 ## 6. Honesty rules applied throughout
 
@@ -86,8 +86,8 @@ flowchart LR
 - Status indicators only show "protected/healthy" after verification.
 - DNS latency is never presented as game ping.
 
-## 7. Open decisions (can be answered any time)
+## 7. Confirmed architectural decisions
 
-1. **License** for the project (MIT proposed).
-2. **Installer technology** (Inno Setup proposed — simple, supports service install/uninstall).
-3. Whether the **service runs as LocalSystem** (needed for adapter DNS changes and port 53) — proposed yes.
+1. **License:** MIT (`LICENSE` at repository root).
+2. **Installer technology:** Inno Setup (service install/uninstall + portable ZIP in Phase 12).
+3. **Background service account:** `LocalSystem` (required for adapter DNS configuration and binding UDP/TCP port 53).

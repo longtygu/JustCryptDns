@@ -32,6 +32,26 @@ public sealed class NullToVisibilityConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
+/// <summary>Negates a boolean value.</summary>
+public sealed class InverseBoolConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is not true;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is not true;
+}
+
+/// <summary>Two-way binding of a bool property to a RadioButton: ConverterParameter is "True" or "False".</summary>
+public sealed class BoolEqualsConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is bool b && parameter is string p && bool.TryParse(p, out var expected) && b == expected;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true && parameter is string p && bool.TryParse(p, out var expected) ? expected : Binding.DoNothing;
+}
+
 /// <summary>Two-way binding of an enum property to a RadioButton: ConverterParameter is the enum member name.</summary>
 public sealed class EnumEqualsConverter : IValueConverter
 {

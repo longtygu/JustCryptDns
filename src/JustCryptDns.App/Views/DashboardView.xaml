@@ -13,14 +13,14 @@
             <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
         <Style x:Key="ValueText" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
-            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
         </Style>
         <Style x:Key="Cell" TargetType="StackPanel">
             <Setter Property="Margin" Value="0,0,24,18" />
         </Style>
         <Style x:Key="MetricCard" TargetType="Border" BasedOn="{StaticResource Card}">
-            <Setter Property="Margin" Value="0,0,12,12" />
-            <Setter Property="Padding" Value="18,16" />
+            <Setter Property="Margin" Value="{DynamicResource Card.GapGrid}" />
+            <Setter Property="Padding" Value="{DynamicResource Card.PaddingSmall}" />
         </Style>
     </UserControl.Resources>
 
@@ -30,7 +30,7 @@
             <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Dashboard_Subtitle}" Margin="0,4,0,22" />
 
             <!-- Protection status: reported honestly as inactive until the engine exists. -->
-            <Border Style="{StaticResource Card}" Padding="24" Margin="0,0,0,12">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource Card.Gap}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -48,7 +48,7 @@
 
                     <StackPanel Grid.Column="1" Margin="18,0,24,0" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Protection_Title}" />
-                        <TextBlock Text="{l:Loc Dash_Protection_Inactive}" FontSize="22" FontWeight="SemiBold" Margin="0,2,0,4"
+                        <TextBlock Text="{l:Loc Dash_Protection_Inactive}" FontSize="{DynamicResource Font.Size.Hero}" FontWeight="SemiBold" Margin="0,2,0,4"
                                    FontFamily="{StaticResource Font.Display}" />
                         <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Protection_InactiveDetail}" MaxWidth="560" HorizontalAlignment="Left" />
                     </StackPanel>
@@ -84,7 +84,7 @@
             </Border>
 
             <!-- Engine metrics: no data until the engine produces real numbers. -->
-            <UniformGrid x:Name="Metrics" Margin="0,0,-12,0"
+            <UniformGrid x:Name="Metrics" Margin="{DynamicResource Card.GridCompensation}"
                          Columns="{Binding ActualWidth, RelativeSource={RelativeSource Self}, Converter={StaticResource WidthToColumns}}">
                 <Border Style="{StaticResource MetricCard}">
                     <StackPanel>
@@ -117,7 +117,7 @@
             </UniformGrid>
 
             <!-- Network: real local adapter data. -->
-            <Border Style="{StaticResource Card}" Padding="24">
+            <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
@@ -147,7 +147,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center"
                                          Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
-                                <TextBlock FontSize="12" FontWeight="SemiBold">
+                                <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold">
                                     <TextBlock.Text>
                                         <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="Connectivity_">
                                             <Binding Path="Connectivity" />

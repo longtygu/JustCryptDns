@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
-using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +9,12 @@ namespace JustCryptDns.App.ViewModels;
 
 public sealed partial class ShellViewModel : ObservableObject
 {
+    /// <summary>Sub-pages shown under a sidebar entry without their own sidebar item.</summary>
+    private static readonly Dictionary<string, string> SubPageParents = new()
+    {
+        [PageKeys.Appearance] = PageKeys.Settings,
+    };
+
     private readonly IPageFactory _pageFactory;
     private readonly ISettingsService _settings;
     private readonly ILogger<ShellViewModel> _logger;
@@ -27,7 +33,7 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSidebarCollapsed;
 
-    public ShellViewModel(IPageFactory pageFactory, ISettingsService settings, ILogger<ShellViewModel> logger)
+    public ShellViewModel(IPageFactory pageFactory, ISettingsService settings, INavigationService navigation, ILogger<ShellViewModel> logger)
     {
         _pageFactory = pageFactory;
         _settings = settings;
@@ -47,6 +53,8 @@ public sealed partial class ShellViewModel : ObservableObject
         FooterItems = [new NavItem(PageKeys.Settings, "\uE713", "Nav_Settings")];
 
         _isSidebarCollapsed = settings.Current.Appearance.SidebarCollapsed;
+        settings.Changed += OnSettingsChanged;
+        navigation.NavigationRequested += (_, key) => NavigateTo(key);
         SelectedNavItem = NavItems[0];
     }
 
@@ -59,10 +67,19 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public void NavigateTo(string pageKey)
     {
+        if (SubPageParents.TryGetValue(pageKey, out var parent))
+        {
+            // Keep the parent highlighted in the sidebar, then show the sub-page.
+            NavigateTo(parent);
+            Navigate(pageKey);
+            return;
+        }
+
         var main = NavItems.FirstOrDefault(i => i.Key == pageKey);
         if (main is not null)
         {
             SelectedNavItem = main;
+            Navigate(main.Key);
             return;
         }
 
@@ -70,6 +87,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (footer is not null)
         {
             SelectedFooterItem = footer;
+            Navigate(footer.Key);
         }
     }
 
@@ -116,17 +134,17 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarCollapsed = !IsSidebarCollapsed;
 
-    partial void OnIsSidebarCollapsedChanged(bool value) => _ = PersistSidebarAsync(value);
-
-    private async Task PersistSidebarAsync(bool collapsed)
+    partial void OnIsSidebarCollapsedChanged(bool value)
     {
-        try
+        if (_settings.Current.Appearance.SidebarCollapsed != value)
         {
-            await _settings.UpdateAsync(s => s.Appearance.SidebarCollapsed = collapsed);
+            _settings.UpdateDeferred(s => s.Appearance.SidebarCollapsed = value);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            _logger.LogWarning(ex, "Failed to persist sidebar state.");
-        }
+    }
+
+    private void OnSettingsChanged(object? sender, AppSettings settings)
+    {
+        // Keep in sync when the sidebar mode is changed from the Appearance page.
+        IsSidebarCollapsed = settings.Appearance.SidebarCollapsed;
     }
 }

@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 2 — Appearance customization & window transparency
+- Dedicated **Appearance** settings sub-page (reachable from Settings while keeping Settings highlighted in the sidebar).
+- **Theme modes:** Dark, Light, System default, and **Custom** (Dark/Light base palette + surface tint color).
+- **Window transparency (0–90 %):** master enable switch, 0–90 % slider with level indicator (Opaque, Slight, Moderate, Strong, High), and readability-preserving surface opacity hierarchy (window background, sidebar, and cards keep progressive opacity so text contrast is always preserved).
+- **Windows composition backdrop engine (`WindowBackdropController` + `DwmInterop`):** supports Windows 11 22H2+ `DWMWA_SYSTEMBACKDROP_TYPE` (Mica / Acrylic), Windows 10/11 DWM blur-behind (`SetWindowCompositionAttribute`), immersive dark mode, and Windows 11 `DWM_WINDOW_CORNER_PREFERENCE` with automatic fallback to opaque when unsupported or disabled.
+- **Accent color customization:** 12 curated presets, custom `#RRGGBB` / `#RGB` input with validation, optional sync with the Windows system accent color, and WCAG contrast ratio calculation (`ColorMath.ContrastRatio`) for foreground-on-accent legibility.
+- **Layout, scaling & motion:** sidebar mode (Expanded / Compact), card density (Compact / Comfortable / Spacious), window corner preference (Windows 11), independent UI scaling (80–150 %), 4-step font size scaling across all typography tokens, animation intensity (Off / Reduced / Normal), background style (Plain / Accent glow), and one-click reset to defaults.
+- **Settings schema v2:** `MigrationV1ToV2`, debounced persistence (`UpdateDeferred` + `FlushAsync` on exit) for smooth slider dragging without excessive disk writes, and 63 offline unit tests.
+- Added MIT `LICENSE`.
+
 ### Phase 1 — Foundation & modern UI
 - Solution structure: Core, DNS, Network, Infrastructure, App, Tests.
 - WPF shell with custom window chrome, collapsible sidebar and nine navigation sections.

@@ -1,5 +1,5 @@
-using JustCryptDns.App.ViewModels;
 using JustCryptDns.App.Services;
+using JustCryptDns.App.ViewModels;
 using JustCryptDns.App.Views;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
@@ -29,6 +29,8 @@ public static class ServiceRegistration
 
         // UI services
         services.AddSingleton<IThemeService, ThemeService>();
+        services.AddSingleton<IAppearanceService, AppearanceService>();
+        services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IPageFactory, PageFactory>();
 
         // Shell
@@ -38,6 +40,7 @@ public static class ServiceRegistration
         // Pages: transient, created on navigation and disposed when left.
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<SettingsViewModel>();
+        services.AddTransient<AppearanceViewModel>();
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
