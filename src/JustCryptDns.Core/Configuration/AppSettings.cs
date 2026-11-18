@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library. v6: Phase 6 smart routing. v7: Phase 7 filtering & cache. v8: Phase 8 gaming optimization.</summary>
-    public const int CurrentSchemaVersion = 8;
+    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library. v6: Phase 6 smart routing. v7: Phase 7 filtering & cache. v8: Phase 8 gaming. v9: Phase 9 resilience & failover.</summary>
+    public const int CurrentSchemaVersion = 9;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -33,6 +33,8 @@ public sealed class AppSettings
 
     public GamingSettings Gaming { get; set; } = new();
 
+    public ResilienceSettings Resilience { get; set; } = new();
+
     public PerformanceSettings Performance { get; set; } = new();
 
     /// <summary>Normalizes out-of-range or missing values after deserialization.</summary>
@@ -45,6 +47,7 @@ public sealed class AppSettings
         Filtering ??= new FilteringSettings();
         Cache ??= new CacheSettings();
         Gaming ??= new GamingSettings();
+        Resilience ??= new ResilienceSettings();
         Performance ??= new PerformanceSettings();
         General.Normalize();
         Appearance.Normalize();
@@ -53,6 +56,7 @@ public sealed class AppSettings
         Filtering.Normalize();
         Cache.Normalize();
         Gaming.Normalize();
+        Resilience.Normalize();
         Performance.Normalize();
         return this;
     }
@@ -419,6 +423,31 @@ public sealed class GamingSettings
         }
 
         CustomGamingProfiles ??= [];
+    }
+}
+
+public sealed class ResilienceSettings
+{
+    public bool EnableAutoFailover { get; set; } = true;
+
+    public FailoverPolicy Policy { get; set; } = FailoverPolicy.EncryptedOnly;
+
+    public int MaxRetriesPerQuery { get; set; } = 2;
+
+    public int FailureThresholdBeforeSwitch { get; set; } = 3;
+
+    public int RetryDelayMs { get; set; } = 200;
+
+    internal void Normalize()
+    {
+        if (!Enum.IsDefined(Policy))
+        {
+            Policy = FailoverPolicy.EncryptedOnly;
+        }
+
+        MaxRetriesPerQuery = Math.Clamp(MaxRetriesPerQuery, 0, 5);
+        FailureThresholdBeforeSwitch = Math.Clamp(FailureThresholdBeforeSwitch, 1, 20);
+        RetryDelayMs = Math.Clamp(RetryDelayMs, 0, 5000);
     }
 }
 

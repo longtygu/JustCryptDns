@@ -1206,4 +1206,10 @@
   <data name="Gaming_Bench_Done" xml:space="preserve">
     <value>Hoàn tất đo hiệu năng.</value>
   </data>
+  <data name="Resilience_FailoverTitle" xml:space="preserve">
+    <value>Chuyển đổi dự phòng DNS mã hóa thông minh</value>
+  </data>
+  <data name="Resilience_FailoverDesc" xml:space="preserve">
+    <value>Tự động thử lại và chuyển đổi dự phòng qua resolver Chính, Phụ và các resolver mã hóa khi quá hạn hoặc lỗi kết nối.</value>
+  </data>
 </root>

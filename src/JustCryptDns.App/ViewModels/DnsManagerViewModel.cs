@@ -26,6 +26,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     [ObservableProperty] private string _listenPortText = "53";
     [ObservableProperty] private bool _enableIpv6;
     [ObservableProperty] private bool _configureWindowsAdapter;
+    [ObservableProperty] private bool _enableAutoFailover = true;
+    [ObservableProperty] private FailoverPolicy _selectedFailoverPolicy = FailoverPolicy.EncryptedOnly;
     [ObservableProperty] private string _listenEndpoint = "127.0.0.1:53";
     [ObservableProperty] private long _totalQueries;
     [ObservableProperty] private long _successfulQueries;
@@ -63,6 +65,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         _listenPortText = dns.ListenPort.ToString(CultureInfo.InvariantCulture);
         _enableIpv6 = dns.EnableIpv6;
         _configureWindowsAdapter = dns.ConfigureWindowsAdapter;
+        _enableAutoFailover = settings.Current.Resilience.EnableAutoFailover;
+        _selectedFailoverPolicy = settings.Current.Resilience.Policy;
         _loading = false;
 
         DnsCryptPath = dnsCrypt.ExecutablePath;
@@ -71,6 +75,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
 
     public IReadOnlyList<DnsResolverEndpoint> Resolvers =>
         _resolverLibrary is not null ? _resolverLibrary.GetEnabled() : BuiltInResolvers.All;
+
+    public IReadOnlyList<FailoverPolicy> FailoverPolicies { get; } = Enum.GetValues<FailoverPolicy>();
 
     public string DnsCryptPath { get; }
 
@@ -115,6 +121,22 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         if (!_loading)
         {
             _ = _settings.UpdateAsync(s => s.Dns.ConfigureWindowsAdapter = value);
+        }
+    }
+
+    partial void OnEnableAutoFailoverChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = _settings.UpdateAsync(s => s.Resilience.EnableAutoFailover = value);
+        }
+    }
+
+    partial void OnSelectedFailoverPolicyChanged(FailoverPolicy value)
+    {
+        if (!_loading)
+        {
+            _ = _settings.UpdateAsync(s => s.Resilience.Policy = value);
         }
     }
 

@@ -13,6 +13,7 @@ using JustCryptDns.DNS.Resolver;
 using JustCryptDns.DNS.Routing;
 using JustCryptDns.Infrastructure.Ipc;
 using JustCryptDns.Infrastructure.Windows;
+using JustCryptDns.Network.Failover;
 using JustCryptDns.Network.Gaming;
 using JustCryptDns.Network.Monitoring;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,7 @@ public static class ServiceRegistration
         services.AddSingleton<IDnsRoutingService, DnsRoutingService>();
         services.AddSingleton<IDnsFilteringService, DnsFilteringService>();
         services.AddSingleton<IDnsCacheService, DnsCacheService>();
+        services.AddSingleton<IDnsFailoverService, DnsFailoverService>();
         services.AddSingleton<IDnsEngine, DnsEngineService>();
         services.AddSingleton<IGamingEngineService, GamingEngineService>();
 

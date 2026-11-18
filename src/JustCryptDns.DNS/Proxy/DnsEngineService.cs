@@ -28,6 +28,7 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly IDnsRoutingService? _routingService;
     private readonly IDnsFilteringService? _filteringService;
     private readonly IDnsCacheService? _cacheService;
+    private readonly IDnsFailoverService? _failoverService;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
@@ -54,7 +55,8 @@ public sealed class DnsEngineService : IDnsEngine
         IResolverLibraryService? resolverLibrary = null,
         IDnsRoutingService? routingService = null,
         IDnsFilteringService? filteringService = null,
-        IDnsCacheService? cacheService = null)
+        IDnsCacheService? cacheService = null,
+        IDnsFailoverService? failoverService = null)
     {
         _settings = settings;
         _dnsCryptManager = dnsCryptManager;
@@ -64,6 +66,7 @@ public sealed class DnsEngineService : IDnsEngine
         _routingService = routingService;
         _filteringService = filteringService;
         _cacheService = cacheService;
+        _failoverService = failoverService;
 
         _defaultDoh = new DohDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
@@ -366,7 +369,28 @@ public sealed class DnsEngineService : IDnsEngine
         }
 
         var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
-        var result = await upstream.QueryAsync(queryWire, resolver, timeout, cancellationToken).ConfigureAwait(false);
+        DnsQueryResult result;
+        if (_failoverService is { IsAutoFailoverEnabled: true })
+        {
+            result = await _failoverService.QueryWithResilienceAsync(
+                queryWire,
+                resolver,
+                async (candidate, ct) =>
+                {
+                    if (!_upstreams.TryGetValue(candidate.Protocol, out var candUpstream))
+                    {
+                        return new DnsQueryResult(false, [], 0, candidate.Id, candidate.Protocol, $"No upstream for {candidate.Protocol}.");
+                    }
+
+                    return await candUpstream.QueryAsync(queryWire, candidate, timeout, ct).ConfigureAwait(false);
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            result = await upstream.QueryAsync(queryWire, resolver, timeout, cancellationToken).ConfigureAwait(false);
+        }
+
         RecordQueryOutcome(result);
 
         if (decision is not null && _routingService is not null)

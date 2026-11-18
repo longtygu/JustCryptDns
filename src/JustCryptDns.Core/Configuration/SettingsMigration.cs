@@ -134,6 +134,19 @@ internal sealed class MigrationV7ToV8 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v9 adds <see cref="ResilienceSettings"/> (failover policy, retry policy, and failure thresholds).
+/// </summary>
+internal sealed class MigrationV8ToV9 : ISettingsMigration
+{
+    public int FromVersion => 8;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by ResilienceSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -147,7 +160,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9()];
 
     public static int ReadVersion(JsonObject document)
     {

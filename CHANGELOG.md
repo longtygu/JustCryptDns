@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 9 — Network Resilience & Intelligent Encrypted DNS Failover
+- **Encrypted DNS failover service (`DnsFailoverService`, `IDnsFailoverService`):**
+  - Implements `EncryptedOnly`, `EncryptedThenPlainFallback`, and `PrimaryAndSecondaryOnly` failover policies with configurable per-query retries (`MaxRetriesPerQuery`), retry delay, and failure threshold (`FailureThresholdBeforeSwitch`).
+  - Classifies failures into `ResolverTimeout`, `Udp53BlockedOrUnreachable`, `Tcp53BlockedOrUnreachable`, `DohEndpointFailure`, `DotTlsHandshakeFailure`, `DnsCryptHandshakeFailure`, `Ipv4ConnectivityProblem`, and `Ipv6ConnectivityProblem`, recording every failover transition in a bounded history log.
+  - **Network restriction diagnostics (`DiagnoseNetworkRestrictionsAsync`):** probes UDP/53, TCP/53, DoH/443, DoT/853, DNSCrypt, and local IPv4/IPv6 reachability with transparent diagnostics.
+- **Engine & UI integration (`DnsEngineService`, `DnsManagerViewModel`, `DnsManagerView`):** live query execution through `QueryWithResilienceAsync`, failover policy controls in DNS Manager, schema v9 (`MigrationV8ToV9`), and 99 offline unit tests.
+
 ### Phase 8 — Gaming Low Latency Engine
 - **Multi-domain repeated resolver benchmark (`GamingEngineService`):** tests all enabled resolvers across multiple gaming domains (`steamcommunity.com`, `steampowered.com`, `riotgames.com`, `epicgames.com`, `battle.net`, etc.) over repeated rounds (never selecting a resolver based on a single response), computing average, min, max, P95, jitter, success rate, timeout rate, and a 0–100 reliability score.
 - **Smart Resolver Selection:** implements `LowestLatency`, `Balanced`, and `MaximumReliability` optimization profiles with optional manual resolver override.

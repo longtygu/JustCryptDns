@@ -161,21 +161,40 @@
                 </StackPanel>
             </Border>
 
-            <!-- Active Resolver Selection -->
+            <!-- Active Resolver Selection & Failover Policy -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc DnsMgr_ResolverSection}" Margin="0,12,0,10" />
             <Border Style="{StaticResource SectionCard}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="280" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc DnsMgr_ActiveResolver}" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding SelectedResolver.Endpoint}" />
-                    </StackPanel>
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding Resolvers}" SelectedItem="{Binding SelectedResolver}"
-                              DisplayMemberPath="Name" AutomationProperties.Name="{l:Loc DnsMgr_ActiveResolver}" />
-                </Grid>
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="280" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc DnsMgr_ActiveResolver}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding SelectedResolver.Endpoint}" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding Resolvers}" SelectedItem="{Binding SelectedResolver}"
+                                  DisplayMemberPath="Name" AutomationProperties.Name="{l:Loc DnsMgr_ActiveResolver}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="230" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Resilience_FailoverTitle}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Resilience_FailoverDesc}" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding FailoverPolicies}" SelectedItem="{Binding SelectedFailoverPolicy}"
+                                  Margin="0,0,12,0" AutomationProperties.Name="{l:Loc Resilience_FailoverTitle}" />
+                        <CheckBox Grid.Column="2" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding EnableAutoFailover}"
+                                  VerticalAlignment="Center" AutomationProperties.Name="{l:Loc Resilience_FailoverTitle}" />
+                    </Grid>
+                </StackPanel>
             </Border>
 
             <!-- Local Proxy Configuration -->
