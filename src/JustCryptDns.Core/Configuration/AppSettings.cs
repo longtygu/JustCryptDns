@@ -12,8 +12,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1: Phase 1 (language, theme, accent, sidebar). v2: Phase 2 appearance options.</summary>
-    public const int CurrentSchemaVersion = 2;
+    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background operation, tray and startup.</summary>
+    public const int CurrentSchemaVersion = 3;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -42,16 +42,41 @@ public sealed class AppSettings
     }
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<CloseBehavior>))]
+public enum CloseBehavior
+{
+    MinimizeToTray,
+    ExitApplication,
+    AskEveryTime,
+}
+
 public sealed class GeneralSettings
 {
     /// <summary>UI language: <c>system</c>, <c>en</c> or <c>vi</c>.</summary>
     public string Language { get; set; } = LanguageCodes.System;
+
+    public bool StartWithWindows { get; set; }
+
+    public bool StartMinimized { get; set; }
+
+    public bool AutoStartDnsEngine { get; set; } = true;
+
+    public bool RestorePreviousProfile { get; set; } = true;
+
+    public bool EnableGamingModeOnStartup { get; set; }
+
+    public CloseBehavior CloseBehavior { get; set; } = CloseBehavior.MinimizeToTray;
 
     internal void Normalize()
     {
         if (!LanguageCodes.IsSupported(Language))
         {
             Language = LanguageCodes.System;
+        }
+
+        if (!Enum.IsDefined(CloseBehavior))
+        {
+            CloseBehavior = CloseBehavior.MinimizeToTray;
         }
     }
 }

@@ -4,8 +4,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
+             xmlns:ipc="clr-namespace:JustCryptDns.Core.Ipc;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
-             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="1050"
              d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
     <UserControl.Resources>
         <Style x:Key="SettingCard" TargetType="Border" BasedOn="{StaticResource Card}">
@@ -13,6 +14,17 @@
         </Style>
         <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
             <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
+        </Style>
+        <Style x:Key="RowIcon" TargetType="TextBlock" BasedOn="{StaticResource Text.Icon}">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="Margin" Value="0,0,16,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Width" Value="20" />
+        </Style>
+        <Style x:Key="Divider" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Divider}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Margin" Value="36,14,0,14" />
         </Style>
     </UserControl.Resources>
 
@@ -41,36 +53,184 @@
                 </TextBlock>
             </Border>
 
-            <!-- General -->
+            <!-- General & Startup -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_General}" Margin="0,8,0,10" />
             <Border Style="{StaticResource SettingCard}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xF2B7;" FontSize="18" Margin="0,0,16,0" />
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_Language}" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_Language_Desc}" />
-                    </StackPanel>
-                    <ComboBox Grid.Column="2" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
-                              AutomationProperties.Name="{l:Loc Settings_Language}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock>
-                                    <TextBlock.Text>
-                                        <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="Lang_">
-                                            <Binding />
-                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
-                                        </MultiBinding>
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                </Grid>
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xF2B7;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_Language}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_Language_Desc}" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="2" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
+                                  AutomationProperties.Name="{l:Loc Settings_Language}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock>
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="Lang_">
+                                                <Binding />
+                                                <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE8BB;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_CloseBehavior}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_CloseBehavior_Desc}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource SegmentHost}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="CloseBehavior" Content="{l:Loc CloseBehavior_MinimizeToTray}"
+                                             IsChecked="{Binding CloseBehavior, Converter={StaticResource EnumEquals}, ConverterParameter=MinimizeToTray}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="CloseBehavior" Content="{l:Loc CloseBehavior_ExitApplication}"
+                                             IsChecked="{Binding CloseBehavior, Converter={StaticResource EnumEquals}, ConverterParameter=ExitApplication}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="CloseBehavior" Content="{l:Loc CloseBehavior_AskEveryTime}"
+                                             IsChecked="{Binding CloseBehavior, Converter={StaticResource EnumEquals}, ConverterParameter=AskEveryTime}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Background & Startup -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_Startup_Section}" Margin="0,16,0,10" />
+            <Border Style="{StaticResource SettingCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE7E8;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_StartWithWindows}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_StartWithWindows_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="2" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding StartWithWindows}"
+                                  AutomationProperties.Name="{l:Loc Settings_StartWithWindows}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid Margin="36,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_StartMinimized}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_StartMinimized_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding StartMinimized}"
+                                  AutomationProperties.Name="{l:Loc Settings_StartMinimized}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid Margin="36,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_AutoStartDns}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_AutoStartDns_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding AutoStartDnsEngine}"
+                                  AutomationProperties.Name="{l:Loc Settings_AutoStartDns}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid Margin="36,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_RestoreProfile}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_RestoreProfile_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding RestorePreviousProfile}"
+                                  AutomationProperties.Name="{l:Loc Settings_RestoreProfile}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid Margin="36,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_GamingOnStartup}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_GamingOnStartup_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding EnableGamingModeOnStartup}"
+                                  AutomationProperties.Name="{l:Loc Settings_GamingOnStartup}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid Margin="36,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_ServiceStatus}" VerticalAlignment="Center" />
+                                <Border Margin="12,0,0,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.NeutralSubtle}" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Neutral}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ServiceState}" Value="{x:Static ipc:ServiceConnectionState.Connected}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ServiceState}" Value="{x:Static ipc:ServiceConnectionState.AccessDenied}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ServiceState}" Value="{x:Static ipc:ServiceConnectionState.Error}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="ServiceState_">
+                                                <Binding Path="ServiceState" />
+                                                <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_ServiceStatus_Desc}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="{l:Loc Common_Refresh}" Command="{Binding CheckServiceCommand}" VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
             </Border>
 
             <!-- Appearance -->
@@ -83,7 +243,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE790;" FontSize="18" Margin="0,0,16,0" />
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE790;" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_Theme}" />
                             <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_Theme_Desc}" />

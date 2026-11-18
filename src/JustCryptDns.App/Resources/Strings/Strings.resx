@@ -585,4 +585,109 @@
   <data name="Settings_SaveError" xml:space="preserve">
     <value>Settings could not be saved: {0}</value>
   </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ClosePrompt_Title" xml:space="preserve">
+    <value>Close JustCryptDns?</value>
+  </data>
+  <data name="ClosePrompt_Body" xml:space="preserve">
+    <value>Choose whether to minimize the window to the system tray (keeping background operations active) or exit the application.</value>
+  </data>
+  <data name="ClosePrompt_Remember" xml:space="preserve">
+    <value>Remember my choice</value>
+  </data>
+  <data name="Settings_CloseBehavior" xml:space="preserve">
+    <value>Close button behavior</value>
+  </data>
+  <data name="Settings_CloseBehavior_Desc" xml:space="preserve">
+    <value>Controls what happens when you click the window close button.</value>
+  </data>
+  <data name="CloseBehavior_MinimizeToTray" xml:space="preserve">
+    <value>Minimize to tray</value>
+  </data>
+  <data name="CloseBehavior_ExitApplication" xml:space="preserve">
+    <value>Exit app</value>
+  </data>
+  <data name="CloseBehavior_AskEveryTime" xml:space="preserve">
+    <value>Ask every time</value>
+  </data>
+  <data name="Settings_Startup_Section" xml:space="preserve">
+    <value>Background &amp; Windows startup</value>
+  </data>
+  <data name="Settings_StartWithWindows" xml:space="preserve">
+    <value>Start with Windows</value>
+  </data>
+  <data name="Settings_StartWithWindows_Desc" xml:space="preserve">
+    <value>Launches JustCryptDns automatically when you sign in to Windows.</value>
+  </data>
+  <data name="Settings_StartMinimized" xml:space="preserve">
+    <value>Start minimized to system tray</value>
+  </data>
+  <data name="Settings_StartMinimized_Desc" xml:space="preserve">
+    <value>Opens directly in the system tray without showing the main window.</value>
+  </data>
+  <data name="Settings_AutoStartDns" xml:space="preserve">
+    <value>Automatically start DNS engine</value>
+  </data>
+  <data name="Settings_AutoStartDns_Desc" xml:space="preserve">
+    <value>Starts DNS protection automatically when the service starts (Phase 4).</value>
+  </data>
+  <data name="Settings_RestoreProfile" xml:space="preserve">
+    <value>Restore previous DNS profile</value>
+  </data>
+  <data name="Settings_RestoreProfile_Desc" xml:space="preserve">
+    <value>Re-applies your last active resolver and routing profile on startup.</value>
+  </data>
+  <data name="Settings_GamingOnStartup" xml:space="preserve">
+    <value>Enable Gaming Mode on startup</value>
+  </data>
+  <data name="Settings_GamingOnStartup_Desc" xml:space="preserve">
+    <value>Activates Gaming Mode automatically when JustCryptDns starts.</value>
+  </data>
+  <data name="Settings_ServiceStatus" xml:space="preserve">
+    <value>Independent background service</value>
+  </data>
+  <data name="Settings_ServiceStatus_Desc" xml:space="preserve">
+    <value>Allows DNS protection to keep running even when the main window is closed.</value>
+  </data>
+  <data name="ServiceState_Unknown" xml:space="preserve">
+    <value>Checking…</value>
+  </data>
+  <data name="ServiceState_Connected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="ServiceState_ServiceNotRunning" xml:space="preserve">
+    <value>Not running</value>
+  </data>
+  <data name="ServiceState_AccessDenied" xml:space="preserve">
+    <value>Access denied</value>
+  </data>
+  <data name="ServiceState_Error" xml:space="preserve">
+    <value>Communication error</value>
+  </data>
+  <data name="Tray_Open" xml:space="preserve">
+    <value>Open JustCryptDns</value>
+  </data>
+  <data name="Tray_EnableDns" xml:space="preserve">
+    <value>Enable DNS protection</value>
+  </data>
+  <data name="Tray_DisableDns" xml:space="preserve">
+    <value>Disable DNS protection</value>
+  </data>
+  <data name="Tray_EnableGaming" xml:space="preserve">
+    <value>Enable Gaming Mode</value>
+  </data>
+  <data name="Tray_DisableGaming" xml:space="preserve">
+    <value>Disable Gaming Mode</value>
+  </data>
+  <data name="Tray_ActiveResolver" xml:space="preserve">
+    <value>Active resolver: {0}</value>
+  </data>
+  <data name="Tray_RestoreDns" xml:space="preserve">
+    <value>Restore original DNS</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
 </root>

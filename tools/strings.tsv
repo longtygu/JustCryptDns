@@ -190,3 +190,38 @@ Settings_LogsFolder|Logs folder|Thư mục nhật ký
 Settings_Privacy|No telemetry. Settings and logs are stored only on this computer.|Không thu thập telemetry. Cài đặt và nhật ký chỉ được lưu trên máy tính này.
 Settings_LoadWarning|Your settings file could not be read and was reset. The damaged file was kept next to it for inspection.|Không thể đọc tệp cài đặt nên đã đặt lại. Tệp bị hỏng được giữ lại bên cạnh để kiểm tra.
 Settings_SaveError|Settings could not be saved: {0}|Không thể lưu cài đặt: {0}
+Common_Cancel|Cancel|Hủy
+ClosePrompt_Title|Close JustCryptDns?|Đóng JustCryptDns?
+ClosePrompt_Body|Choose whether to minimize the window to the system tray (keeping background operations active) or exit the application.|Chọn thu nhỏ cửa sổ xuống khay hệ thống (giữ các tác vụ nền tiếp tục chạy) hoặc thoát ứng dụng.
+ClosePrompt_Remember|Remember my choice|Ghi nhớ lựa chọn của tôi
+Settings_CloseBehavior|Close button behavior|Hành vi nút Đóng cửa sổ
+Settings_CloseBehavior_Desc|Controls what happens when you click the window close button.|Điều khiển hành động khi nhấn nút Đóng (X) trên cửa sổ.
+CloseBehavior_MinimizeToTray|Minimize to tray|Thu xuống khay
+CloseBehavior_ExitApplication|Exit app|Thoát ứng dụng
+CloseBehavior_AskEveryTime|Ask every time|Hỏi mỗi lần
+Settings_Startup_Section|Background & Windows startup|Chạy nền & khởi động cùng Windows
+Settings_StartWithWindows|Start with Windows|Khởi động cùng Windows
+Settings_StartWithWindows_Desc|Launches JustCryptDns automatically when you sign in to Windows.|Tự động chạy JustCryptDns khi bạn đăng nhập vào Windows.
+Settings_StartMinimized|Start minimized to system tray|Khởi động thu nhỏ dưới khay hệ thống
+Settings_StartMinimized_Desc|Opens directly in the system tray without showing the main window.|Khởi động thẳng vào khay hệ thống mà không hiện cửa sổ chính.
+Settings_AutoStartDns|Automatically start DNS engine|Tự động bật DNS engine
+Settings_AutoStartDns_Desc|Starts DNS protection automatically when the service starts (Phase 4).|Tự động bật bảo vệ DNS khi dịch vụ nền khởi chạy (Giai đoạn 4).
+Settings_RestoreProfile|Restore previous DNS profile|Khôi phục hồ sơ DNS trước đó
+Settings_RestoreProfile_Desc|Re-applies your last active resolver and routing profile on startup.|Áp dụng lại resolver và hồ sơ định tuyến gần nhất khi khởi động.
+Settings_GamingOnStartup|Enable Gaming Mode on startup|Bật Chế độ Game khi khởi động
+Settings_GamingOnStartup_Desc|Activates Gaming Mode automatically when JustCryptDns starts.|Tự động kích hoạt Chế độ Game ngay khi khởi chạy.
+Settings_ServiceStatus|Independent background service|Dịch vụ nền độc lập
+Settings_ServiceStatus_Desc|Allows DNS protection to keep running even when the main window is closed.|Cho phép bảo vệ DNS tiếp tục chạy ngay cả khi đã đóng cửa sổ giao diện.
+ServiceState_Unknown|Checking…|Đang kiểm tra…
+ServiceState_Connected|Connected|Đã kết nối
+ServiceState_ServiceNotRunning|Not running|Chưa chạy
+ServiceState_AccessDenied|Access denied|Từ chối truy cập
+ServiceState_Error|Communication error|Lỗi giao tiếp
+Tray_Open|Open JustCryptDns|Mở JustCryptDns
+Tray_EnableDns|Enable DNS protection|Bật bảo vệ DNS
+Tray_DisableDns|Disable DNS protection|Tắt bảo vệ DNS
+Tray_EnableGaming|Enable Gaming Mode|Bật Chế độ Game
+Tray_DisableGaming|Disable Gaming Mode|Tắt Chế độ Game
+Tray_ActiveResolver|Active resolver: {0}|Resolver đang dùng: {0}
+Tray_RestoreDns|Restore original DNS|Khôi phục DNS gốc
+Tray_Exit|Exit|Thoát

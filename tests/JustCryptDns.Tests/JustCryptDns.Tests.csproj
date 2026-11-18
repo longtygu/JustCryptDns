@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\JustCryptDns.Core\JustCryptDns.Core.csproj" />
     <ProjectReference Include="..\..\src\JustCryptDns.Network\JustCryptDns.Network.csproj" />
     <ProjectReference Include="..\..\src\JustCryptDns.Infrastructure\JustCryptDns.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\JustCryptDns.Service\JustCryptDns.Service.csproj" />
     <ProjectReference Include="..\..\src\JustCryptDns.App\JustCryptDns.App.csproj" />
   </ItemGroup>
 

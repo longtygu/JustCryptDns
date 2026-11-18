@@ -3,8 +3,10 @@ using System.Windows.Threading;
 using JustCryptDns.App.Composition;
 using JustCryptDns.App.Localization;
 using JustCryptDns.App.Services;
+using JustCryptDns.App.ViewModels;
 using JustCryptDns.App.Views;
 using JustCryptDns.Core.Configuration;
+using JustCryptDns.Core.Ipc;
 using JustCryptDns.Infrastructure.Logging;
 using JustCryptDns.Infrastructure.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +20,20 @@ public partial class App : Application
     private SingleInstanceGuard? _instanceGuard;
     private ServiceProvider? _services;
     private ILogger<App> _logger = NullLogger<App>.Instance;
+
+    public static bool ShouldStartMinimized(IReadOnlyList<string> args, GeneralSettings general)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(general);
+
+        if (args.Any(a => string.Equals(a, "--show", StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        return args.Any(a => string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase))
+            || general.StartMinimized;
+    }
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -58,6 +74,20 @@ public partial class App : Application
         ApplyPresentation(settings.Current);
         settings.Changed += (_, current) => ApplyPresentation(current);
 
+        // Initialize system tray icon.
+        var shell = _services.GetRequiredService<ShellViewModel>();
+        var tray = _services.GetRequiredService<ITrayIconService>();
+        tray.OpenRequested += (_, _) => Dispatcher.BeginInvoke(ActivateMainWindow);
+        tray.ExitRequested += (_, _) => Dispatcher.BeginInvoke(() =>
+        {
+            shell.IsExplicitExit = true;
+            Shutdown(0);
+        });
+        tray.Initialize();
+
+        // Probe background service status non-blockingly.
+        _ = _services.GetRequiredService<IServiceClient>().RefreshStatusAsync();
+
         var window = _services.GetRequiredService<MainWindow>();
         _logger.LogDebug("Main window constructed.");
         MainWindow = window;
@@ -65,13 +95,23 @@ public partial class App : Application
         window.ContentRendered += (_, _) => _logger.LogInformation(
             "First frame rendered {Elapsed} ms after process start.",
             (int)(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds);
-        Diagnostics.DevSnapshot.TryAttach(window, _services.GetRequiredService<ViewModels.ShellViewModel>(), _logger);
-        window.Show();
-        _logger.LogInformation(
-            "Main window shown {Width}x{Height} in {Elapsed} ms since process start.",
-            window.ActualWidth,
-            window.ActualHeight,
-            (int)(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds);
+        Diagnostics.DevSnapshot.TryAttach(window, shell, _logger);
+
+        var startMinimized = ShouldStartMinimized(e.Args, settings.Current.General)
+            && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_DIR"));
+        if (startMinimized)
+        {
+            _logger.LogInformation("Started minimized to system tray.");
+        }
+        else
+        {
+            window.Show();
+            _logger.LogInformation(
+                "Main window shown {Width}x{Height} in {Elapsed} ms since process start.",
+                window.ActualWidth,
+                window.ActualHeight,
+                (int)(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds);
+        }
 
         _instanceGuard.ListenForActivation(() => Dispatcher.BeginInvoke(ActivateMainWindow));
     }

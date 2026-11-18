@@ -585,4 +585,109 @@
   <data name="Settings_SaveError" xml:space="preserve">
     <value>Không thể lưu cài đặt: {0}</value>
   </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Hủy</value>
+  </data>
+  <data name="ClosePrompt_Title" xml:space="preserve">
+    <value>Đóng JustCryptDns?</value>
+  </data>
+  <data name="ClosePrompt_Body" xml:space="preserve">
+    <value>Chọn thu nhỏ cửa sổ xuống khay hệ thống (giữ các tác vụ nền tiếp tục chạy) hoặc thoát ứng dụng.</value>
+  </data>
+  <data name="ClosePrompt_Remember" xml:space="preserve">
+    <value>Ghi nhớ lựa chọn của tôi</value>
+  </data>
+  <data name="Settings_CloseBehavior" xml:space="preserve">
+    <value>Hành vi nút Đóng cửa sổ</value>
+  </data>
+  <data name="Settings_CloseBehavior_Desc" xml:space="preserve">
+    <value>Điều khiển hành động khi nhấn nút Đóng (X) trên cửa sổ.</value>
+  </data>
+  <data name="CloseBehavior_MinimizeToTray" xml:space="preserve">
+    <value>Thu xuống khay</value>
+  </data>
+  <data name="CloseBehavior_ExitApplication" xml:space="preserve">
+    <value>Thoát ứng dụng</value>
+  </data>
+  <data name="CloseBehavior_AskEveryTime" xml:space="preserve">
+    <value>Hỏi mỗi lần</value>
+  </data>
+  <data name="Settings_Startup_Section" xml:space="preserve">
+    <value>Chạy nền &amp; khởi động cùng Windows</value>
+  </data>
+  <data name="Settings_StartWithWindows" xml:space="preserve">
+    <value>Khởi động cùng Windows</value>
+  </data>
+  <data name="Settings_StartWithWindows_Desc" xml:space="preserve">
+    <value>Tự động chạy JustCryptDns khi bạn đăng nhập vào Windows.</value>
+  </data>
+  <data name="Settings_StartMinimized" xml:space="preserve">
+    <value>Khởi động thu nhỏ dưới khay hệ thống</value>
+  </data>
+  <data name="Settings_StartMinimized_Desc" xml:space="preserve">
+    <value>Khởi động thẳng vào khay hệ thống mà không hiện cửa sổ chính.</value>
+  </data>
+  <data name="Settings_AutoStartDns" xml:space="preserve">
+    <value>Tự động bật DNS engine</value>
+  </data>
+  <data name="Settings_AutoStartDns_Desc" xml:space="preserve">
+    <value>Tự động bật bảo vệ DNS khi dịch vụ nền khởi chạy (Giai đoạn 4).</value>
+  </data>
+  <data name="Settings_RestoreProfile" xml:space="preserve">
+    <value>Khôi phục hồ sơ DNS trước đó</value>
+  </data>
+  <data name="Settings_RestoreProfile_Desc" xml:space="preserve">
+    <value>Áp dụng lại resolver và hồ sơ định tuyến gần nhất khi khởi động.</value>
+  </data>
+  <data name="Settings_GamingOnStartup" xml:space="preserve">
+    <value>Bật Chế độ Game khi khởi động</value>
+  </data>
+  <data name="Settings_GamingOnStartup_Desc" xml:space="preserve">
+    <value>Tự động kích hoạt Chế độ Game ngay khi khởi chạy.</value>
+  </data>
+  <data name="Settings_ServiceStatus" xml:space="preserve">
+    <value>Dịch vụ nền độc lập</value>
+  </data>
+  <data name="Settings_ServiceStatus_Desc" xml:space="preserve">
+    <value>Cho phép bảo vệ DNS tiếp tục chạy ngay cả khi đã đóng cửa sổ giao diện.</value>
+  </data>
+  <data name="ServiceState_Unknown" xml:space="preserve">
+    <value>Đang kiểm tra…</value>
+  </data>
+  <data name="ServiceState_Connected" xml:space="preserve">
+    <value>Đã kết nối</value>
+  </data>
+  <data name="ServiceState_ServiceNotRunning" xml:space="preserve">
+    <value>Chưa chạy</value>
+  </data>
+  <data name="ServiceState_AccessDenied" xml:space="preserve">
+    <value>Từ chối truy cập</value>
+  </data>
+  <data name="ServiceState_Error" xml:space="preserve">
+    <value>Lỗi giao tiếp</value>
+  </data>
+  <data name="Tray_Open" xml:space="preserve">
+    <value>Mở JustCryptDns</value>
+  </data>
+  <data name="Tray_EnableDns" xml:space="preserve">
+    <value>Bật bảo vệ DNS</value>
+  </data>
+  <data name="Tray_DisableDns" xml:space="preserve">
+    <value>Tắt bảo vệ DNS</value>
+  </data>
+  <data name="Tray_EnableGaming" xml:space="preserve">
+    <value>Bật Chế độ Game</value>
+  </data>
+  <data name="Tray_DisableGaming" xml:space="preserve">
+    <value>Tắt Chế độ Game</value>
+  </data>
+  <data name="Tray_ActiveResolver" xml:space="preserve">
+    <value>Resolver đang dùng: {0}</value>
+  </data>
+  <data name="Tray_RestoreDns" xml:space="preserve">
+    <value>Khôi phục DNS gốc</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Thoát</value>
+  </data>
 </root>

@@ -143,4 +143,40 @@ public sealed class ShellViewModelTests
              PageKeys.Filtering, PageKeys.Diagnostics, PageKeys.Monitor, PageKeys.Settings],
             keys);
     }
+
+    [Fact]
+    public async Task CloseBehavior_HandlesMinimizeExitAndPromptRemember()
+    {
+        var (shell, _, _, settings, _) = Create();
+
+        // Default is MinimizeToTray
+        Assert.Equal(WindowCloseAction.HideToTray, shell.HandleWindowClosing());
+
+        // AskEveryTime opens prompt
+        await settings.UpdateAsync(s => s.General.CloseBehavior = CloseBehavior.AskEveryTime);
+        Assert.Equal(WindowCloseAction.PromptUser, shell.HandleWindowClosing());
+        Assert.True(shell.IsClosePromptOpen);
+
+        var hidToTray = false;
+        shell.HideToTrayRequested += (_, _) => hidToTray = true;
+        shell.RememberCloseChoice = true;
+        shell.ConfirmMinimizeToTrayCommand.Execute(null);
+
+        Assert.False(shell.IsClosePromptOpen);
+        Assert.True(hidToTray);
+        Assert.Equal(CloseBehavior.MinimizeToTray, settings.Current.General.CloseBehavior);
+
+        // Prompt -> Exit with RememberCloseChoice
+        await settings.UpdateAsync(s => s.General.CloseBehavior = CloseBehavior.AskEveryTime);
+        Assert.Equal(WindowCloseAction.PromptUser, shell.HandleWindowClosing());
+        var exited = false;
+        shell.ExitRequested += (_, _) => exited = true;
+        shell.RememberCloseChoice = true;
+        shell.ConfirmExitApplicationCommand.Execute(null);
+
+        Assert.True(exited);
+        Assert.True(shell.IsExplicitExit);
+        Assert.Equal(CloseBehavior.ExitApplication, settings.Current.General.CloseBehavior);
+        Assert.Equal(WindowCloseAction.ExitApplication, shell.HandleWindowClosing());
+    }
 }

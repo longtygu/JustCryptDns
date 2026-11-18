@@ -5,6 +5,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
+using JustCryptDns.Core.Interfaces;
+using JustCryptDns.Core.Ipc;
 using JustCryptDns.Infrastructure.Windows;
 using Microsoft.Extensions.Logging;
 
@@ -14,29 +16,45 @@ public sealed partial class SettingsViewModel : PageViewModel
 {
     private readonly ISettingsService _settings;
     private readonly INavigationService _navigation;
+    private readonly IStartupService _startup;
+    private readonly IServiceClient _serviceClient;
     private readonly ILogger<SettingsViewModel> _logger;
+    private readonly SynchronizationContext? _ui;
     private bool _loading;
 
-    [ObservableProperty]
-    private string _selectedLanguage;
-
-    [ObservableProperty]
-    private AppTheme _theme;
+    [ObservableProperty] private string _selectedLanguage = LanguageCodes.System;
+    [ObservableProperty] private AppTheme _theme;
+    [ObservableProperty] private bool _startWithWindows;
+    [ObservableProperty] private bool _startMinimized;
+    [ObservableProperty] private bool _autoStartDnsEngine;
+    [ObservableProperty] private bool _restorePreviousProfile;
+    [ObservableProperty] private bool _enableGamingModeOnStartup;
+    [ObservableProperty] private CloseBehavior _closeBehavior;
+    [ObservableProperty] private ServiceConnectionState _serviceState;
+    [ObservableProperty] private string? _serviceVersion;
 
     /// <summary>Raw error detail from the last failed save (displayed through a localized template).</summary>
     [ObservableProperty]
     private string? _saveError;
 
-    public SettingsViewModel(ISettingsService settings, INavigationService navigation, IAppPaths paths, ILogger<SettingsViewModel> logger)
+    public SettingsViewModel(
+        ISettingsService settings,
+        INavigationService navigation,
+        IStartupService startup,
+        IServiceClient serviceClient,
+        IAppPaths paths,
+        ILogger<SettingsViewModel> logger)
         : base("Nav_Settings", "Page_Settings_Subtitle")
     {
         _settings = settings;
         _navigation = navigation;
+        _startup = startup;
+        _serviceClient = serviceClient;
         _logger = logger;
-        _loading = true;
-        _selectedLanguage = settings.Current.General.Language;
-        _theme = settings.Current.Appearance.Theme;
-        _loading = false;
+        _ui = SynchronizationContext.Current;
+
+        LoadFrom(settings.Current);
+        UpdateServiceState();
 
         DataFolder = paths.DataDirectory;
         LogsFolder = paths.LogsDirectory;
@@ -60,11 +78,16 @@ public sealed partial class SettingsViewModel : PageViewModel
     public override void OnNavigatedTo()
     {
         _settings.SaveFailed += OnSaveFailed;
+        _settings.Changed += OnSettingsChanged;
+        _serviceClient.StateChanged += OnServiceStateChanged;
+        _ = CheckServiceCommand.ExecuteAsync(null);
     }
 
     public override void OnNavigatedFrom()
     {
         _settings.SaveFailed -= OnSaveFailed;
+        _settings.Changed -= OnSettingsChanged;
+        _serviceClient.StateChanged -= OnServiceStateChanged;
     }
 
     protected override void Dispose(bool disposing)
@@ -72,6 +95,8 @@ public sealed partial class SettingsViewModel : PageViewModel
         if (disposing)
         {
             _settings.SaveFailed -= OnSaveFailed;
+            _settings.Changed -= OnSettingsChanged;
+            _serviceClient.StateChanged -= OnServiceStateChanged;
         }
 
         base.Dispose(disposing);
@@ -93,8 +118,73 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
     }
 
+    partial void OnStartWithWindowsChanged(bool value)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        ApplyStartupRegistration(value, StartMinimized);
+        _ = SaveAsync(s => s.General.StartWithWindows = value);
+    }
+
+    partial void OnStartMinimizedChanged(bool value)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        if (StartWithWindows)
+        {
+            ApplyStartupRegistration(true, value);
+        }
+
+        _ = SaveAsync(s => s.General.StartMinimized = value);
+    }
+
+    partial void OnAutoStartDnsEngineChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = SaveAsync(s => s.General.AutoStartDnsEngine = value);
+        }
+    }
+
+    partial void OnRestorePreviousProfileChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = SaveAsync(s => s.General.RestorePreviousProfile = value);
+        }
+    }
+
+    partial void OnEnableGamingModeOnStartupChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = SaveAsync(s => s.General.EnableGamingModeOnStartup = value);
+        }
+    }
+
+    partial void OnCloseBehaviorChanged(CloseBehavior value)
+    {
+        if (!_loading)
+        {
+            _ = SaveAsync(s => s.General.CloseBehavior = value);
+        }
+    }
+
     [RelayCommand]
     private void OpenAppearance() => _navigation.Navigate(PageKeys.Appearance);
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task CheckServiceAsync()
+    {
+        await _serviceClient.RefreshStatusAsync();
+        UpdateServiceState();
+    }
 
     [RelayCommand]
     private void OpenFolder(string? path)
@@ -112,6 +202,68 @@ public sealed partial class SettingsViewModel : PageViewModel
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         {
             _logger.LogWarning(ex, "Could not open folder {Path}", path);
+        }
+    }
+
+    private void LoadFrom(AppSettings current)
+    {
+        _loading = true;
+        try
+        {
+            SelectedLanguage = current.General.Language;
+            Theme = current.Appearance.Theme;
+            StartWithWindows = current.General.StartWithWindows || _startup.IsRegistered();
+            StartMinimized = current.General.StartMinimized;
+            AutoStartDnsEngine = current.General.AutoStartDnsEngine;
+            RestorePreviousProfile = current.General.RestorePreviousProfile;
+            EnableGamingModeOnStartup = current.General.EnableGamingModeOnStartup;
+            CloseBehavior = current.General.CloseBehavior;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ApplyStartupRegistration(bool enabled, bool minimized)
+    {
+        try
+        {
+            _startup.SetRegistration(enabled, minimized);
+            SaveError = null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            _logger.LogError(ex, "Failed to update Windows startup registration.");
+            SaveError = ex.Message;
+        }
+    }
+
+    private void UpdateServiceState()
+    {
+        ServiceState = _serviceClient.ConnectionState;
+        ServiceVersion = _serviceClient.LastStatus?.ServiceVersion;
+    }
+
+    private void OnServiceStateChanged(object? sender, EventArgs e)
+    {
+        if (_ui is not null)
+        {
+            _ui.Post(_ => UpdateServiceState(), null);
+        }
+        else
+        {
+            UpdateServiceState();
+        }
+    }
+
+    private void OnSettingsChanged(object? sender, AppSettings settings)
+    {
+        if (settings.General.CloseBehavior != CloseBehavior)
+        {
+            _loading = true;
+            CloseBehavior = settings.General.CloseBehavior;
+            _loading = false;
         }
     }
 

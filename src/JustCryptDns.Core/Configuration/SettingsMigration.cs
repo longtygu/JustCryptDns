@@ -56,6 +56,19 @@ internal sealed class MigrationV1ToV2 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v3 adds startup and system-tray close behavior options to <see cref="GeneralSettings"/>.
+/// </summary>
+internal sealed class MigrationV2ToV3 : ISettingsMigration
+{
+    public int FromVersion => 2;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by GeneralSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -68,7 +81,8 @@ public sealed class SettingsMigrator
 
     public int TargetVersion { get; }
 
-    public static IEnumerable<ISettingsMigration> DefaultMigrations() => [new MigrationV0ToV1(), new MigrationV1ToV2()];
+    public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3()];
 
     public static int ReadVersion(JsonObject document)
     {

@@ -3,7 +3,10 @@ using JustCryptDns.App.ViewModels;
 using JustCryptDns.App.Views;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
+using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Services;
+using JustCryptDns.Infrastructure.Ipc;
+using JustCryptDns.Infrastructure.Windows;
 using JustCryptDns.Network.Monitoring;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -23,6 +26,10 @@ public static class ServiceRegistration
         services.AddSingleton(store);
         services.AddSingleton<ISettingsService>(sp =>
             new SettingsService(store, sp.GetRequiredService<ILogger<SettingsService>>(), initialSettings));
+        services.AddSingleton<IStartupService>(sp =>
+            new RegistryStartupService(sp.GetRequiredService<ILogger<RegistryStartupService>>()));
+        services.AddSingleton<IServiceClient>(sp =>
+            new NamedPipeServiceClient(sp.GetRequiredService<ILogger<NamedPipeServiceClient>>()));
 
         // Network
         services.AddSingleton<INetworkInfoService, NetworkInfoService>();
@@ -31,6 +38,7 @@ public static class ServiceRegistration
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IAppearanceService, AppearanceService>();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<ITrayIconService, TrayIconService>();
         services.AddSingleton<IPageFactory, PageFactory>();
 
         // Shell

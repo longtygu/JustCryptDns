@@ -7,6 +7,13 @@ using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.App.ViewModels;
 
+public enum WindowCloseAction
+{
+    HideToTray,
+    ExitApplication,
+    PromptUser,
+}
+
 public sealed partial class ShellViewModel : ObservableObject
 {
     /// <summary>Sub-pages shown under a sidebar entry without their own sidebar item.</summary>
@@ -33,6 +40,12 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSidebarCollapsed;
 
+    [ObservableProperty]
+    private bool _isClosePromptOpen;
+
+    [ObservableProperty]
+    private bool _rememberCloseChoice;
+
     public ShellViewModel(IPageFactory pageFactory, ISettingsService settings, INavigationService navigation, ILogger<ShellViewModel> logger)
     {
         _pageFactory = pageFactory;
@@ -58,12 +71,67 @@ public sealed partial class ShellViewModel : ObservableObject
         SelectedNavItem = NavItems[0];
     }
 
+    public event EventHandler? HideToTrayRequested;
+
+    public event EventHandler? ExitRequested;
+
     public ObservableCollection<NavItem> NavItems { get; }
 
     public ObservableCollection<NavItem> FooterItems { get; }
 
     /// <summary>Key of the page currently shown.</summary>
     public string? CurrentPageKey { get; private set; }
+
+    /// <summary>When true, the next window close exits the application regardless of <see cref="CloseBehavior"/>.</summary>
+    public bool IsExplicitExit { get; set; }
+
+    public WindowCloseAction HandleWindowClosing()
+    {
+        if (IsExplicitExit)
+        {
+            return WindowCloseAction.ExitApplication;
+        }
+
+        switch (_settings.Current.General.CloseBehavior)
+        {
+            case CloseBehavior.ExitApplication:
+                return WindowCloseAction.ExitApplication;
+            case CloseBehavior.AskEveryTime:
+                RememberCloseChoice = false;
+                IsClosePromptOpen = true;
+                return WindowCloseAction.PromptUser;
+            default:
+                return WindowCloseAction.HideToTray;
+        }
+    }
+
+    [RelayCommand]
+    private void ConfirmMinimizeToTray()
+    {
+        IsClosePromptOpen = false;
+        if (RememberCloseChoice)
+        {
+            _settings.UpdateDeferred(s => s.General.CloseBehavior = CloseBehavior.MinimizeToTray);
+        }
+
+        HideToTrayRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void ConfirmExitApplication()
+    {
+        IsClosePromptOpen = false;
+        if (RememberCloseChoice)
+        {
+            _settings.UpdateDeferred(s => s.General.CloseBehavior = CloseBehavior.ExitApplication);
+        }
+
+        IsExplicitExit = true;
+        ExitRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void CancelClosePrompt() => IsClosePromptOpen = false;
 
     public void NavigateTo(string pageKey)
     {

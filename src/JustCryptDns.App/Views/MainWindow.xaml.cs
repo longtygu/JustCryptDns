@@ -21,6 +21,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         StateChanged += (_, _) => UpdateMaximizedState();
+        Closing += OnWindowClosing;
+        viewModel.HideToTrayRequested += (_, _) => Hide();
+        viewModel.ExitRequested += (_, _) => Close();
         LocalizationManager.Instance.PropertyChanged += (_, _) => UpdateMaximizedState();
     }
 
@@ -71,6 +74,27 @@ public partial class MainWindow : Window
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
+
+    private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (DataContext is not ShellViewModel vm)
+        {
+            return;
+        }
+
+        switch (vm.HandleWindowClosing())
+        {
+            case WindowCloseAction.HideToTray:
+                e.Cancel = true;
+                Hide();
+                break;
+            case WindowCloseAction.PromptUser:
+                e.Cancel = true;
+                break;
+            case WindowCloseAction.ExitApplication:
+                break;
+        }
+    }
 
     private void OnNavListMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {

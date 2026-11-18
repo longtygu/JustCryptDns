@@ -158,6 +158,26 @@
 
             <controls:AnimatedContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
         </Grid>
+
+        <!-- Close behavior confirmation overlay (when CloseBehavior is AskEveryTime) -->
+        <Grid Grid.ColumnSpan="2" Background="#99000000"
+              Visibility="{Binding IsClosePromptOpen, Converter={StaticResource BoolToVisibility}}">
+            <Border Style="{StaticResource Card}" MaxWidth="440" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{DynamicResource Brush.Popup}" BorderBrush="{DynamicResource Brush.ControlBorder}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc ClosePrompt_Title}" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc ClosePrompt_Body}" Margin="0,6,0,16" />
+                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding RememberCloseChoice}"
+                              Content="{l:Loc ClosePrompt_Remember}" Margin="0,0,0,20" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="{l:Loc Common_Cancel}" Command="{Binding CancelClosePromptCommand}" Margin="0,0,8,0" />
+                        <Button Content="{l:Loc CloseBehavior_ExitApplication}" Command="{Binding ConfirmExitApplicationCommand}" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource Button.Primary}" Content="{l:Loc CloseBehavior_MinimizeToTray}"
+                                Command="{Binding ConfirmMinimizeToTrayCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
         </Grid>
     </Grid>
 </Window>

@@ -69,7 +69,7 @@ flowchart LR
 |---|---|---|---|
 | 1 | Foundation & modern UI ✅ | Solution, DI, Serilog, versioned settings store, localization (en/vi), theme engine (dark/light/system), custom-chrome shell, collapsible sidebar, 9 pages, real network-adapter info on Dashboard, unit tests | Build, tests, launch + screenshot |
 | 2 | Appearance & transparency ✅ | Appearance page: theme (incl. Custom), transparency 0–90 % (backdrop engine), accent picker, sidebar mode, UI scale, font size, animation intensity, density, corner style, background, reset | Visual verification on Win10; Win11 path guarded |
-| 3 | Service, tray, startup | Windows Service host, named-pipe IPC, tray icon + menu, close behavior, Run-key startup, start minimized | Install service locally (admin), IPC round-trip tests |
+| 3 | Service, tray, startup ✅ | Windows Service host, named-pipe IPC, tray icon + menu, close behavior, Run-key startup, start minimized | End-to-end Service+UI run, IPC round-trip tests |
 | 4 | DNS engine | Wire format, UDP/TCP/DoH/DoT upstreams, local proxy (port conflict + loop detection), dnscrypt-proxy download/verify/manage/update, Windows DNS apply/backup/verify/rollback, emergency restore | Real resolution through proxy, nslookup against 127.0.0.1 |
 | 5 | Resolver management | Provider catalog (validated), CRUD, groups, import/export, health checks, dnscrypt `public-resolvers.md` parsing (signed) | Tests + live checks |
 | 6 | Smart routing | Rule engine (exact/wildcard/suffix, priority), profiles, rule editor, rule tester, routing log | Tests |
