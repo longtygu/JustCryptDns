@@ -1059,4 +1059,97 @@
   <data name="Routing_Msg_ProfileRemoved" xml:space="preserve">
     <value>Đã xóa hồ sơ định tuyến '{0}'.</value>
   </data>
+  <data name="BlockCat_Advertising" xml:space="preserve">
+    <value>Quảng cáo</value>
+  </data>
+  <data name="BlockCat_Tracking" xml:space="preserve">
+    <value>Theo dõi</value>
+  </data>
+  <data name="BlockCat_Malware" xml:space="preserve">
+    <value>Mã độc</value>
+  </data>
+  <data name="BlockCat_Phishing" xml:space="preserve">
+    <value>Lừa đảo</value>
+  </data>
+  <data name="BlockCat_Telemetry" xml:space="preserve">
+    <value>Telemetry</value>
+  </data>
+  <data name="BlockCat_Custom" xml:space="preserve">
+    <value>Tùy chỉnh</value>
+  </data>
+  <data name="Filtering_ImportHosts" xml:space="preserve">
+    <value>Nhập tệp hosts</value>
+  </data>
+  <data name="Filtering_UpdateAll" xml:space="preserve">
+    <value>Cập nhật danh sách chặn</value>
+  </data>
+  <data name="Filtering_MasterToggle" xml:space="preserve">
+    <value>Lọc tên miền ở cấp DNS</value>
+  </data>
+  <data name="Filtering_MasterToggle_Desc" xml:space="preserve">
+    <value>Chặn tên miền quảng cáo, theo dõi, mã độc, lừa đảo và telemetry đồng thời bảo vệ các dịch vụ thiết yếu của Windows.</value>
+  </data>
+  <data name="Filtering_Stat_Domains" xml:space="preserve">
+    <value>Tên miền đang chặn</value>
+  </data>
+  <data name="Filtering_Stat_WindowsGuard" xml:space="preserve">
+    <value>Bảo vệ dịch vụ Windows</value>
+  </data>
+  <data name="Filtering_Stat_Active" xml:space="preserve">
+    <value>Đang bảo vệ</value>
+  </data>
+  <data name="Filtering_Blocklists_Title" xml:space="preserve">
+    <value>Danh sách chặn</value>
+  </data>
+  <data name="Filtering_Allowlist_Title" xml:space="preserve">
+    <value>Danh sách cho phép &amp; ngoại lệ</value>
+  </data>
+  <data name="Filtering_TempException_Toggle" xml:space="preserve">
+    <value>Ngoại lệ tạm thời 30 phút</value>
+  </data>
+  <data name="Filtering_CustomBlock_Title" xml:space="preserve">
+    <value>Tên miền chặn tùy chỉnh</value>
+  </data>
+  <data name="Filtering_Inspector_Title" xml:space="preserve">
+    <value>Kiểm tra quyết định lọc</value>
+  </data>
+  <data name="Filtering_Inspector_Button" xml:space="preserve">
+    <value>Kiểm tra tên miền</value>
+  </data>
+  <data name="Filtering_Err_ProtectedDomain" xml:space="preserve">
+    <value>'{0}' là tên miền thiết yếu của Windows và không thể bị chặn.</value>
+  </data>
+  <data name="Filtering_Msg_ListUpdated" xml:space="preserve">
+    <value>Đã cập nhật '{0}' ({1} tên miền).</value>
+  </data>
+  <data name="Filtering_Msg_AllUpdated" xml:space="preserve">
+    <value>Đã cập nhật {0} danh sách chặn ({1} tên miền đang chặn).</value>
+  </data>
+  <data name="Filtering_Msg_HostsImported" xml:space="preserve">
+    <value>Đã nhập {0} tên miền từ tệp hosts.</value>
+  </data>
+  <data name="Filtering_Msg_CacheCleared" xml:space="preserve">
+    <value>Đã xóa bộ nhớ đệm phản hồi DNS.</value>
+  </data>
+  <data name="Cache_Section_Title" xml:space="preserve">
+    <value>Bộ nhớ đệm DNS theo TTL</value>
+  </data>
+  <data name="Cache_MasterToggle" xml:space="preserve">
+    <value>Bật bộ nhớ đệm phản hồi DNS (dương &amp; âm)</value>
+  </data>
+  <data name="Cache_MasterToggle_Desc" xml:space="preserve">
+    <value>Lưu đệm các bản ghi DNS hợp lệ theo đúng TTL và không bao giờ trả về bản ghi hết hạn hoặc lỗi.</value>
+  </data>
+  <data name="Cache_Clear" xml:space="preserve">
+    <value>Xóa cache</value>
+  </data>
+  <data name="Cache_Stat_Entries" xml:space="preserve">
+    <value>Bản ghi / Sức chứa</value>
+  </data>
+  <data name="Cache_Stat_HitsMisses" xml:space="preserve">
+    <value>Trúng / Trượt</value>
+  </data>
+  <data name="Cache_Stat_PosNeg" xml:space="preserve">
+    <value>Dương / Âm</value>
+  </data>
 </root>

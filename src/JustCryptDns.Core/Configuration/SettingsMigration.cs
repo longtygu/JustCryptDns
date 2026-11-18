@@ -108,6 +108,19 @@ internal sealed class MigrationV5ToV6 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v7 adds <see cref="FilteringSettings"/> and <see cref="CacheSettings"/>.
+/// </summary>
+internal sealed class MigrationV6ToV7 : ISettingsMigration
+{
+    public int FromVersion => 6;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by FilteringSettings and CacheSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -121,7 +134,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7()];
 
     public static int ReadVersion(JsonObject document)
     {

@@ -1,0 +1,291 @@
+<UserControl x:Class="JustCryptDns.App.Views.FilteringView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
+             xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
+             xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1200"
+             d:DataContext="{d:DesignInstance Type=vm:FilteringViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="SectionCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+        </Style>
+        <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
+        </Style>
+        <Style x:Key="Divider" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Divider}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Margin" Value="0,14,0,14" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel Margin="32,4,32,32" MaxWidth="940">
+            <!-- Header & Actions -->
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Filtering}" />
+                    <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Filtering_Subtitle}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding ImportHostsFileCommand}" Content="{l:Loc Filtering_ImportHosts}" Margin="0,0,8,0" />
+                    <Button Style="{StaticResource Button.Primary}" Command="{Binding UpdateAllListsCommand}" Content="{l:Loc Filtering_UpdateAll}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Status / Error Banners -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+            </Border>
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+            </Border>
+
+            <!-- Filtering Summary & Master Toggle -->
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{l:Loc Filtering_MasterToggle}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Filtering_MasterToggle_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsFilteringEnabled}"
+                                  AutomationProperties.Name="{l:Loc Filtering_MasterToggle}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <UniformGrid Rows="1" Columns="3">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Filtering_Stat_Domains}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding TotalBlockedDomains}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Blocked}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding BlockedQueryCount}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Filtering_Stat_WindowsGuard}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{l:Loc Filtering_Stat_Active}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- Blocklists Section -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Filtering_Blocklists_Title}" Margin="0,8,0,10" />
+            <ItemsControl ItemsSource="{Binding Blocklists}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:BlocklistItemViewModel}">
+                        <Border Style="{StaticResource SectionCard}" Padding="18,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{Binding Name}" Margin="0,0,10,0" />
+                                        <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="0,0,8,0">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Brush.Accent}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                                        <Binding Path="CategoryKey" />
+                                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Border>
+                                        <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" Text="{Binding DomainCount, StringFormat={}{0} domains}" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding LastUpdatedText}" Margin="0,4,0,0" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Command="{Binding DataContext.UpdateSingleListCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" Content="{l:Loc Common_Refresh}" Margin="0,0,10,0" Padding="10,6"
+                                            Visibility="{Binding HasRemoteUrl, Converter={StaticResource BoolToVisibility}}" />
+                                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                              Command="{Binding DataContext.ToggleListEnabledCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              CommandParameter="{Binding}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Allowlist & Custom Blocked Domains -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Allowlist & Temporary Exceptions -->
+                <Border Style="{StaticResource SectionCard}" Margin="0,0,6,12">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Filtering_Allowlist_Title}" Margin="0,0,0,10" />
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding NewAllowDomain, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     Margin="0,0,8,0" AutomationProperties.Name="{l:Loc Filtering_Allowlist_Title}" />
+                            <Button Grid.Column="1" Command="{Binding AddAllowDomainCommand}" Content="+" Padding="12,6" />
+                        </Grid>
+                        <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsTemporaryException}"
+                                  Content="{l:Loc Filtering_TempException_Toggle}" Margin="0,0,0,10" />
+
+                        <ItemsControl ItemsSource="{Binding AllowlistEntries}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:DnsAllowlistEntry}">
+                                    <Grid Margin="0,4,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Domain}" />
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Note, StringFormat=' ({0})'}" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Command="{Binding DataContext.RemoveAllowDomainCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" Content="×" Padding="8,2" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Custom Blocked Domains -->
+                <Border Grid.Column="1" Style="{StaticResource SectionCard}" Margin="6,0,0,12">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Filtering_CustomBlock_Title}" Margin="0,0,0,10" />
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding NewBlockedDomain, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     Margin="0,0,8,0" AutomationProperties.Name="{l:Loc Filtering_CustomBlock_Title}" />
+                            <Button Grid.Column="1" Command="{Binding AddBlockedDomainCommand}" Content="+" Padding="12,6" />
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{Binding CustomBlockedDomains}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                                   Text="{Binding}" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1"
+                                                Command="{Binding DataContext.RemoveBlockedDomainCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" Content="×" Padding="8,2" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Decision Inspector -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Filtering_Inspector_Title}" Margin="0,8,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding InspectDomainInput, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                 Margin="0,0,10,0" AutomationProperties.Name="{l:Loc Filtering_Inspector_Title}" />
+                        <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding InspectDomainCommand}"
+                                Content="{l:Loc Filtering_Inspector_Button}" />
+                    </Grid>
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,12,0,0"
+                            Visibility="{Binding LastInspectSummary, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding LastInspectSummary}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- TTL-Aware DNS Cache Section (Part 8) -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Cache_Section_Title}" Margin="0,8,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{l:Loc Cache_MasterToggle}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Cache_MasterToggle_Desc}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Command="{Binding ClearCacheCommand}" Content="{l:Loc Cache_Clear}" Margin="0,0,12,0" />
+                            <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsCacheEnabled}"
+                                      AutomationProperties.Name="{l:Loc Cache_MasterToggle}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <UniformGrid Rows="1" Columns="4">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_CacheHit}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding CacheHitRatioText}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Cache_Stat_Entries}" />
+                            <TextBlock Style="{StaticResource Text.Body}" Margin="0,4,0,0">
+                                <Run Text="{Binding CacheCurrentEntries, Mode=OneWay}" />
+                                <Run Text="/" />
+                                <Run Text="{Binding CacheMaxEntries, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Cache_Stat_HitsMisses}" />
+                            <TextBlock Style="{StaticResource Text.Body}" Margin="0,4,0,0">
+                                <Run Text="{Binding CacheHits, Mode=OneWay}" />
+                                <Run Text="/" />
+                                <Run Text="{Binding CacheMisses, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Cache_Stat_PosNeg}" />
+                            <TextBlock Style="{StaticResource Text.Body}" Margin="0,4,0,0">
+                                <Run Text="{Binding CachePositiveEntries, Mode=OneWay}" />
+                                <Run Text="/" />
+                                <Run Text="{Binding CacheNegativeEntries, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

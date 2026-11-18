@@ -240,21 +240,39 @@ public sealed class LocalDnsProxy : IAsyncDisposable
 
     private void BindEndpoint(IPAddress address, int port, CancellationToken ct)
     {
-        var udp = new Socket(address.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-        udp.Bind(new IPEndPoint(address, port));
-        var actualPort = ((IPEndPoint)udp.LocalEndPoint!).Port;
+        var maxAttempts = port == 0 ? 8 : 1;
+        Socket? udp = null;
+        TcpListener? tcp = null;
+        var actualPort = port;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            udp = new Socket(address.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            try
+            {
+                udp.Bind(new IPEndPoint(address, port));
+                actualPort = ((IPEndPoint)udp.LocalEndPoint!).Port;
+                tcp = new TcpListener(address, actualPort);
+                tcp.Start();
+                break;
+            }
+            catch (SocketException) when (attempt < maxAttempts)
+            {
+                udp.Dispose();
+                udp = null;
+                tcp = null;
+            }
+        }
+
         if (BoundPort == 0)
         {
             BoundPort = actualPort;
         }
 
-        var tcp = new TcpListener(address, actualPort);
-        tcp.Start();
-
-        _udpSockets.Add(udp);
-        _tcpListeners.Add(tcp);
-        _loops.Add(Task.Run(() => UdpReceiveLoopAsync(udp, ct), ct));
-        _loops.Add(Task.Run(() => TcpAcceptLoopAsync(tcp, ct), ct));
+        _udpSockets.Add(udp!);
+        _tcpListeners.Add(tcp!);
+        _loops.Add(Task.Run(() => UdpReceiveLoopAsync(udp!, ct), ct));
+        _loops.Add(Task.Run(() => TcpAcceptLoopAsync(tcp!, ct), ct));
         _logger.LogInformation("Local DNS proxy bound on {Address}:{Port} (UDP/TCP)", address, actualPort);
     }
 

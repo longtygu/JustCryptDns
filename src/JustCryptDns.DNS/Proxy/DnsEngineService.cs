@@ -26,6 +26,8 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly ILogger<DnsEngineService> _logger;
     private readonly IResolverLibraryService? _resolverLibrary;
     private readonly IDnsRoutingService? _routingService;
+    private readonly IDnsFilteringService? _filteringService;
+    private readonly IDnsCacheService? _cacheService;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
@@ -50,7 +52,9 @@ public sealed class DnsEngineService : IDnsEngine
         ILogger<DnsEngineService> logger,
         IEnumerable<IDnsUpstreamClient>? customUpstreams = null,
         IResolverLibraryService? resolverLibrary = null,
-        IDnsRoutingService? routingService = null)
+        IDnsRoutingService? routingService = null,
+        IDnsFilteringService? filteringService = null,
+        IDnsCacheService? cacheService = null)
     {
         _settings = settings;
         _dnsCryptManager = dnsCryptManager;
@@ -58,6 +62,8 @@ public sealed class DnsEngineService : IDnsEngine
         _logger = logger;
         _resolverLibrary = resolverLibrary;
         _routingService = routingService;
+        _filteringService = filteringService;
+        _cacheService = cacheService;
 
         _defaultDoh = new DohDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
@@ -82,6 +88,7 @@ public sealed class DnsEngineService : IDnsEngine
     {
         var dns = _settings.Current.Dns;
         var resolver = ResolveEndpoint(dns.ActiveResolverId);
+        var cacheStats = _cacheService?.GetStats();
         return new DnsEngineRuntimeStats
         {
             State = _state,
@@ -92,6 +99,9 @@ public sealed class DnsEngineService : IDnsEngine
             TotalQueries = Interlocked.Read(ref _totalQueries),
             SuccessfulQueries = Interlocked.Read(ref _successfulQueries),
             FailedQueries = Interlocked.Read(ref _failedQueries),
+            BlockedQueries = _filteringService?.BlockedQueryCount ?? 0,
+            CacheHits = cacheStats?.CacheHits ?? 0,
+            CacheHitRatioPercent = cacheStats?.HitRatioPercent ?? 0.0,
             LastLatencyMs = _lastLatencyMs,
             LastError = _lastError,
             PortConflict = _portConflict,
@@ -313,16 +323,40 @@ public sealed class DnsEngineService : IDnsEngine
 
     private async Task<byte[]> HandleClientQueryAsync(ReadOnlyMemory<byte> queryWire, CancellationToken cancellationToken)
     {
+        var hasParsed = DnsPacket.TryParse(queryWire.Span, out var parsed)
+            && parsed is { PrimaryQuestionName.Length: > 0 };
+
+        // 1. DNS Filtering (Blocklists & Allowlist)
+        if (hasParsed && _filteringService is not null)
+        {
+            var filterDecision = _filteringService.EvaluateDomain(parsed!.PrimaryQuestionName!, recordStats: true);
+            if (filterDecision.IsBlocked)
+            {
+                Interlocked.Increment(ref _totalQueries);
+                RaiseStateChanged();
+                return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.NxDomain);
+            }
+        }
+
+        // 2. TTL-aware DNS Cache lookup
+        if (_cacheService is { IsEnabled: true }
+            && _cacheService.TryGetResponse(queryWire.Span, out var cachedBytes))
+        {
+            Interlocked.Increment(ref _totalQueries);
+            Interlocked.Increment(ref _successfulQueries);
+            RaiseStateChanged();
+            return cachedBytes;
+        }
+
+        // 3. Smart DNS Routing
         var resolver = _activeResolver;
         RoutingDecision? decision = null;
         var queryType = "A";
 
-        if (_routingService is { IsRoutingEnabled: true }
-            && DnsPacket.TryParse(queryWire.Span, out var parsed)
-            && parsed is { PrimaryQuestionName.Length: > 0 })
+        if (hasParsed && _routingService is { IsRoutingEnabled: true })
         {
-            queryType = parsed.PrimaryQuestionType.ToString();
-            decision = _routingService.ResolveForDomain(parsed.PrimaryQuestionName);
+            queryType = parsed!.PrimaryQuestionType.ToString();
+            decision = _routingService.ResolveForDomain(parsed.PrimaryQuestionName!);
             resolver = ResolveEndpoint(decision.ResolverId);
         }
 
@@ -340,9 +374,13 @@ public sealed class DnsEngineService : IDnsEngine
             _routingService.RecordRoutingLog(decision, queryType, result.Success ? result.LatencyMs : null);
         }
 
-        return result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize
-            ? result.ResponseBytes
-            : DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.ServFail);
+        if (result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize)
+        {
+            _cacheService?.StoreResponse(queryWire.Span, result.ResponseBytes);
+            return result.ResponseBytes;
+        }
+
+        return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.ServFail);
     }
 
     private void RecordQueryOutcome(DnsQueryResult result)

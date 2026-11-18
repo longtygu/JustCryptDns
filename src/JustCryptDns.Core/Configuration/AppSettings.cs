@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library. v6: Phase 6 smart routing.</summary>
-    public const int CurrentSchemaVersion = 6;
+    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library. v6: Phase 6 smart routing. v7: Phase 7 filtering & cache.</summary>
+    public const int CurrentSchemaVersion = 7;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -27,6 +27,10 @@ public sealed class AppSettings
 
     public RoutingSettings Routing { get; set; } = new();
 
+    public FilteringSettings Filtering { get; set; } = new();
+
+    public CacheSettings Cache { get; set; } = new();
+
     public PerformanceSettings Performance { get; set; } = new();
 
     /// <summary>Normalizes out-of-range or missing values after deserialization.</summary>
@@ -36,11 +40,15 @@ public sealed class AppSettings
         Appearance ??= new AppearanceSettings();
         Dns ??= new DnsSettings();
         Routing ??= new RoutingSettings();
+        Filtering ??= new FilteringSettings();
+        Cache ??= new CacheSettings();
         Performance ??= new PerformanceSettings();
         General.Normalize();
         Appearance.Normalize();
         Dns.Normalize();
         Routing.Normalize();
+        Filtering.Normalize();
+        Cache.Normalize();
         Performance.Normalize();
         return this;
     }
@@ -298,7 +306,7 @@ public sealed class DnsSettings
             ListenAddress = DefaultListenAddress;
         }
 
-        ListenPort = Math.Clamp(ListenPort, 1, 65535);
+        ListenPort = Math.Clamp(ListenPort, 0, 65535);
         DnsCryptInternalPort = Math.Clamp(DnsCryptInternalPort, 1024, 65535);
         if (DnsCryptInternalPort == ListenPort)
         {
@@ -334,6 +342,51 @@ public sealed class RoutingSettings
         {
             Rules = BuiltInRoutingProfiles.CreateDefaultRules().ToList();
         }
+    }
+}
+
+public sealed class FilteringSettings
+{
+    public bool IsFilteringEnabled { get; set; } = true;
+
+    public bool AutoUpdateBlocklists { get; set; } = true;
+
+    public List<DnsBlocklistSource>? Blocklists { get; set; }
+
+    public List<string> CustomBlockedDomains { get; set; } = [];
+
+    public List<DnsAllowlistEntry> Allowlist { get; set; } = [];
+
+    internal void Normalize()
+    {
+        if (Blocklists is null || Blocklists.Count == 0)
+        {
+            Blocklists = BuiltInBlocklists.All.ToList();
+        }
+
+        CustomBlockedDomains ??= [];
+        Allowlist ??= [];
+    }
+}
+
+public sealed class CacheSettings
+{
+    public bool IsCacheEnabled { get; set; } = true;
+
+    public int MaxEntries { get; set; } = 4096;
+
+    public int MinPositiveTtlSeconds { get; set; } = 10;
+
+    public int MaxPositiveTtlSeconds { get; set; } = 3600;
+
+    public int NegativeTtlSeconds { get; set; } = 60;
+
+    internal void Normalize()
+    {
+        MaxEntries = Math.Clamp(MaxEntries, 64, 65536);
+        MinPositiveTtlSeconds = Math.Clamp(MinPositiveTtlSeconds, 1, 3600);
+        MaxPositiveTtlSeconds = Math.Clamp(MaxPositiveTtlSeconds, MinPositiveTtlSeconds, 86400);
+        NegativeTtlSeconds = Math.Clamp(NegativeTtlSeconds, 5, 3600);
     }
 }
 

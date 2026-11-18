@@ -96,9 +96,10 @@ public sealed partial class LocalizationResourceTests
         expected.AddRange(Enum.GetNames<JustCryptDns.Core.Ipc.DnsEngineState>().Select(n => "EngineState_" + n));
         expected.AddRange(Enum.GetNames<DnsFilteringCapability>().Select(n => "FilteringCap_" + n));
         expected.AddRange(Enum.GetNames<RoutingMatchKind>().Select(n => "RoutingMatch_" + n));
+        expected.AddRange(Enum.GetNames<BlocklistCategory>().Select(n => "BlockCat_" + n));
         expected.AddRange(LanguageCodes.All.Select(c => "Lang_" + c));
 
-        foreach (var page in new[] { "Gaming", "Filtering", "Diagnostics", "Monitor" })
+        foreach (var page in new[] { "Gaming", "Diagnostics", "Monitor" })
         {
             var vm = new PlannedFeatureViewModel(page, 4, 4);
             expected.Add(vm.TitleKey);

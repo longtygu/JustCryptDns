@@ -1059,4 +1059,97 @@
   <data name="Routing_Msg_ProfileRemoved" xml:space="preserve">
     <value>Removed routing profile '{0}'.</value>
   </data>
+  <data name="BlockCat_Advertising" xml:space="preserve">
+    <value>Advertising</value>
+  </data>
+  <data name="BlockCat_Tracking" xml:space="preserve">
+    <value>Tracking</value>
+  </data>
+  <data name="BlockCat_Malware" xml:space="preserve">
+    <value>Malware</value>
+  </data>
+  <data name="BlockCat_Phishing" xml:space="preserve">
+    <value>Phishing</value>
+  </data>
+  <data name="BlockCat_Telemetry" xml:space="preserve">
+    <value>Telemetry</value>
+  </data>
+  <data name="BlockCat_Custom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="Filtering_ImportHosts" xml:space="preserve">
+    <value>Import hosts file</value>
+  </data>
+  <data name="Filtering_UpdateAll" xml:space="preserve">
+    <value>Update blocklists</value>
+  </data>
+  <data name="Filtering_MasterToggle" xml:space="preserve">
+    <value>DNS-level domain filtering</value>
+  </data>
+  <data name="Filtering_MasterToggle_Desc" xml:space="preserve">
+    <value>Blocks advertising, tracking, malware, phishing and telemetry domains while protecting essential Windows services.</value>
+  </data>
+  <data name="Filtering_Stat_Domains" xml:space="preserve">
+    <value>Active blocked domains</value>
+  </data>
+  <data name="Filtering_Stat_WindowsGuard" xml:space="preserve">
+    <value>Windows service guard</value>
+  </data>
+  <data name="Filtering_Stat_Active" xml:space="preserve">
+    <value>Protected</value>
+  </data>
+  <data name="Filtering_Blocklists_Title" xml:space="preserve">
+    <value>Blocklists</value>
+  </data>
+  <data name="Filtering_Allowlist_Title" xml:space="preserve">
+    <value>Allowlist &amp; exceptions</value>
+  </data>
+  <data name="Filtering_TempException_Toggle" xml:space="preserve">
+    <value>Temporary 30-minute exception</value>
+  </data>
+  <data name="Filtering_CustomBlock_Title" xml:space="preserve">
+    <value>Custom blocked domains</value>
+  </data>
+  <data name="Filtering_Inspector_Title" xml:space="preserve">
+    <value>Inspect filtering decision</value>
+  </data>
+  <data name="Filtering_Inspector_Button" xml:space="preserve">
+    <value>Inspect domain</value>
+  </data>
+  <data name="Filtering_Err_ProtectedDomain" xml:space="preserve">
+    <value>'{0}' is an essential Windows domain and cannot be blocked.</value>
+  </data>
+  <data name="Filtering_Msg_ListUpdated" xml:space="preserve">
+    <value>Updated '{0}' ({1} domains).</value>
+  </data>
+  <data name="Filtering_Msg_AllUpdated" xml:space="preserve">
+    <value>Updated {0} blocklists ({1} active blocked domains).</value>
+  </data>
+  <data name="Filtering_Msg_HostsImported" xml:space="preserve">
+    <value>Imported {0} domains from hosts file.</value>
+  </data>
+  <data name="Filtering_Msg_CacheCleared" xml:space="preserve">
+    <value>DNS response cache cleared.</value>
+  </data>
+  <data name="Cache_Section_Title" xml:space="preserve">
+    <value>Lightweight TTL-aware DNS cache</value>
+  </data>
+  <data name="Cache_MasterToggle" xml:space="preserve">
+    <value>Enable positive &amp; negative DNS response cache</value>
+  </data>
+  <data name="Cache_MasterToggle_Desc" xml:space="preserve">
+    <value>Caches valid DNS records up to their TTL and never serves expired or malformed records.</value>
+  </data>
+  <data name="Cache_Clear" xml:space="preserve">
+    <value>Clear cache</value>
+  </data>
+  <data name="Cache_Stat_Entries" xml:space="preserve">
+    <value>Entries / Capacity</value>
+  </data>
+  <data name="Cache_Stat_HitsMisses" xml:space="preserve">
+    <value>Hits / Misses</value>
+  </data>
+  <data name="Cache_Stat_PosNeg" xml:space="preserve">
+    <value>Positive / Negative</value>
+  </data>
 </root>

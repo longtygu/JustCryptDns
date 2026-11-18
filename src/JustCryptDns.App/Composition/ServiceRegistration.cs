@@ -5,7 +5,9 @@ using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Services;
+using JustCryptDns.DNS.Cache;
 using JustCryptDns.DNS.DnsCrypt;
+using JustCryptDns.DNS.Filtering;
 using JustCryptDns.DNS.Proxy;
 using JustCryptDns.DNS.Resolver;
 using JustCryptDns.DNS.Routing;
@@ -41,6 +43,8 @@ public static class ServiceRegistration
         services.AddSingleton<IDnsCryptProxyManager, DnsCryptProxyManager>();
         services.AddSingleton<IResolverLibraryService, ResolverLibraryService>();
         services.AddSingleton<IDnsRoutingService, DnsRoutingService>();
+        services.AddSingleton<IDnsFilteringService, DnsFilteringService>();
+        services.AddSingleton<IDnsCacheService, DnsCacheService>();
         services.AddSingleton<IDnsEngine, DnsEngineService>();
 
         // UI services
@@ -59,6 +63,7 @@ public static class ServiceRegistration
         services.AddTransient<DnsManagerViewModel>();
         services.AddTransient<ResolverLibraryViewModel>();
         services.AddTransient<RoutingViewModel>();
+        services.AddTransient<FilteringViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<AppearanceViewModel>();
 

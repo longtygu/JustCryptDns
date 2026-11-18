@@ -42,6 +42,8 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _listenEndpoint = "127.0.0.1:53";
     [ObservableProperty] private string _latencyDisplay = "—";
     [ObservableProperty] private string _totalQueriesDisplay = "—";
+    [ObservableProperty] private string _blockedQueriesDisplay = "—";
+    [ObservableProperty] private string _cacheHitDisplay = "—";
     [ObservableProperty] private string? _engineError;
 
     public DashboardViewModel(
@@ -157,6 +159,12 @@ public sealed partial class DashboardViewModel : PageViewModel
         LatencyDisplay = stats.LastLatencyMs is { } ms ? string.Create(CultureInfo.InvariantCulture, $"{ms:0.#} ms") : "—";
         TotalQueriesDisplay = stats.TotalQueries > 0 || IsEngineRunning
             ? stats.TotalQueries.ToString("N0", CultureInfo.CurrentCulture)
+            : "—";
+        BlockedQueriesDisplay = stats.BlockedQueries > 0 || IsEngineRunning
+            ? stats.BlockedQueries.ToString("N0", CultureInfo.CurrentCulture)
+            : "—";
+        CacheHitDisplay = stats.TotalQueries > 0 || IsEngineRunning
+            ? string.Create(CultureInfo.InvariantCulture, $"{stats.CacheHitRatioPercent:0.#}%")
             : "—";
         EngineError = stats.LastError;
     }

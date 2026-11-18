@@ -827,6 +827,12 @@ public sealed record DnsEngineRuntimeStats
 
     public long FailedQueries { get; init; }
 
+    public long BlockedQueries { get; init; }
+
+    public long CacheHits { get; init; }
+
+    public double CacheHitRatioPercent { get; init; }
+
     public double? LastLatencyMs { get; init; }
 
     public string? LastError { get; init; }

@@ -48,6 +48,9 @@
             <DataTemplate DataType="{x:Type vm:RoutingViewModel}">
                 <views:RoutingView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:FilteringViewModel}">
+                <views:FilteringView />
+            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

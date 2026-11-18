@@ -149,15 +149,15 @@
                 <Border Style="{StaticResource MetricCard}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Blocked}" />
-                        <TextBlock Style="{StaticResource Text.Metric}" Text="—" Margin="0,6,0,2" Foreground="{DynamicResource Brush.TextTertiary}" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Metric_NoData}" />
+                        <TextBlock Style="{StaticResource Text.Metric}" Text="{Binding BlockedQueriesDisplay}" Margin="0,6,0,2" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Nav_Filtering}" />
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource MetricCard}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_CacheHit}" />
-                        <TextBlock Style="{StaticResource Text.Metric}" Text="—" Margin="0,6,0,2" Foreground="{DynamicResource Brush.TextTertiary}" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Metric_NoData}" />
+                        <TextBlock Style="{StaticResource Text.Metric}" Text="{Binding CacheHitDisplay}" Margin="0,6,0,2" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="TTL Cache" />
                     </StackPanel>
                 </Border>
             </UniformGrid>

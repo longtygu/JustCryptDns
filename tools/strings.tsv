@@ -348,3 +348,34 @@ Routing_Msg_RuleSaved|Saved routing rule '{0}'.|Đã lưu quy tắc định tuy�
 Routing_Msg_RuleRemoved|Removed routing rule '{0}'.|Đã xóa quy tắc định tuyến '{0}'.
 Routing_Msg_ProfileCreated|Created routing profile '{0}'.|Đã tạo hồ sơ định tuyến '{0}'.
 Routing_Msg_ProfileRemoved|Removed routing profile '{0}'.|Đã xóa hồ sơ định tuyến '{0}'.
+BlockCat_Advertising|Advertising|Quảng cáo
+BlockCat_Tracking|Tracking|Theo dõi
+BlockCat_Malware|Malware|Mã độc
+BlockCat_Phishing|Phishing|Lừa đảo
+BlockCat_Telemetry|Telemetry|Telemetry
+BlockCat_Custom|Custom|Tùy chỉnh
+Filtering_ImportHosts|Import hosts file|Nhập tệp hosts
+Filtering_UpdateAll|Update blocklists|Cập nhật danh sách chặn
+Filtering_MasterToggle|DNS-level domain filtering|Lọc tên miền ở cấp DNS
+Filtering_MasterToggle_Desc|Blocks advertising, tracking, malware, phishing and telemetry domains while protecting essential Windows services.|Chặn tên miền quảng cáo, theo dõi, mã độc, lừa đảo và telemetry đồng thời bảo vệ các dịch vụ thiết yếu của Windows.
+Filtering_Stat_Domains|Active blocked domains|Tên miền đang chặn
+Filtering_Stat_WindowsGuard|Windows service guard|Bảo vệ dịch vụ Windows
+Filtering_Stat_Active|Protected|Đang bảo vệ
+Filtering_Blocklists_Title|Blocklists|Danh sách chặn
+Filtering_Allowlist_Title|Allowlist & exceptions|Danh sách cho phép & ngoại lệ
+Filtering_TempException_Toggle|Temporary 30-minute exception|Ngoại lệ tạm thời 30 phút
+Filtering_CustomBlock_Title|Custom blocked domains|Tên miền chặn tùy chỉnh
+Filtering_Inspector_Title|Inspect filtering decision|Kiểm tra quyết định lọc
+Filtering_Inspector_Button|Inspect domain|Kiểm tra tên miền
+Filtering_Err_ProtectedDomain|'{0}' is an essential Windows domain and cannot be blocked.|'{0}' là tên miền thiết yếu của Windows và không thể bị chặn.
+Filtering_Msg_ListUpdated|Updated '{0}' ({1} domains).|Đã cập nhật '{0}' ({1} tên miền).
+Filtering_Msg_AllUpdated|Updated {0} blocklists ({1} active blocked domains).|Đã cập nhật {0} danh sách chặn ({1} tên miền đang chặn).
+Filtering_Msg_HostsImported|Imported {0} domains from hosts file.|Đã nhập {0} tên miền từ tệp hosts.
+Filtering_Msg_CacheCleared|DNS response cache cleared.|Đã xóa bộ nhớ đệm phản hồi DNS.
+Cache_Section_Title|Lightweight TTL-aware DNS cache|Bộ nhớ đệm DNS theo TTL
+Cache_MasterToggle|Enable positive & negative DNS response cache|Bật bộ nhớ đệm phản hồi DNS (dương & âm)
+Cache_MasterToggle_Desc|Caches valid DNS records up to their TTL and never serves expired or malformed records.|Lưu đệm các bản ghi DNS hợp lệ theo đúng TTL và không bao giờ trả về bản ghi hết hạn hoặc lỗi.
+Cache_Clear|Clear cache|Xóa cache
+Cache_Stat_Entries|Entries / Capacity|Bản ghi / Sức chứa
+Cache_Stat_HitsMisses|Hits / Misses|Trúng / Trượt
+Cache_Stat_PosNeg|Positive / Negative|Dương / Âm

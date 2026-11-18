@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 7 — DNS Filtering & Lightweight TTL-Aware DNS Cache
+- **DNS Filtering service (`DnsFilteringService`, `HostsFileParser`):**
+  - Built-in blocklist categories (**Advertising**, **Tracking**, **Malware**, **Phishing**, **Telemetry**, **Custom**) with validated remote updates, local blocklist cache files, and hosts/domain/AdBlock (`||domain^`) file import.
+  - **Essential Windows Service Guard (`EssentialWindowsDomains`):** prevents accidental blocking of Windows connectivity checks (`msftconnecttest.com`, `msftncsi.com`), Windows Update, time sync (`time.windows.com`), and Microsoft authentication domains.
+  - User **Allowlist**, **Temporary 30-minute Exceptions**, **Custom Blocked Domains**, and **Filtering Decision Inspector**.
+- **TTL-Aware DNS Cache (`DnsCacheService`, `IDnsCacheService`):**
+  - Caches positive (`NOERROR` with answers) and negative (`NXDOMAIN`) DNS wire responses using answer TTLs clamped within configured bounds, rewrites transaction IDs on cache hits, evicts expired entries automatically, never serves expired or `SERVFAIL` records, and tracks hit ratio and capacity statistics.
+- **Pipeline & UI integration (`FilteringView`, `FilteringViewModel`, `DnsEngineService`, `DashboardViewModel`):** full **DNS Filtering** page with cache management, live Dashboard blocked query & cache hit ratio metrics, schema v7 (`MigrationV6ToV7`), and 91 offline unit tests.
+
 ### Phase 6 — Smart DNS Routing
 - **Domain-based routing matcher (`RoutingMatcher`):** supports `Exact`, `DomainSuffix` (root domain + subdomains), and `Wildcard` (`*.domain.com`, `ads.*`, etc.) matching with pattern validation.
 - **Smart DNS routing service (`DnsRoutingService`, `IDnsRoutingService`):**
