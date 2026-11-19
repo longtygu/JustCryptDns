@@ -763,7 +763,9 @@ public sealed record PortConflictInfo(
     int SuggestedPort,
     string Message,
     string? ConflictingProcessName = null,
-    int? ConflictingPid = null);
+    int? ConflictingPid = null,
+    string? SuggestedLoopbackIp = null,
+    string? ConflictingServiceName = null);
 
 [JsonConverter(typeof(JsonStringEnumConverter<SystemTrafficStatus>))]
 public enum SystemTrafficStatus
@@ -837,6 +839,10 @@ public sealed record DnsEngineRuntimeStats
     public SystemTrafficStatus TrafficStatus { get; init; } = SystemTrafficStatus.Stopped;
 
     public string? Port53OwnerDescription { get; init; }
+
+    public string? Port53ServiceName { get; init; }
+
+    public string? SuggestedLoopbackIp { get; init; }
 
     public long TotalQueries { get; init; }
 

@@ -1299,4 +1299,16 @@
   <data name="DnsMgr_SwitchToPort53" xml:space="preserve">
     <value>Switch to port 53</value>
   </data>
+  <data name="TrafficFix_UseLoopback53" xml:space="preserve">
+    <value>Use {0}:53 &amp; apply to Windows (Recommended)</value>
+  </data>
+  <data name="TrafficFix_StopService53" xml:space="preserve">
+    <value>Stop '{0}' &amp; use 127.0.0.1:53</value>
+  </data>
+  <data name="TrafficFix_AlternateLoopbackSuccess" xml:space="preserve">
+    <value>JustCryptDns is now listening on {0}:53 and intercepting Windows system DNS traffic without stopping other services.</value>
+  </data>
+  <data name="TrafficFix_ServiceStoppedSuccess" xml:space="preserve">
+    <value>Stopped '{0}' and switched JustCryptDns to 127.0.0.1:53.</value>
+  </data>
 </root>

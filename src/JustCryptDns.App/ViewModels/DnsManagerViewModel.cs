@@ -7,6 +7,7 @@ using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
 using JustCryptDns.DNS.DnsCrypt;
+using JustCryptDns.DNS.Proxy;
 
 namespace JustCryptDns.App.ViewModels;
 
@@ -37,6 +38,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     [ObservableProperty] private string? _infoMessage;
     [ObservableProperty] private string? _trafficWarningBanner;
     [ObservableProperty] private bool _isNonStandardPort;
+    [ObservableProperty] private string? _suggestedLoopbackIp;
+    [ObservableProperty] private string? _conflictingServiceName;
     [ObservableProperty] private PortConflictInfo? _portConflict;
     [ObservableProperty] private bool _hasAdapterBackup;
     [ObservableProperty] private bool _isDnsCryptInstalled;
@@ -226,6 +229,103 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task UseAlternateLoopbackPort53Async()
+    {
+        var targetIp = SuggestedLoopbackIp ?? PortConflict?.SuggestedLoopbackIp;
+        if (string.IsNullOrWhiteSpace(targetIp))
+        {
+            return;
+        }
+
+        IsBusy = true;
+        ErrorMessage = null;
+        InfoMessage = null;
+        try
+        {
+            await _settings.UpdateAsync(s =>
+            {
+                s.Dns.ListenAddress = targetIp;
+                s.Dns.ListenPort = 53;
+                s.Dns.EnableIpv6 = false;
+                s.Dns.ConfigureWindowsAdapter = true;
+            });
+
+            _loading = true;
+            ListenAddress = targetIp;
+            ListenPortText = "53";
+            EnableIpv6 = false;
+            ConfigureWindowsAdapter = true;
+            _loading = false;
+
+            var (ok, err) = await _dnsEngine.RestartAsync();
+            if (ok)
+            {
+                _ = _dnsEngine.ProbeActiveResolverAsync();
+                InfoMessage = LocalizationManager.Instance.Format("TrafficFix_AlternateLoopbackSuccess", targetIp);
+            }
+            else
+            {
+                ErrorMessage = err;
+            }
+        }
+        finally
+        {
+            ApplyStats(_dnsEngine.GetStats());
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task StopConflictingServiceAndUsePort53Async()
+    {
+        var svcName = ConflictingServiceName ?? PortConflict?.ConflictingServiceName;
+        if (string.IsNullOrWhiteSpace(svcName))
+        {
+            return;
+        }
+
+        IsBusy = true;
+        ErrorMessage = null;
+        InfoMessage = null;
+        try
+        {
+            var (stopped, stopErr) = await PortConflictDetector.StopConflictingServiceAsync(svcName);
+            if (!stopped)
+            {
+                ErrorMessage = stopErr;
+                return;
+            }
+
+            await _settings.UpdateAsync(s =>
+            {
+                s.Dns.ListenAddress = DnsSettings.DefaultListenAddress;
+                s.Dns.ListenPort = 53;
+            });
+
+            _loading = true;
+            ListenAddress = DnsSettings.DefaultListenAddress;
+            ListenPortText = "53";
+            _loading = false;
+
+            var (ok, err) = await _dnsEngine.RestartAsync();
+            if (ok)
+            {
+                _ = _dnsEngine.ProbeActiveResolverAsync();
+                InfoMessage = LocalizationManager.Instance.Format("TrafficFix_ServiceStoppedSuccess", svcName);
+            }
+            else
+            {
+                ErrorMessage = err;
+            }
+        }
+        finally
+        {
+            ApplyStats(_dnsEngine.GetStats());
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task ProbeResolverAsync()
     {
         IsBusy = true;
@@ -355,6 +455,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         FailedQueries = stats.FailedQueries;
         LastLatencyText = stats.LastLatencyMs is { } ms ? string.Create(CultureInfo.InvariantCulture, $"{ms:0.#} ms") : "—";
         IsNonStandardPort = stats.TrafficStatus == SystemTrafficStatus.NonStandardPort;
+        SuggestedLoopbackIp = stats.SuggestedLoopbackIp ?? stats.PortConflict?.SuggestedLoopbackIp;
+        ConflictingServiceName = stats.Port53ServiceName ?? stats.PortConflict?.ConflictingServiceName;
         TrafficWarningBanner = stats.TrafficStatus switch
         {
             SystemTrafficStatus.NonStandardPort => LocalizationManager.Instance.Format(

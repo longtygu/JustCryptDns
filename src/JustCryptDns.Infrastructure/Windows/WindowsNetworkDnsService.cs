@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using JustCryptDns.Core.Configuration;
@@ -100,10 +101,48 @@ public sealed class NetshAdapterDnsConfigurator : IAdapterDnsConfigurator
         }
     }
 
+    private static bool IsProcessElevated()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static async Task<(bool Success, string? Error)> RunNetshAsync(string arguments, CancellationToken ct)
     {
         try
         {
+            if (!IsProcessElevated() && OperatingSystem.IsWindows())
+            {
+                var elevatedPsi = new ProcessStartInfo("netsh.exe", arguments)
+                {
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                };
+                using var elevatedProc = Process.Start(elevatedPsi);
+                if (elevatedProc is null)
+                {
+                    return (false, "Failed to launch elevated netsh.exe.");
+                }
+
+                await elevatedProc.WaitForExitAsync(ct).ConfigureAwait(false);
+                return elevatedProc.ExitCode == 0
+                    ? (true, null)
+                    : (false, $"Elevated netsh exited with code {elevatedProc.ExitCode}.");
+            }
+
             var psi = new ProcessStartInfo("netsh.exe", arguments)
             {
                 CreateNoWindow = true,
@@ -131,6 +170,10 @@ public sealed class NetshAdapterDnsConfigurator : IAdapterDnsConfigurator
             return (false, string.IsNullOrWhiteSpace(detail)
                 ? $"netsh exited with code {proc.ExitCode} (Administrator privileges may be required)."
                 : detail);
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            return (false, "Administrator permission prompt (UAC) was cancelled.");
         }
         catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception or OperationCanceledException)
         {
@@ -280,6 +323,12 @@ public sealed class WindowsNetworkDnsService : IWindowsDnsManager, IDisposable
                     await RollbackFromDocumentAsync(verified, cancellationToken).ConfigureAwait(false);
                     return new WindowsDnsOperationResult(false, v6Apply.Error, RolledBack: true);
                 }
+            }
+            else if (verified.Adapters.FirstOrDefault(a => a.AdapterId == adapter.Id) is { WasIpv6Dhcp: false } v6Entry
+                && v6Entry.Ipv6DnsServers.Any(s => string.Equals(s, "::1", StringComparison.OrdinalIgnoreCase)))
+            {
+                // Clear stale ::1 IPv6 DNS so Windows doesn't bypass our IPv4 loopback proxy (e.g. 127.0.0.2:53).
+                _ = await _configurator.SetDnsAsync(adapter.Name, ipv6: true, useDhcp: true, servers: [], cancellationToken).ConfigureAwait(false);
             }
 
             // Step 5: Verify DNS connectivity.

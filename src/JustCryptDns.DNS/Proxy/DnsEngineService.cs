@@ -102,24 +102,32 @@ public sealed class DnsEngineService : IDnsEngine
 
         var trafficStatus = SystemTrafficStatus.Stopped;
         string? port53Owner = null;
+        string? port53Service = null;
+        string? suggestedLoopback = null;
         if (_state is DnsEngineState.Running or DnsEngineState.Degraded)
         {
             if (boundPort != 53)
             {
                 trafficStatus = SystemTrafficStatus.NonStandardPort;
-                var (procName, pid) = PortConflictDetector.TryFindPortOwner(53);
+                var (procName, pid, svcName) = PortConflictDetector.TryFindPortOwnerDetails(53);
                 if (procName is not null && pid.HasValue)
                 {
                     port53Owner = $"{procName} (PID {pid.Value})";
                 }
+
+                port53Service = svcName;
+                suggestedLoopback = PortConflictDetector.FindAvailableLoopbackForPort53(IPAddress.Loopback);
             }
             else if (_networkInfo is not null)
             {
                 var snap = _networkInfo.GetSnapshot();
                 var adapterDns = snap.PrimaryAdapter?.DnsServers;
-                var usesLoopback = adapterDns is { Count: > 0 }
-                    && adapterDns.Any(IPAddress.IsLoopback);
-                trafficStatus = usesLoopback
+                var listenIp = IPAddress.TryParse(dns.ListenAddress, out var parsedListen)
+                    ? parsedListen
+                    : IPAddress.Loopback;
+                var matchesOurProxy = adapterDns is { Count: > 0 }
+                    && adapterDns.Any(ip => ip.Equals(listenIp) || (dns.EnableIpv6 && ip.Equals(IPAddress.IPv6Loopback)));
+                trafficStatus = matchesOurProxy
                     ? SystemTrafficStatus.InterceptingSystemTraffic
                     : SystemTrafficStatus.AdapterNotConfigured;
             }
@@ -139,6 +147,8 @@ public sealed class DnsEngineService : IDnsEngine
             BoundPort = boundPort,
             TrafficStatus = trafficStatus,
             Port53OwnerDescription = port53Owner,
+            Port53ServiceName = port53Service,
+            SuggestedLoopbackIp = suggestedLoopback,
             TotalQueries = Interlocked.Read(ref _totalQueries),
             SuccessfulQueries = Interlocked.Read(ref _successfulQueries),
             FailedQueries = Interlocked.Read(ref _failedQueries),

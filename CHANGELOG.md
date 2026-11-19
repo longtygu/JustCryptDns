@@ -5,6 +5,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ## [1.0.1] - 2026-11-19
 
 ### Fixed & Improved
+- **Zero-disruption Port 53 conflict resolution (`127.0.0.2:53` alternate loopback + UAC):**
+  - When `127.0.0.1:53` is occupied by another DNS proxy (such as an existing `dnscrypt-proxy` Windows service), `PortConflictDetector.FindAvailableLoopbackForPort53` detects free alternate IPv4 loopback addresses (`127.0.0.2:53`..`127.0.0.54:53`) so JustCryptDns can intercept Windows system DNS traffic on standard port 53 without stopping competing services.
+  - Added 1-click **Use 127.0.0.2:53 & apply to Windows (Recommended)** and **Stop `<service>` & use 127.0.0.1:53** (via standard Windows UAC confirmation, protecting critical OS services) in both **Dashboard** and **DNS Manager**.
+  - Added automatic UAC elevation fallback for `netsh` in `NetshAdapterDnsConfigurator` and stale `::1` IPv6 DNS cleanup when switching to an IPv4-only loopback proxy.
 - **Fixed cross-thread UI crash on `settings.Changed`:** marshaled `App.ApplyPresentation` and ViewModel `OnSettingsChanged` handlers onto the WPF `Dispatcher` and skipped redundant DWM/theme re-application when non-appearance settings change (resolves unobserved `InvalidOperationException` when toggling Gaming Mode, Smart Routing, or switching resolvers).
 - **Port 53 owner process detection (`PortConflictDetector`):** uses Win32 `GetExtendedUdpTable` / `GetExtendedTcpTable` (`iphlpapi.dll`) to identify the exact process name and PID occupying port 53 (e.g., an existing `dnscrypt-proxy` Windows service).
 - **System traffic visibility & instant local proxy verification:**

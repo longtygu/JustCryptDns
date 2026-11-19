@@ -1299,4 +1299,16 @@
   <data name="DnsMgr_SwitchToPort53" xml:space="preserve">
     <value>Chuyển về cổng 53</value>
   </data>
+  <data name="TrafficFix_UseLoopback53" xml:space="preserve">
+    <value>Dùng {0}:53 &amp; áp dụng cho Windows (Khuyên dùng)</value>
+  </data>
+  <data name="TrafficFix_StopService53" xml:space="preserve">
+    <value>Dừng '{0}' &amp; dùng 127.0.0.1:53</value>
+  </data>
+  <data name="TrafficFix_AlternateLoopbackSuccess" xml:space="preserve">
+    <value>JustCryptDns đã chuyển sang {0}:53 và đang tiếp nhận lưu lượng DNS hệ thống của Windows mà không cần tắt dịch vụ cũ.</value>
+  </data>
+  <data name="TrafficFix_ServiceStoppedSuccess" xml:space="preserve">
+    <value>Đã dừng '{0}' và chuyển JustCryptDns về 127.0.0.1:53.</value>
+  </data>
 </root>

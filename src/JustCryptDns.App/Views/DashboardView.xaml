@@ -30,23 +30,53 @@
             <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Dashboard}" />
             <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Dashboard_Subtitle}" Margin="0,4,0,22" />
 
-            <!-- System Traffic Warning Banner (Non-53 port or Adapter DNS not pointing to 127.0.0.1) -->
+            <!-- System Traffic Warning Banner (Non-53 port or Adapter DNS not pointing to local proxy) -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
                     Padding="18,14" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding TrafficWarningBanner, Converter={StaticResource NullToVisibility}}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" />
-                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding TrafficWarningBanner}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Command="{Binding TestLocalProxyCommand}" Content="{l:Loc DnsMgr_TestLocalProxy}" Margin="0,0,8,0" />
-                        <Button Style="{StaticResource Button.Primary}" Command="{Binding OpenDnsManagerCommand}" Content="{l:Loc Nav_DnsManager}" />
-                    </StackPanel>
-                </Grid>
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding TrafficWarningBanner}" VerticalAlignment="Center" />
+                    </Grid>
+                    <WrapPanel Orientation="Horizontal" Margin="32,12,0,0">
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding UseAlternateLoopbackPort53Command}" Margin="0,0,8,4"
+                                Visibility="{Binding SuggestedLoopbackIp, Converter={StaticResource NullToVisibility}}">
+                            <TextBlock>
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="TrafficFix_UseLoopback53">
+                                        <Binding Path="SuggestedLoopbackIp" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Button>
+                        <Button Command="{Binding StopConflictingServiceAndUsePort53Command}" Margin="0,0,8,4"
+                                Visibility="{Binding ConflictingServiceName, Converter={StaticResource NullToVisibility}}">
+                            <TextBlock>
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="TrafficFix_StopService53">
+                                        <Binding Path="ConflictingServiceName" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Button>
+                        <Button Command="{Binding TestLocalProxyCommand}" Content="{l:Loc DnsMgr_TestLocalProxy}" Margin="0,0,8,4" />
+                        <Button Command="{Binding OpenDnsManagerCommand}" Content="{l:Loc Nav_DnsManager}" Margin="0,0,0,4" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Error Banner -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding EngineError, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding EngineError}" />
             </Border>
 
             <!-- Local Proxy Test Feedback Banner -->

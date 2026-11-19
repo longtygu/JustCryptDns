@@ -428,3 +428,7 @@ TrafficWarn_NonStandardPort|Engine is listening on port {0} (not port 53). Windo
 TrafficWarn_AdapterNotConfigured|Engine is running on port 53, but your active Windows network adapter DNS is not pointing to 127.0.0.1 yet. Enable 'Configure Windows adapter automatically' in DNS Manager (run as Administrator) so Windows sends DNS queries through JustCryptDns.|Engine đang chạy trên cổng 53, nhưng DNS của bộ điều hợp mạng Windows chưa trỏ về 127.0.0.1. Hãy bật 'Tự động cấu hình DNS cho bộ điều hợp Windows' trong Quản lý DNS (chạy với quyền Quản trị viên) để Windows gửi truy vấn qua JustCryptDns.
 DnsMgr_TestLocalProxy|Test local proxy|Kiểm tra proxy cục bộ
 DnsMgr_SwitchToPort53|Switch to port 53|Chuyển về cổng 53
+TrafficFix_UseLoopback53|Use {0}:53 & apply to Windows (Recommended)|Dùng {0}:53 & áp dụng cho Windows (Khuyên dùng)
+TrafficFix_StopService53|Stop '{0}' & use 127.0.0.1:53|Dừng '{0}' & dùng 127.0.0.1:53
+TrafficFix_AlternateLoopbackSuccess|JustCryptDns is now listening on {0}:53 and intercepting Windows system DNS traffic without stopping other services.|JustCryptDns đã chuyển sang {0}:53 và đang tiếp nhận lưu lượng DNS hệ thống của Windows mà không cần tắt dịch vụ cũ.
+TrafficFix_ServiceStoppedSuccess|Stopped '{0}' and switched JustCryptDns to 127.0.0.1:53.|Đã dừng '{0}' và chuyển JustCryptDns về 127.0.0.1:53.

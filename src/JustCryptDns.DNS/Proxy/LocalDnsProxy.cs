@@ -51,6 +51,11 @@ public static class DnsLoopGuard
 public static class PortConflictDetector
 {
     private static readonly int[] CandidateFallbackPorts = [5355, 15353, 25353, 35353];
+    private static readonly string[] CandidateLoopbackIps = ["127.0.0.2", "127.0.0.3", "127.0.0.53", "127.0.0.54"];
+    private static readonly HashSet<string> ProtectedWindowsServices = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Dnscache", "RpcSs", "Dhcp", "NlaSvc", "nsi", "EventLog", "Winmgmt", "BFE", "mpssvc", "Netman", "LanmanWorkstation",
+    };
 
     public static PortConflictInfo? CheckConflict(IPAddress listenAddress, int port)
     {
@@ -61,41 +66,108 @@ public static class PortConflictDetector
         }
 
         var suggested = FindAvailablePort(listenAddress);
-        var (ownerName, ownerPid) = TryFindPortOwner(port);
+        var suggestedLoopback = port == 53 ? FindAvailableLoopbackForPort53(excludeIp: listenAddress) : null;
+        var (ownerName, ownerPid, serviceName) = TryFindPortOwnerDetails(port);
         var ownerText = ownerName is not null && ownerPid.HasValue
             ? $"'{ownerName}' (PID {ownerPid.Value})"
             : "another process";
+        var loopbackHint = suggestedLoopback is not null
+            ? $" You can bind directly to {suggestedLoopback}:53 without stopping {ownerText}."
+            : string.Empty;
         return new PortConflictInfo(
             HasConflict: true,
             Endpoint: $"{listenAddress}:{port}",
             Protocol: proto,
             SuggestedPort: suggested,
-            Message: $"Port {port} ({proto}) on {listenAddress} is already in use by {ownerText}. Stop {ownerText} to intercept Windows system DNS on port 53, or test on port {suggested}.",
+            Message: $"Port {port} ({proto}) on {listenAddress} is already in use by {ownerText}.{loopbackHint}",
             ConflictingProcessName: ownerName,
-            ConflictingPid: ownerPid);
+            ConflictingPid: ownerPid,
+            SuggestedLoopbackIp: suggestedLoopback,
+            ConflictingServiceName: serviceName);
+    }
+
+    /// <summary>
+    /// Probes alternate IPv4 loopback addresses (127.0.0.2..127.0.0.54) on standard port 53 so JustCryptDns
+    /// can intercept Windows system DNS on port 53 even while another proxy occupies 127.0.0.1:53.
+    /// </summary>
+    public static string? FindAvailableLoopbackForPort53(IPAddress? excludeIp = null)
+    {
+        foreach (var ipText in CandidateLoopbackIps)
+        {
+            var candidate = IPAddress.Parse(ipText);
+            if (excludeIp is not null && candidate.Equals(excludeIp))
+            {
+                continue;
+            }
+
+            if (CanBindUdpAndTcp(candidate, 53))
+            {
+                return ipText;
+            }
+        }
+
+        return null;
+    }
+
+    public static bool CanBindUdpAndTcp(IPAddress address, int port)
+    {
+        Socket? udp = null;
+        TcpListener? tcp = null;
+        try
+        {
+            udp = new Socket(address.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            udp.Bind(new IPEndPoint(address, port));
+            tcp = new TcpListener(address, port);
+            tcp.Start();
+            return true;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
+        finally
+        {
+            try { tcp?.Stop(); } catch { }
+            try { udp?.Dispose(); } catch { }
+        }
     }
 
     public static (string? ProcessName, int? Pid) TryFindPortOwner(int port)
     {
+        var (proc, pid, _) = TryFindPortOwnerDetails(port);
+        return (proc, pid);
+    }
+
+    public static (string? ProcessName, int? Pid, string? ServiceName) TryFindPortOwnerDetails(int port)
+    {
         if (!OperatingSystem.IsWindows() || port <= 0)
         {
-            return (null, null);
+            return (null, null, null);
         }
 
         try
         {
             var pid = FindUdpOwnerPid(port) ?? FindTcpOwnerPid(port);
-            if (pid is > 0)
+            if (pid is > 4)
             {
+                string? procName = null;
                 try
                 {
                     using var proc = Process.GetProcessById(pid.Value);
-                    return (proc.ProcessName, pid.Value);
+                    procName = proc.ProcessName;
                 }
                 catch
                 {
-                    return (null, pid.Value);
+                    // Process may be protected or exited.
                 }
+
+                var svcName = TryFindWindowsServiceForPid(pid.Value);
+                if (svcName is not null && ProtectedWindowsServices.Contains(svcName))
+                {
+                    svcName = null;
+                }
+
+                return (procName, pid.Value, svcName);
             }
         }
         catch
@@ -103,8 +175,159 @@ public static class PortConflictDetector
             // Ignore lookup failures on restricted sessions.
         }
 
-        return (null, null);
+        return (null, null, null);
     }
+
+    public static async Task<(bool Success, string? Error)> StopConflictingServiceAsync(
+        string serviceName,
+        CancellationToken cancellationToken = default)
+    {
+        if (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(serviceName))
+        {
+            return (false, "Invalid Windows service name.");
+        }
+
+        var trimmed = serviceName.Trim();
+        if (ProtectedWindowsServices.Contains(trimmed))
+        {
+            return (false, $"Service '{trimmed}' is a protected Windows system service and will not be stopped.");
+        }
+
+        try
+        {
+            var psi = new ProcessStartInfo("sc.exe", $"stop \"{trimmed}\"")
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = ProcessWindowStyle.Hidden,
+            };
+            using var proc = Process.Start(psi);
+            if (proc is null)
+            {
+                return (false, "Failed to start sc.exe.");
+            }
+
+            await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            if (proc.ExitCode != 0 && proc.ExitCode != 1062) // 1062 = already stopped
+            {
+                return (false, $"sc.exe stop \"{trimmed}\" exited with code {proc.ExitCode}.");
+            }
+
+            // Wait up to 5 seconds for 127.0.0.1:53 to be released
+            for (var i = 0; i < 25; i++)
+            {
+                if (CanBindUdpAndTcp(IPAddress.Loopback, 53))
+                {
+                    return (true, null);
+                }
+
+                await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+            }
+
+            return (false, $"Service '{trimmed}' was signaled to stop, but port 53 is still busy.");
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            return (false, "Administrator permission prompt (UAC) was cancelled.");
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    private static string? TryFindWindowsServiceForPid(int targetPid)
+    {
+        var scm = OpenSCManagerW(null, null, 0x0004 /* SC_MANAGER_ENUMERATE_SERVICE */);
+        if (scm == nint.Zero)
+        {
+            return null;
+        }
+
+        try
+        {
+            uint bytesNeeded = 0;
+            uint servicesReturned = 0;
+            uint resumeHandle = 0;
+            _ = EnumServicesStatusExW(scm, 0, 0x30 /* SERVICE_WIN32 */, 1 /* SERVICE_ACTIVE */, nint.Zero, 0, out bytesNeeded, out servicesReturned, ref resumeHandle, null);
+            if (bytesNeeded == 0)
+            {
+                return null;
+            }
+
+            var buffer = Marshal.AllocHGlobal((int)bytesNeeded);
+            try
+            {
+                if (!EnumServicesStatusExW(scm, 0, 0x30, 1, buffer, bytesNeeded, out _, out servicesReturned, ref resumeHandle, null))
+                {
+                    return null;
+                }
+
+                var structSize = Marshal.SizeOf<EnumServiceStatusProcess>();
+                for (var i = 0; i < servicesReturned; i++)
+                {
+                    var item = Marshal.PtrToStructure<EnumServiceStatusProcess>(buffer + (i * structSize));
+                    if (item.ServiceStatusProcess.dwProcessId == targetPid && !string.IsNullOrWhiteSpace(item.lpServiceName))
+                    {
+                        return item.lpServiceName;
+                    }
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+        finally
+        {
+            _ = CloseServiceHandle(scm);
+        }
+
+        return null;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ServiceStatusProcess
+    {
+        public uint dwServiceType;
+        public uint dwCurrentState;
+        public uint dwControlsAccepted;
+        public uint dwWin32ExitCode;
+        public uint dwServiceSpecificExitCode;
+        public uint dwCheckPoint;
+        public uint dwWaitHint;
+        public uint dwProcessId;
+        public uint dwServiceFlags;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct EnumServiceStatusProcess
+    {
+        public string lpServiceName;
+        public string lpDisplayName;
+        public ServiceStatusProcess ServiceStatusProcess;
+    }
+
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern nint OpenSCManagerW(string? lpMachineName, string? lpDatabaseName, uint dwDesiredAccess);
+
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnumServicesStatusExW(
+        nint hSCManager,
+        int infoLevel,
+        uint dwServiceType,
+        uint dwServiceState,
+        nint lpServices,
+        uint cbBufSize,
+        out uint pcbBytesNeeded,
+        out uint lpServicesReturned,
+        ref uint lpResumeHandle,
+        string? pszGroupName);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseServiceHandle(nint hSCObject);
 
     private static int? FindUdpOwnerPid(int targetPort)
     {

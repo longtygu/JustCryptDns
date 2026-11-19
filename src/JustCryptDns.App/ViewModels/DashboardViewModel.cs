@@ -2,9 +2,11 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Services;
+using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
+using JustCryptDns.DNS.Proxy;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.App.ViewModels;
@@ -27,6 +29,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly INavigationService _navigation;
     private readonly ILogger<DashboardViewModel> _logger;
     private readonly IDnsFilteringService? _filtering;
+    private readonly ISettingsService? _settings;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
 
@@ -48,6 +51,8 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private bool _isFilteringActive;
     [ObservableProperty] private SystemTrafficStatus _trafficStatus = SystemTrafficStatus.Stopped;
     [ObservableProperty] private string? _trafficWarningBanner;
+    [ObservableProperty] private string? _suggestedLoopbackIp;
+    [ObservableProperty] private string? _conflictingServiceName;
     [ObservableProperty] private string? _testProxyFeedback;
     [ObservableProperty] private string? _engineError;
 
@@ -56,7 +61,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         IDnsEngine dnsEngine,
         INavigationService navigation,
         ILogger<DashboardViewModel> logger,
-        IDnsFilteringService? filtering = null)
+        IDnsFilteringService? filtering = null,
+        ISettingsService? settings = null)
         : base("Nav_Dashboard", "Page_Dashboard_Subtitle")
     {
         _network = network;
@@ -64,6 +70,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         _navigation = navigation;
         _logger = logger;
         _filtering = filtering;
+        _settings = settings;
         _ui = SynchronizationContext.Current;
         IsFilteringActive = _filtering?.IsFilteringEnabled ?? false;
         ApplyEngineStats(dnsEngine.GetStats());
@@ -137,6 +144,79 @@ public sealed partial class DashboardViewModel : PageViewModel
         ApplyEngineStats(_dnsEngine.GetStats());
     }
 
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task UseAlternateLoopbackPort53Async()
+    {
+        if (_settings is null || string.IsNullOrWhiteSpace(SuggestedLoopbackIp))
+        {
+            return;
+        }
+
+        var targetIp = SuggestedLoopbackIp;
+        EngineError = null;
+        TestProxyFeedback = null;
+        await _settings.UpdateAsync(s =>
+        {
+            s.Dns.ListenAddress = targetIp;
+            s.Dns.ListenPort = 53;
+            s.Dns.EnableIpv6 = false;
+            s.Dns.ConfigureWindowsAdapter = true;
+        });
+
+        var (ok, err) = await _dnsEngine.RestartAsync();
+        if (ok)
+        {
+            _ = _dnsEngine.ProbeActiveResolverAsync();
+            TestProxyFeedback = Localization.LocalizationManager.Instance.Format("TrafficFix_AlternateLoopbackSuccess", targetIp);
+        }
+        else
+        {
+            EngineError = err;
+        }
+
+        ApplyEngineStats(_dnsEngine.GetStats());
+        await RefreshAsync();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task StopConflictingServiceAndUsePort53Async()
+    {
+        if (_settings is null || string.IsNullOrWhiteSpace(ConflictingServiceName))
+        {
+            return;
+        }
+
+        EngineError = null;
+        TestProxyFeedback = null;
+        var svcName = ConflictingServiceName;
+        var (stopped, stopErr) = await PortConflictDetector.StopConflictingServiceAsync(svcName);
+        if (!stopped)
+        {
+            EngineError = stopErr;
+            return;
+        }
+
+        await _settings.UpdateAsync(s =>
+        {
+            s.Dns.ListenAddress = DnsSettings.DefaultListenAddress;
+            s.Dns.ListenPort = 53;
+        });
+
+        var (ok, err) = await _dnsEngine.RestartAsync();
+        if (ok)
+        {
+            _ = _dnsEngine.ProbeActiveResolverAsync();
+            TestProxyFeedback = Localization.LocalizationManager.Instance.Format("TrafficFix_ServiceStoppedSuccess", svcName);
+        }
+        else
+        {
+            EngineError = err;
+        }
+
+        ApplyEngineStats(_dnsEngine.GetStats());
+        await RefreshAsync();
+    }
+
     [RelayCommand]
     private void OpenDnsManager() => _navigation.Navigate(PageKeys.DnsManager);
 
@@ -191,6 +271,8 @@ public sealed partial class DashboardViewModel : PageViewModel
             ? string.Create(CultureInfo.InvariantCulture, $"{stats.CacheHitRatioPercent:0.#}%")
             : "—";
         TrafficStatus = stats.TrafficStatus;
+        SuggestedLoopbackIp = stats.SuggestedLoopbackIp;
+        ConflictingServiceName = stats.Port53ServiceName;
         TrafficWarningBanner = stats.TrafficStatus switch
         {
             SystemTrafficStatus.NonStandardPort => Localization.LocalizationManager.Instance.Format(
