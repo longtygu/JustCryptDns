@@ -1287,4 +1287,16 @@
   <data name="Settings_PerfDiag_Trim" xml:space="preserve">
     <value>Trim memory now</value>
   </data>
+  <data name="TrafficWarn_NonStandardPort" xml:space="preserve">
+    <value>Engine is listening on port {0} (not port 53). Windows only sends system DNS traffic to port 53, so traffic counters will stay at 0 for other apps. Port 53 is currently used by: {1}. Stop that service and switch back to port 53.</value>
+  </data>
+  <data name="TrafficWarn_AdapterNotConfigured" xml:space="preserve">
+    <value>Engine is running on port 53, but your active Windows network adapter DNS is not pointing to 127.0.0.1 yet. Enable 'Configure Windows adapter automatically' in DNS Manager (run as Administrator) so Windows sends DNS queries through JustCryptDns.</value>
+  </data>
+  <data name="DnsMgr_TestLocalProxy" xml:space="preserve">
+    <value>Test local proxy</value>
+  </data>
+  <data name="DnsMgr_SwitchToPort53" xml:space="preserve">
+    <value>Switch to port 53</value>
+  </data>
 </root>

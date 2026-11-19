@@ -82,6 +82,9 @@ public sealed class ResolverLibraryPhase5Tests
         public Task<DnsQueryResult> ProbeActiveResolverAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new DnsQueryResult(true, [], 10.0, SwitchedResolverId, DnsProtocol.DnsOverHttps));
 
+        public Task<(bool Success, double LatencyMs, string Summary)> TestLocalProxyAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult((true, 10.0, "OK"));
+
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 

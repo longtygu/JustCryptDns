@@ -307,11 +307,23 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     private void OnSettingsChanged(object? sender, AppSettings settings)
     {
-        if (settings.General.CloseBehavior != CloseBehavior)
+        void Sync()
         {
-            _loading = true;
-            CloseBehavior = settings.General.CloseBehavior;
-            _loading = false;
+            if (settings.General.CloseBehavior != CloseBehavior)
+            {
+                _loading = true;
+                CloseBehavior = settings.General.CloseBehavior;
+                _loading = false;
+            }
+        }
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Sync);
+        }
+        else
+        {
+            Sync();
         }
     }
 

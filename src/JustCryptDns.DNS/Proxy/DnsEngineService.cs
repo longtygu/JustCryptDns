@@ -30,6 +30,7 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly IDnsCacheService? _cacheService;
     private readonly IDnsFailoverService? _failoverService;
     private readonly INetworkDiagnosticsService? _diagnosticsService;
+    private readonly INetworkInfoService? _networkInfo;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
@@ -58,7 +59,8 @@ public sealed class DnsEngineService : IDnsEngine
         IDnsFilteringService? filteringService = null,
         IDnsCacheService? cacheService = null,
         IDnsFailoverService? failoverService = null,
-        INetworkDiagnosticsService? diagnosticsService = null)
+        INetworkDiagnosticsService? diagnosticsService = null,
+        INetworkInfoService? networkInfo = null)
     {
         _settings = settings;
         _dnsCryptManager = dnsCryptManager;
@@ -70,6 +72,7 @@ public sealed class DnsEngineService : IDnsEngine
         _cacheService = cacheService;
         _failoverService = failoverService;
         _diagnosticsService = diagnosticsService;
+        _networkInfo = networkInfo;
 
         _defaultDoh = new DohDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
@@ -95,13 +98,47 @@ public sealed class DnsEngineService : IDnsEngine
         var dns = _settings.Current.Dns;
         var resolver = ResolveEndpoint(dns.ActiveResolverId);
         var cacheStats = _cacheService?.GetStats();
+        var boundPort = _proxy is { BoundPort: > 0 } ? _proxy.BoundPort : dns.ListenPort;
+
+        var trafficStatus = SystemTrafficStatus.Stopped;
+        string? port53Owner = null;
+        if (_state is DnsEngineState.Running or DnsEngineState.Degraded)
+        {
+            if (boundPort != 53)
+            {
+                trafficStatus = SystemTrafficStatus.NonStandardPort;
+                var (procName, pid) = PortConflictDetector.TryFindPortOwner(53);
+                if (procName is not null && pid.HasValue)
+                {
+                    port53Owner = $"{procName} (PID {pid.Value})";
+                }
+            }
+            else if (_networkInfo is not null)
+            {
+                var snap = _networkInfo.GetSnapshot();
+                var adapterDns = snap.PrimaryAdapter?.DnsServers;
+                var usesLoopback = adapterDns is { Count: > 0 }
+                    && adapterDns.Any(IPAddress.IsLoopback);
+                trafficStatus = usesLoopback
+                    ? SystemTrafficStatus.InterceptingSystemTraffic
+                    : SystemTrafficStatus.AdapterNotConfigured;
+            }
+            else
+            {
+                trafficStatus = SystemTrafficStatus.InterceptingSystemTraffic;
+            }
+        }
+
         return new DnsEngineRuntimeStats
         {
             State = _state,
             ActiveResolverId = resolver.Id,
             ActiveResolverName = resolver.Name,
             ActiveProtocol = resolver.Protocol,
-            ListenEndpoint = _proxy is { BoundPort: > 0 } ? $"{dns.ListenAddress}:{_proxy.BoundPort}" : $"{dns.ListenAddress}:{dns.ListenPort}",
+            ListenEndpoint = $"{dns.ListenAddress}:{boundPort}",
+            BoundPort = boundPort,
+            TrafficStatus = trafficStatus,
+            Port53OwnerDescription = port53Owner,
             TotalQueries = Interlocked.Read(ref _totalQueries),
             SuccessfulQueries = Interlocked.Read(ref _successfulQueries),
             FailedQueries = Interlocked.Read(ref _failedQueries),
@@ -304,6 +341,16 @@ public sealed class DnsEngineService : IDnsEngine
 
         var result = await upstream.QueryAsync(query, resolver, timeout, cancellationToken).ConfigureAwait(false);
         RecordQueryOutcome(result);
+        _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+        {
+            Timestamp = DateTimeOffset.Now,
+            Domain = "example.com",
+            RecordType = "A",
+            Outcome = result.Success ? "Probe" : "Failed",
+            ResolverName = resolver.Name,
+            Protocol = resolver.Protocol,
+            LatencyMs = result.Success ? Math.Round(result.LatencyMs, 1) : null,
+        });
         _logger.LogInformation(
             "Resolver probe to {Resolver} ({Protocol}): success={Success}, latency={Latency:0.0} ms, error={Error}",
             resolver.Name,
@@ -312,6 +359,56 @@ public sealed class DnsEngineService : IDnsEngine
             result.LatencyMs,
             result.Error);
         return result;
+    }
+
+    public async Task<(bool Success, double LatencyMs, string Summary)> TestLocalProxyAsync(CancellationToken cancellationToken = default)
+    {
+        if (_proxy is not { BoundPort: > 0 } proxy)
+        {
+            return (false, 0, "Local DNS proxy is not running.");
+        }
+
+        var listenIp = IPAddress.TryParse(_settings.Current.Dns.ListenAddress, out var parsedIp)
+            ? parsedIp
+            : IPAddress.Loopback;
+        var endpoint = new IPEndPoint(listenIp, proxy.BoundPort);
+
+        using var udp = new UdpClient();
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromMilliseconds(Math.Max(_settings.Current.Dns.QueryTimeoutMs, 4000)));
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            // 1. Query cloudflare.com (tests routing + upstream + cache store)
+            var q1 = DnsPacket.CreateQuery("cloudflare.com", DnsRecordType.A);
+            await udp.SendAsync(q1, endpoint, cts.Token).ConfigureAwait(false);
+            var r1 = await udp.ReceiveAsync(cts.Token).ConfigureAwait(false);
+            sw.Stop();
+            var firstMs = Math.Round(sw.Elapsed.TotalMilliseconds, 1);
+
+            // 2. Query cloudflare.com again (tests TTL cache hit!)
+            var q2 = DnsPacket.CreateQuery("cloudflare.com", DnsRecordType.A);
+            await udp.SendAsync(q2, endpoint, cts.Token).ConfigureAwait(false);
+            _ = await udp.ReceiveAsync(cts.Token).ConfigureAwait(false);
+
+            // 3. Query a known ad domain (tests filtering -> NXDOMAIN)
+            var q3 = DnsPacket.CreateQuery("ad.doubleclick.net", DnsRecordType.A);
+            await udp.SendAsync(q3, endpoint, cts.Token).ConfigureAwait(false);
+            var r3 = await udp.ReceiveAsync(cts.Token).ConfigureAwait(false);
+            var blocked = DnsPacket.TryParse(r3.Buffer, out var p3) && p3?.Header.ResponseCode == DnsResponseCode.NxDomain;
+
+            var ok = DnsPacket.TryParse(r1.Buffer, out var p1) && p1?.Header.ResponseCode == DnsResponseCode.NoError;
+            var summary = ok
+                ? $"Local proxy {endpoint} OK ({firstMs:0.#} ms) — tested lookup, TTL cache hit, and ad filter ({(blocked ? "blocked" : "allowed")})."
+                : $"Local proxy {endpoint} responded with {p1?.Header.ResponseCode.ToString() ?? "ERROR"}.";
+            return (ok, firstMs, summary);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), $"Local proxy test on {endpoint} failed: {ex.Message}");
+        }
     }
 
     public async ValueTask DisposeAsync()

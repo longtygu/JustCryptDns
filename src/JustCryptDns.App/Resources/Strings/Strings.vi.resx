@@ -1287,4 +1287,16 @@
   <data name="Settings_PerfDiag_Trim" xml:space="preserve">
     <value>Giải phóng bộ nhớ ngay</value>
   </data>
+  <data name="TrafficWarn_NonStandardPort" xml:space="preserve">
+    <value>Engine đang chạy trên cổng {0} (không phải cổng 53). Windows chỉ gửi truy vấn DNS hệ thống tới cổng 53, nên các chỉ số lưu lượng từ ứng dụng khác sẽ không tăng. Cổng 53 hiện đang bị chiếm bởi: {1}. Hãy tắt dịch vụ đó rồi chuyển về cổng 53.</value>
+  </data>
+  <data name="TrafficWarn_AdapterNotConfigured" xml:space="preserve">
+    <value>Engine đang chạy trên cổng 53, nhưng DNS của bộ điều hợp mạng Windows chưa trỏ về 127.0.0.1. Hãy bật 'Tự động cấu hình DNS cho bộ điều hợp Windows' trong Quản lý DNS (chạy với quyền Quản trị viên) để Windows gửi truy vấn qua JustCryptDns.</value>
+  </data>
+  <data name="DnsMgr_TestLocalProxy" xml:space="preserve">
+    <value>Kiểm tra proxy cục bộ</value>
+  </data>
+  <data name="DnsMgr_SwitchToPort53" xml:space="preserve">
+    <value>Chuyển về cổng 53</value>
+  </data>
 </root>

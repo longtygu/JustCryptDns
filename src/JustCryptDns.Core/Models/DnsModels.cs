@@ -761,7 +761,18 @@ public sealed record PortConflictInfo(
     string Endpoint,
     string Protocol,
     int SuggestedPort,
-    string Message);
+    string Message,
+    string? ConflictingProcessName = null,
+    int? ConflictingPid = null);
+
+[JsonConverter(typeof(JsonStringEnumConverter<SystemTrafficStatus>))]
+public enum SystemTrafficStatus
+{
+    Stopped,
+    InterceptingSystemTraffic,
+    NonStandardPort,
+    AdapterNotConfigured,
+}
 
 public sealed record AdapterDnsBackupEntry
 {
@@ -820,6 +831,12 @@ public sealed record DnsEngineRuntimeStats
     public required DnsProtocol ActiveProtocol { get; init; }
 
     public required string ListenEndpoint { get; init; }
+
+    public int BoundPort { get; init; }
+
+    public SystemTrafficStatus TrafficStatus { get; init; } = SystemTrafficStatus.Stopped;
+
+    public string? Port53OwnerDescription { get; init; }
 
     public long TotalQueries { get; init; }
 

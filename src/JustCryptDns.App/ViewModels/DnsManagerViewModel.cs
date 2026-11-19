@@ -35,6 +35,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     [ObservableProperty] private string _lastLatencyText = "—";
     [ObservableProperty] private string? _errorMessage;
     [ObservableProperty] private string? _infoMessage;
+    [ObservableProperty] private string? _trafficWarningBanner;
+    [ObservableProperty] private bool _isNonStandardPort;
     [ObservableProperty] private PortConflictInfo? _portConflict;
     [ObservableProperty] private bool _hasAdapterBackup;
     [ObservableProperty] private bool _isDnsCryptInstalled;
@@ -158,6 +160,10 @@ public sealed partial class DnsManagerViewModel : PageViewModel
                 {
                     ErrorMessage = err;
                 }
+                else
+                {
+                    _ = _dnsEngine.ProbeActiveResolverAsync();
+                }
             }
         }
         finally
@@ -185,6 +191,38 @@ public sealed partial class DnsManagerViewModel : PageViewModel
             ApplyStats(_dnsEngine.GetStats());
             IsBusy = false;
         }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task TestLocalProxyAsync()
+    {
+        IsBusy = true;
+        InfoMessage = null;
+        try
+        {
+            var (ok, _, summary) = await _dnsEngine.TestLocalProxyAsync();
+            if (ok)
+            {
+                ErrorMessage = null;
+                InfoMessage = summary;
+            }
+            else
+            {
+                ErrorMessage = summary;
+            }
+        }
+        finally
+        {
+            ApplyStats(_dnsEngine.GetStats());
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task SwitchToPort53Async()
+    {
+        ListenPortText = "53";
+        await ApplyProxySettingsAsync();
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
@@ -316,6 +354,16 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         SuccessfulQueries = stats.SuccessfulQueries;
         FailedQueries = stats.FailedQueries;
         LastLatencyText = stats.LastLatencyMs is { } ms ? string.Create(CultureInfo.InvariantCulture, $"{ms:0.#} ms") : "—";
+        IsNonStandardPort = stats.TrafficStatus == SystemTrafficStatus.NonStandardPort;
+        TrafficWarningBanner = stats.TrafficStatus switch
+        {
+            SystemTrafficStatus.NonStandardPort => LocalizationManager.Instance.Format(
+                "TrafficWarn_NonStandardPort",
+                stats.BoundPort,
+                stats.Port53OwnerDescription ?? LocalizationManager.Instance["Common_Unknown"]),
+            SystemTrafficStatus.AdapterNotConfigured => LocalizationManager.Instance["TrafficWarn_AdapterNotConfigured"],
+            _ => null,
+        };
         PortConflict = stats.PortConflict;
         ErrorMessage = stats.PortConflict is null ? stats.LastError : null;
         HasAdapterBackup = stats.HasAdapterBackup;

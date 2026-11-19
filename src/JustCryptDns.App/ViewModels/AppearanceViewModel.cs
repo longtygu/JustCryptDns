@@ -276,12 +276,24 @@ public sealed partial class AppearanceViewModel : PageViewModel
 
     private void OnSettingsChanged(object? sender, AppSettings settings)
     {
-        // External changes (e.g. sidebar toggle in the shell) are reflected here; own changes are no-ops.
-        if (settings.Appearance.SidebarCollapsed != SidebarCollapsed)
+        void Sync()
         {
-            _loading = true;
-            SidebarCollapsed = settings.Appearance.SidebarCollapsed;
-            _loading = false;
+            // External changes (e.g. sidebar toggle in the shell) are reflected here; own changes are no-ops.
+            if (settings.Appearance.SidebarCollapsed != SidebarCollapsed)
+            {
+                _loading = true;
+                SidebarCollapsed = settings.Appearance.SidebarCollapsed;
+                _loading = false;
+            }
+        }
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Sync);
+        }
+        else
+        {
+            Sync();
         }
     }
 

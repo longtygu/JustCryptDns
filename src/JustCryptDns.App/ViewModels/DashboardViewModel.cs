@@ -46,6 +46,9 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _blockedQueriesDisplay = "—";
     [ObservableProperty] private string _cacheHitDisplay = "—";
     [ObservableProperty] private bool _isFilteringActive;
+    [ObservableProperty] private SystemTrafficStatus _trafficStatus = SystemTrafficStatus.Stopped;
+    [ObservableProperty] private string? _trafficWarningBanner;
+    [ObservableProperty] private string? _testProxyFeedback;
     [ObservableProperty] private string? _engineError;
 
     public DashboardViewModel(
@@ -116,10 +119,26 @@ public sealed partial class DashboardViewModel : PageViewModel
             {
                 _navigation.Navigate(PageKeys.DnsManager);
             }
+            else
+            {
+                _ = _dnsEngine.ProbeActiveResolverAsync();
+            }
         }
 
         ApplyEngineStats(_dnsEngine.GetStats());
     }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task TestLocalProxyAsync()
+    {
+        TestProxyFeedback = null;
+        var (_, _, summary) = await _dnsEngine.TestLocalProxyAsync();
+        TestProxyFeedback = summary;
+        ApplyEngineStats(_dnsEngine.GetStats());
+    }
+
+    [RelayCommand]
+    private void OpenDnsManager() => _navigation.Navigate(PageKeys.DnsManager);
 
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task RefreshAsync()
@@ -171,6 +190,16 @@ public sealed partial class DashboardViewModel : PageViewModel
         CacheHitDisplay = stats.TotalQueries > 0 || IsEngineRunning
             ? string.Create(CultureInfo.InvariantCulture, $"{stats.CacheHitRatioPercent:0.#}%")
             : "—";
+        TrafficStatus = stats.TrafficStatus;
+        TrafficWarningBanner = stats.TrafficStatus switch
+        {
+            SystemTrafficStatus.NonStandardPort => Localization.LocalizationManager.Instance.Format(
+                "TrafficWarn_NonStandardPort",
+                stats.BoundPort,
+                stats.Port53OwnerDescription ?? Localization.LocalizationManager.Instance["Common_Unknown"]),
+            SystemTrafficStatus.AdapterNotConfigured => Localization.LocalizationManager.Instance["TrafficWarn_AdapterNotConfigured"],
+            _ => null,
+        };
         EngineError = stats.LastError;
     }
 

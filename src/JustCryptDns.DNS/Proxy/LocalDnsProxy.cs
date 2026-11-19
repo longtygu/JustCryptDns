@@ -1,7 +1,9 @@
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using JustCryptDns.Core.Models;
 using JustCryptDns.DNS.Wire;
 using Microsoft.Extensions.Logging;
@@ -59,13 +61,137 @@ public static class PortConflictDetector
         }
 
         var suggested = FindAvailablePort(listenAddress);
+        var (ownerName, ownerPid) = TryFindPortOwner(port);
+        var ownerText = ownerName is not null && ownerPid.HasValue
+            ? $"'{ownerName}' (PID {ownerPid.Value})"
+            : "another process";
         return new PortConflictInfo(
             HasConflict: true,
             Endpoint: $"{listenAddress}:{port}",
             Protocol: proto,
             SuggestedPort: suggested,
-            Message: $"Port {port} ({proto}) on {listenAddress} is already in use by another process. Stop the conflicting service or use port {suggested}.");
+            Message: $"Port {port} ({proto}) on {listenAddress} is already in use by {ownerText}. Stop {ownerText} to intercept Windows system DNS on port 53, or test on port {suggested}.",
+            ConflictingProcessName: ownerName,
+            ConflictingPid: ownerPid);
     }
+
+    public static (string? ProcessName, int? Pid) TryFindPortOwner(int port)
+    {
+        if (!OperatingSystem.IsWindows() || port <= 0)
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            var pid = FindUdpOwnerPid(port) ?? FindTcpOwnerPid(port);
+            if (pid is > 0)
+            {
+                try
+                {
+                    using var proc = Process.GetProcessById(pid.Value);
+                    return (proc.ProcessName, pid.Value);
+                }
+                catch
+                {
+                    return (null, pid.Value);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore lookup failures on restricted sessions.
+        }
+
+        return (null, null);
+    }
+
+    private static int? FindUdpOwnerPid(int targetPort)
+    {
+        var bufferSize = 0;
+        _ = GetExtendedUdpTable(nint.Zero, ref bufferSize, false, 2 /* AF_INET */, 1 /* UDP_TABLE_OWNER_PID */, 0);
+        if (bufferSize <= 0)
+        {
+            return null;
+        }
+
+        var buffer = Marshal.AllocHGlobal(bufferSize);
+        try
+        {
+            if (GetExtendedUdpTable(buffer, ref bufferSize, false, 2, 1, 0) != 0)
+            {
+                return null;
+            }
+
+            var count = Marshal.ReadInt32(buffer);
+            var rowPtr = buffer + 4;
+            const int rowSize = 12; // localAddr (4) + localPort (4) + owningPid (4)
+            for (var i = 0; i < count; i++)
+            {
+                var rawPort = Marshal.ReadInt32(rowPtr + 4);
+                var port = ((rawPort & 0xFF) << 8) | ((rawPort >> 8) & 0xFF);
+                if (port == targetPort)
+                {
+                    return Marshal.ReadInt32(rowPtr + 8);
+                }
+
+                rowPtr += rowSize;
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+
+        return null;
+    }
+
+    private static int? FindTcpOwnerPid(int targetPort)
+    {
+        var bufferSize = 0;
+        _ = GetExtendedTcpTable(nint.Zero, ref bufferSize, false, 2 /* AF_INET */, 5 /* TCP_TABLE_OWNER_PID_ALL */, 0);
+        if (bufferSize <= 0)
+        {
+            return null;
+        }
+
+        var buffer = Marshal.AllocHGlobal(bufferSize);
+        try
+        {
+            if (GetExtendedTcpTable(buffer, ref bufferSize, false, 2, 5, 0) != 0)
+            {
+                return null;
+            }
+
+            var count = Marshal.ReadInt32(buffer);
+            var rowPtr = buffer + 4;
+            const int rowSize = 24; // state(4)+localAddr(4)+localPort(4)+remoteAddr(4)+remotePort(4)+pid(4)
+            for (var i = 0; i < count; i++)
+            {
+                var state = Marshal.ReadInt32(rowPtr);
+                var rawPort = Marshal.ReadInt32(rowPtr + 8);
+                var port = ((rawPort & 0xFF) << 8) | ((rawPort >> 8) & 0xFF);
+                if (state == 2 /* LISTEN */ && port == targetPort)
+                {
+                    return Marshal.ReadInt32(rowPtr + 20);
+                }
+
+                rowPtr += rowSize;
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+
+        return null;
+    }
+
+    [DllImport("iphlpapi.dll", SetLastError = true)]
+    private static extern uint GetExtendedUdpTable(nint pUdpTable, ref int pdwSize, bool sort, int ipVersion, int tableClass, uint reserved);
+
+    [DllImport("iphlpapi.dll", SetLastError = true)]
+    private static extern uint GetExtendedTcpTable(nint pTcpTable, ref int pdwSize, bool sort, int ipVersion, int tableClass, uint reserved);
 
     public static bool IsPortInUse(IPAddress listenAddress, int port, out string protocol)
     {

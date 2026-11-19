@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.1] - 2026-11-19
+
+### Fixed & Improved
+- **Fixed cross-thread UI crash on `settings.Changed`:** marshaled `App.ApplyPresentation` and ViewModel `OnSettingsChanged` handlers onto the WPF `Dispatcher` and skipped redundant DWM/theme re-application when non-appearance settings change (resolves unobserved `InvalidOperationException` when toggling Gaming Mode, Smart Routing, or switching resolvers).
+- **Port 53 owner process detection (`PortConflictDetector`):** uses Win32 `GetExtendedUdpTable` / `GetExtendedTcpTable` (`iphlpapi.dll`) to identify the exact process name and PID occupying port 53 (e.g., an existing `dnscrypt-proxy` Windows service).
+- **System traffic visibility & instant local proxy verification:**
+  - Automatically runs a live upstream verification probe when starting the DNS engine from the UI and records probe entries into **Live Monitor**.
+  - Added explicit **System Traffic Warning Banners** on **Dashboard** and **DNS Manager** when the engine runs on a non-53 port (explaining that Windows only sends OS DNS queries to port 53) or when the Windows adapter DNS does not point to `127.0.0.1`.
+  - Added 1-click **Test local proxy** (`IDnsEngine.TestLocalProxyAsync`) and **Switch to port 53** actions to verify end-to-end lookup, TTL cache hits, ad filtering, and Live Monitor immediately.
+
 ## [1.0.0] - 2026-11-19
 
 ### Phase 12 — Release Packaging, Installer & Documentation

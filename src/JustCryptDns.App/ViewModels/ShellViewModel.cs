@@ -213,6 +213,14 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OnSettingsChanged(object? sender, AppSettings settings)
     {
         // Keep in sync when the sidebar mode is changed from the Appearance page.
-        IsSidebarCollapsed = settings.Appearance.SidebarCollapsed;
+        void Sync() => IsSidebarCollapsed = settings.Appearance.SidebarCollapsed;
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Sync);
+        }
+        else
+        {
+            Sync();
+        }
     }
 }

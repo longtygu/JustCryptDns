@@ -55,6 +55,26 @@
                 </Grid>
             </Border>
 
+            <!-- System Traffic Warning Banner (Non-53 port or Adapter DNS not configured) -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
+                    Padding="18,14" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding TrafficWarningBanner, Converter={StaticResource NullToVisibility}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" />
+                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding TrafficWarningBanner}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Command="{Binding TestLocalProxyCommand}" Content="{l:Loc DnsMgr_TestLocalProxy}" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding SwitchToPort53Command}" Content="{l:Loc DnsMgr_SwitchToPort53}"
+                                Visibility="{Binding IsNonStandardPort, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Error / Info alerts -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"

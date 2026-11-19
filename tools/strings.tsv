@@ -424,3 +424,7 @@ MonMode_Performance|Performance|Hiệu năng
 Settings_PerfDiag|Developer performance diagnostics|Chẩn đoán hiệu năng cho lập trình viên
 Settings_PerfDiag_Desc|Displays live process Working Set, Private RAM, Managed Heap, threads and handles.|Hiển thị thực tế Working Set, Private RAM, Managed Heap, số luồng và handle của tiến trình.
 Settings_PerfDiag_Trim|Trim memory now|Giải phóng bộ nhớ ngay
+TrafficWarn_NonStandardPort|Engine is listening on port {0} (not port 53). Windows only sends system DNS traffic to port 53, so traffic counters will stay at 0 for other apps. Port 53 is currently used by: {1}. Stop that service and switch back to port 53.|Engine đang chạy trên cổng {0} (không phải cổng 53). Windows chỉ gửi truy vấn DNS hệ thống tới cổng 53, nên các chỉ số lưu lượng từ ứng dụng khác sẽ không tăng. Cổng 53 hiện đang bị chiếm bởi: {1}. Hãy tắt dịch vụ đó rồi chuyển về cổng 53.
+TrafficWarn_AdapterNotConfigured|Engine is running on port 53, but your active Windows network adapter DNS is not pointing to 127.0.0.1 yet. Enable 'Configure Windows adapter automatically' in DNS Manager (run as Administrator) so Windows sends DNS queries through JustCryptDns.|Engine đang chạy trên cổng 53, nhưng DNS của bộ điều hợp mạng Windows chưa trỏ về 127.0.0.1. Hãy bật 'Tự động cấu hình DNS cho bộ điều hợp Windows' trong Quản lý DNS (chạy với quyền Quản trị viên) để Windows gửi truy vấn qua JustCryptDns.
+DnsMgr_TestLocalProxy|Test local proxy|Kiểm tra proxy cục bộ
+DnsMgr_SwitchToPort53|Switch to port 53|Chuyển về cổng 53

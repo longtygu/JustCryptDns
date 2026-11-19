@@ -36,4 +36,10 @@ public interface IDnsEngine : IAsyncDisposable
     Task<(bool Success, string? Error)> SwitchResolverAsync(string resolverId, CancellationToken cancellationToken = default);
 
     Task<DnsQueryResult> ProbeActiveResolverAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends real UDP DNS queries directly through the local proxy listener to verify end-to-end
+    /// resolution, routing, filtering, caching, and live monitoring.
+    /// </summary>
+    Task<(bool Success, double LatencyMs, string Summary)> TestLocalProxyAsync(CancellationToken cancellationToken = default);
 }

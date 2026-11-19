@@ -20,6 +20,9 @@ public partial class App : Application
     private SingleInstanceGuard? _instanceGuard;
     private ServiceProvider? _services;
     private ILogger<App> _logger = NullLogger<App>.Instance;
+    private string? _lastAppearanceJson;
+    private string? _lastLanguage;
+    private LogLevelSetting? _lastLogLevel;
 
     public static bool ShouldStartMinimized(IReadOnlyList<string> args, GeneralSettings general)
     {
@@ -72,7 +75,17 @@ public partial class App : Application
 
         var settings = _services.GetRequiredService<ISettingsService>();
         ApplyPresentation(settings.Current);
-        settings.Changed += (_, current) => ApplyPresentation(current);
+        settings.Changed += (_, current) =>
+        {
+            if (Dispatcher.CheckAccess())
+            {
+                ApplyPresentation(current);
+            }
+            else
+            {
+                Dispatcher.BeginInvoke(() => ApplyPresentation(current));
+            }
+        };
 
         // Initialize system tray icon.
         var shell = _services.GetRequiredService<ShellViewModel>();
@@ -139,9 +152,24 @@ public partial class App : Application
 
     private void ApplyPresentation(AppSettings settings)
     {
-        _services!.GetRequiredService<IAppearanceService>().Apply(settings.Appearance);
-        LocalizationManager.Instance.SetLanguage(settings.General.Language);
-        LoggingSetup.SetLevel(settings.Performance.LogLevel);
+        var appearanceJson = System.Text.Json.JsonSerializer.Serialize(settings.Appearance, SettingsJson.Options);
+        if (!string.Equals(appearanceJson, _lastAppearanceJson, StringComparison.Ordinal))
+        {
+            _lastAppearanceJson = appearanceJson;
+            _services!.GetRequiredService<IAppearanceService>().Apply(settings.Appearance);
+        }
+
+        if (!string.Equals(settings.General.Language, _lastLanguage, StringComparison.OrdinalIgnoreCase))
+        {
+            _lastLanguage = settings.General.Language;
+            LocalizationManager.Instance.SetLanguage(settings.General.Language);
+        }
+
+        if (_lastLogLevel != settings.Performance.LogLevel)
+        {
+            _lastLogLevel = settings.Performance.LogLevel;
+            LoggingSetup.SetLevel(settings.Performance.LogLevel);
+        }
     }
 
     private void ActivateMainWindow()
