@@ -18,6 +18,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     private readonly INavigationService _navigation;
     private readonly IStartupService _startup;
     private readonly IServiceClient _serviceClient;
+    private readonly IProcessPerformanceService? _performance;
     private readonly ILogger<SettingsViewModel> _logger;
     private readonly SynchronizationContext? _ui;
     private bool _loading;
@@ -30,6 +31,9 @@ public sealed partial class SettingsViewModel : PageViewModel
     [ObservableProperty] private bool _restorePreviousProfile;
     [ObservableProperty] private bool _enableGamingModeOnStartup;
     [ObservableProperty] private CloseBehavior _closeBehavior;
+    [ObservableProperty] private MonitoringMode _monitoringMode = MonitoringMode.Balanced;
+    [ObservableProperty] private bool _enablePerformanceDiagnostics;
+    [ObservableProperty] private ProcessPerformanceSnapshot? _performanceSnapshot;
     [ObservableProperty] private ServiceConnectionState _serviceState;
     [ObservableProperty] private string? _serviceVersion;
 
@@ -43,18 +47,21 @@ public sealed partial class SettingsViewModel : PageViewModel
         IStartupService startup,
         IServiceClient serviceClient,
         IAppPaths paths,
-        ILogger<SettingsViewModel> logger)
+        ILogger<SettingsViewModel> logger,
+        IProcessPerformanceService? performance = null)
         : base("Nav_Settings", "Page_Settings_Subtitle")
     {
         _settings = settings;
         _navigation = navigation;
         _startup = startup;
         _serviceClient = serviceClient;
+        _performance = performance;
         _logger = logger;
         _ui = SynchronizationContext.Current;
 
         LoadFrom(settings.Current);
         UpdateServiceState();
+        RefreshPerformance();
 
         DataFolder = paths.DataDirectory;
         LogsFolder = paths.LogsDirectory;
@@ -176,6 +183,45 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
     }
 
+    partial void OnMonitoringModeChanged(MonitoringMode value)
+    {
+        if (!_loading)
+        {
+            _ = SaveAsync(s => s.Performance.MonitoringMode = value);
+            RefreshPerformance();
+        }
+    }
+
+    partial void OnEnablePerformanceDiagnosticsChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = SaveAsync(s => s.Performance.EnablePerformanceDiagnostics = value);
+            if (value)
+            {
+                RefreshPerformance();
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void RefreshPerformance()
+    {
+        if (_performance is not null)
+        {
+            PerformanceSnapshot = _performance.CaptureSnapshot();
+        }
+    }
+
+    [RelayCommand]
+    private void TrimMemory()
+    {
+        if (_performance is not null)
+        {
+            PerformanceSnapshot = _performance.TrimWorkingSet();
+        }
+    }
+
     [RelayCommand]
     private void OpenAppearance() => _navigation.Navigate(PageKeys.Appearance);
 
@@ -218,6 +264,8 @@ public sealed partial class SettingsViewModel : PageViewModel
             RestorePreviousProfile = current.General.RestorePreviousProfile;
             EnableGamingModeOnStartup = current.General.EnableGamingModeOnStartup;
             CloseBehavior = current.General.CloseBehavior;
+            MonitoringMode = current.Performance.MonitoringMode;
+            EnablePerformanceDiagnostics = current.Performance.EnablePerformanceDiagnostics;
         }
         finally
         {

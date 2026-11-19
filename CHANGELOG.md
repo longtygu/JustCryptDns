@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 11 — Extreme Resource Optimization & Performance Diagnostics
+- **Monitoring Modes (`MonitoringMode`: `PowerSaving`, `Balanced`, `Performance`):** dynamically scales the live query monitor ring-buffer depth (`100` / `300` / `500` entries) and background UI overhead from **Settings**.
+- **Developer Performance Diagnostics (`ProcessPerformanceService`, `IProcessPerformanceService`):** exposes real-time Working Set MB, Private RAM MB, Managed Heap MB, Thread count, Handle count, and GC generation counts directly inside **Settings**, plus a one-click **Trim memory now** button (`GC.Collect` + LOH compaction + Win32 `SetProcessWorkingSetSize`).
+- **Automatic Tray Working-Set Trimming:** minimizing `MainWindow` to the system tray automatically trims unused memory pages.
+- **Verified Release measurements (`docs/PERFORMANCE.md`):** `JustCryptDns.Service.exe` uses **31.1 MB Working Set / 8.9 MB Private RAM** (10 threads, ~0% idle CPU); schema v10 (`MigrationV9ToV10`) and 104 offline unit tests passing in Release.
+
 ### Phase 10 — Network Diagnostics & Virtualized Live Monitor
 - **Network Diagnostics service & page (`NetworkDiagnosticsService`, `DiagnosticsView`, `DiagnosticsViewModel`):**
   - Clearly separates **Local Adapter & Engine Diagnostics** (adapter, IP, gateway, active DNS, IPv4/IPv6 status, engine state, protocol, active resolver, latency) from **External Live Tests**.

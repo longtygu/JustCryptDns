@@ -11,6 +11,7 @@ using JustCryptDns.DNS.Filtering;
 using JustCryptDns.DNS.Proxy;
 using JustCryptDns.DNS.Resolver;
 using JustCryptDns.DNS.Routing;
+using JustCryptDns.Infrastructure.Diagnostics;
 using JustCryptDns.Infrastructure.Ipc;
 using JustCryptDns.Infrastructure.Windows;
 using JustCryptDns.Network.Diagnostics;
@@ -39,6 +40,7 @@ public static class ServiceRegistration
             new RegistryStartupService(sp.GetRequiredService<ILogger<RegistryStartupService>>()));
         services.AddSingleton<IServiceClient>(sp =>
             new NamedPipeServiceClient(sp.GetRequiredService<ILogger<NamedPipeServiceClient>>()));
+        services.AddSingleton<IProcessPerformanceService, ProcessPerformanceService>();
 
         // Network & DNS Engine
         services.AddSingleton<INetworkInfoService, NetworkInfoService>();

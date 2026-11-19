@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1: Phase 1. v2: Phase 2 appearance. v3: Phase 3 background/startup. v4: Phase 4 DNS engine. v5: Phase 5 resolver library. v6: Phase 6 smart routing. v7: Phase 7 filtering & cache. v8: Phase 8 gaming. v9: Phase 9 resilience & failover.</summary>
-    public const int CurrentSchemaVersion = 9;
+    /// <summary>v1–v9: Phases 1–9. v10: Phase 11 monitoring modes & performance diagnostics.</summary>
+    public const int CurrentSchemaVersion = 10;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -460,6 +460,14 @@ public enum LogLevelSetting
     Error,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<MonitoringMode>))]
+public enum MonitoringMode
+{
+    PowerSaving,
+    Balanced,
+    Performance,
+}
+
 public sealed class PerformanceSettings
 {
     public LogLevelSetting LogLevel { get; set; } = LogLevelSetting.Information;
@@ -467,11 +475,27 @@ public sealed class PerformanceSettings
     /// <summary>Number of daily log files to keep (1–90).</summary>
     public int LogRetentionDays { get; set; } = 7;
 
+    public MonitoringMode MonitoringMode { get; set; } = MonitoringMode.Balanced;
+
+    public bool EnablePerformanceDiagnostics { get; set; }
+
+    public int GetMonitorBufferLimit() => MonitoringMode switch
+    {
+        MonitoringMode.PowerSaving => 100,
+        MonitoringMode.Performance => 500,
+        _ => 300,
+    };
+
     internal void Normalize()
     {
         if (!Enum.IsDefined(LogLevel))
         {
             LogLevel = LogLevelSetting.Information;
+        }
+
+        if (!Enum.IsDefined(MonitoringMode))
+        {
+            MonitoringMode = MonitoringMode.Balanced;
         }
 
         LogRetentionDays = Math.Clamp(LogRetentionDays, 1, 90);

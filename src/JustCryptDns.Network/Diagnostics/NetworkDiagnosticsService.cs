@@ -68,10 +68,11 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
             return;
         }
 
+        var maxEntries = _settings.Current.Performance.GetMonitorBufferLimit();
         lock (_monitorLock)
         {
             _monitorEntries.AddFirst(entry);
-            while (_monitorEntries.Count > MaxMonitorEntries)
+            while (_monitorEntries.Count > maxEntries)
             {
                 _monitorEntries.RemoveLast();
             }

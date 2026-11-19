@@ -1260,4 +1260,31 @@
   <data name="Monitor_FailoverHistoryTitle" xml:space="preserve">
     <value>Sự kiện chuyển đổi dự phòng &amp; phục hồi tự động</value>
   </data>
+  <data name="Settings_Performance_Section" xml:space="preserve">
+    <value>Tối ưu tài nguyên &amp; giám sát</value>
+  </data>
+  <data name="Settings_MonitoringMode" xml:space="preserve">
+    <value>Chế độ giám sát</value>
+  </data>
+  <data name="Settings_MonitoringMode_Desc" xml:space="preserve">
+    <value>Điều chỉnh độ sâu bộ đệm giám sát trực tiếp và mức tiêu thụ tài nguyên. Thu nhỏ xuống khay hệ thống tự động giải phóng bộ nhớ dư.</value>
+  </data>
+  <data name="MonMode_PowerSaving" xml:space="preserve">
+    <value>Tiết kiệm</value>
+  </data>
+  <data name="MonMode_Balanced" xml:space="preserve">
+    <value>Cân bằng</value>
+  </data>
+  <data name="MonMode_Performance" xml:space="preserve">
+    <value>Hiệu năng</value>
+  </data>
+  <data name="Settings_PerfDiag" xml:space="preserve">
+    <value>Chẩn đoán hiệu năng cho lập trình viên</value>
+  </data>
+  <data name="Settings_PerfDiag_Desc" xml:space="preserve">
+    <value>Hiển thị thực tế Working Set, Private RAM, Managed Heap, số luồng và handle của tiến trình.</value>
+  </data>
+  <data name="Settings_PerfDiag_Trim" xml:space="preserve">
+    <value>Giải phóng bộ nhớ ngay</value>
+  </data>
 </root>

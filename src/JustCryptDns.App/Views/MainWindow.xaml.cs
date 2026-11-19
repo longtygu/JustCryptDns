@@ -4,6 +4,7 @@ using System.Windows.Media;
 using JustCryptDns.App.Localization;
 using JustCryptDns.App.Services;
 using JustCryptDns.App.ViewModels;
+using JustCryptDns.Core.Interfaces;
 
 namespace JustCryptDns.App.Views;
 
@@ -14,15 +15,17 @@ public partial class MainWindow : Window
     private const int SmCxPaddedBorder = 92;
 
     private readonly IAppearanceService _appearance;
+    private readonly IProcessPerformanceService _performance;
 
-    public MainWindow(ShellViewModel viewModel, IAppearanceService appearance)
+    public MainWindow(ShellViewModel viewModel, IAppearanceService appearance, IProcessPerformanceService performance)
     {
         _appearance = appearance;
+        _performance = performance;
         InitializeComponent();
         DataContext = viewModel;
         StateChanged += (_, _) => UpdateMaximizedState();
         Closing += OnWindowClosing;
-        viewModel.HideToTrayRequested += (_, _) => Hide();
+        viewModel.HideToTrayRequested += (_, _) => HideToTray();
         viewModel.ExitRequested += (_, _) => Close();
         LocalizationManager.Instance.PropertyChanged += (_, _) => UpdateMaximizedState();
     }
@@ -86,7 +89,7 @@ public partial class MainWindow : Window
         {
             case WindowCloseAction.HideToTray:
                 e.Cancel = true;
-                Hide();
+                HideToTray();
                 break;
             case WindowCloseAction.PromptUser:
                 e.Cancel = true;
@@ -94,6 +97,12 @@ public partial class MainWindow : Window
             case WindowCloseAction.ExitApplication:
                 break;
         }
+    }
+
+    private void HideToTray()
+    {
+        Hide();
+        _ = Task.Run(() => _performance.TrimWorkingSet());
     }
 
     private void OnNavListMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)

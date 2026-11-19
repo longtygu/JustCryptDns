@@ -1260,4 +1260,31 @@
   <data name="Monitor_FailoverHistoryTitle" xml:space="preserve">
     <value>Automatic failover &amp; recovery events</value>
   </data>
+  <data name="Settings_Performance_Section" xml:space="preserve">
+    <value>Resource optimization &amp; monitoring</value>
+  </data>
+  <data name="Settings_MonitoringMode" xml:space="preserve">
+    <value>Monitoring mode</value>
+  </data>
+  <data name="Settings_MonitoringMode_Desc" xml:space="preserve">
+    <value>Controls live monitor ring-buffer depth and background UI overhead. Minimizing to tray automatically trims unused memory.</value>
+  </data>
+  <data name="MonMode_PowerSaving" xml:space="preserve">
+    <value>Power Saving</value>
+  </data>
+  <data name="MonMode_Balanced" xml:space="preserve">
+    <value>Balanced</value>
+  </data>
+  <data name="MonMode_Performance" xml:space="preserve">
+    <value>Performance</value>
+  </data>
+  <data name="Settings_PerfDiag" xml:space="preserve">
+    <value>Developer performance diagnostics</value>
+  </data>
+  <data name="Settings_PerfDiag_Desc" xml:space="preserve">
+    <value>Displays live process Working Set, Private RAM, Managed Heap, threads and handles.</value>
+  </data>
+  <data name="Settings_PerfDiag_Trim" xml:space="preserve">
+    <value>Trim memory now</value>
+  </data>
 </root>

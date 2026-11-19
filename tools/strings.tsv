@@ -415,3 +415,12 @@ Diag_Lookup_Summary|External lookup for {0} ({1}): {2} in {3} ms via {4} ({5} re
 Monitor_PauseStream|Pause stream|Tạm dừng luồng
 Monitor_LiveStreamTitle|Virtualized live DNS query log|Nhật ký truy vấn DNS trực tiếp (ảo hóa)
 Monitor_FailoverHistoryTitle|Automatic failover & recovery events|Sự kiện chuyển đổi dự phòng & phục hồi tự động
+Settings_Performance_Section|Resource optimization & monitoring|Tối ưu tài nguyên & giám sát
+Settings_MonitoringMode|Monitoring mode|Chế độ giám sát
+Settings_MonitoringMode_Desc|Controls live monitor ring-buffer depth and background UI overhead. Minimizing to tray automatically trims unused memory.|Điều chỉnh độ sâu bộ đệm giám sát trực tiếp và mức tiêu thụ tài nguyên. Thu nhỏ xuống khay hệ thống tự động giải phóng bộ nhớ dư.
+MonMode_PowerSaving|Power Saving|Tiết kiệm
+MonMode_Balanced|Balanced|Cân bằng
+MonMode_Performance|Performance|Hiệu năng
+Settings_PerfDiag|Developer performance diagnostics|Chẩn đoán hiệu năng cho lập trình viên
+Settings_PerfDiag_Desc|Displays live process Working Set, Private RAM, Managed Heap, threads and handles.|Hiển thị thực tế Working Set, Private RAM, Managed Heap, số luồng và handle của tiến trình.
+Settings_PerfDiag_Trim|Trim memory now|Giải phóng bộ nhớ ngay

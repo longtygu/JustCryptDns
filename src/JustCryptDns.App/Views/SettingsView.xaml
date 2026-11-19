@@ -282,6 +282,84 @@
                 </StackPanel>
             </Border>
 
+            <!-- Performance & Resource Optimization -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_Performance_Section}" Margin="0,16,0,10" />
+            <Border Style="{StaticResource SettingCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE945;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_MonitoringMode}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_MonitoringMode_Desc}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource SegmentHost}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="MonMode" Content="{l:Loc MonMode_PowerSaving}"
+                                             IsChecked="{Binding MonitoringMode, Converter={StaticResource EnumEquals}, ConverterParameter=PowerSaving}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="MonMode" Content="{l:Loc MonMode_Balanced}"
+                                             IsChecked="{Binding MonitoringMode, Converter={StaticResource EnumEquals}, ConverterParameter=Balanced}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="MonMode" Content="{l:Loc MonMode_Performance}"
+                                             IsChecked="{Binding MonitoringMode, Converter={StaticResource EnumEquals}, ConverterParameter=Performance}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid Margin="36,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Settings_PerfDiag}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_PerfDiag_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding EnablePerformanceDiagnostics}"
+                                  AutomationProperties.Name="{l:Loc Settings_PerfDiag}" />
+                    </Grid>
+
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="8" Padding="16,12" Margin="36,14,0,0"
+                            Visibility="{Binding EnablePerformanceDiagnostics, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <UniformGrid Rows="1" Columns="4" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Working Set" />
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontWeight="SemiBold"
+                                               Text="{Binding PerformanceSnapshot.WorkingSetMb, StringFormat={}{0:0.0} MB}" Margin="0,3,0,0" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Private RAM" />
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontWeight="SemiBold"
+                                               Text="{Binding PerformanceSnapshot.PrivateMemoryMb, StringFormat={}{0:0.0} MB}" Margin="0,3,0,0" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Managed Heap" />
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontWeight="SemiBold"
+                                               Text="{Binding PerformanceSnapshot.ManagedHeapMb, StringFormat={}{0:0.0} MB}" Margin="0,3,0,0" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Threads / Handles" />
+                                    <TextBlock Style="{StaticResource Text.Mono}" Margin="0,3,0,0">
+                                        <Run Text="{Binding PerformanceSnapshot.ThreadCount, Mode=OneWay}" />
+                                        <Run Text=" / " />
+                                        <Run Text="{Binding PerformanceSnapshot.HandleCount, Mode=OneWay}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </UniformGrid>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Command="{Binding RefreshPerformanceCommand}" Content="{l:Loc Common_Refresh}" Margin="0,0,8,0" Padding="10,5" />
+                                <Button Command="{Binding TrimMemoryCommand}" Content="{l:Loc Settings_PerfDiag_Trim}" Padding="10,5" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
             <!-- About -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_About}" Margin="0,16,0,10" />
             <Border Style="{StaticResource SettingCard}">
