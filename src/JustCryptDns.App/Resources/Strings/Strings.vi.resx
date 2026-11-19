@@ -1326,9 +1326,6 @@
   <data name="Dash_Bypass_Title" xml:space="preserve">
     <value>Vượt DPI &amp; Split-Tunnel</value>
   </data>
-  <data name="Dash_Bypass_Desc" xml:space="preserve">
-    <value>Tự động mở khóa Steam và các trang bị chặn qua Auto-PAC trong khi vẫn giữ lưu lượng game đi thẳng.</value>
-  </data>
   <data name="Dash_Bypass_Configure" xml:space="preserve">
     <value>Cấu hình DPI &amp; Bypass</value>
   </data>
@@ -1542,6 +1539,12 @@
   <data name="BypassAction_DpiFragmented" xml:space="preserve">
     <value>Đã vượt DPI</value>
   </data>
+  <data name="BypassAction_EscalatedDpi16B" xml:space="preserve">
+    <value>Vượt DPI (16B nâng cao)</value>
+  </data>
+  <data name="BypassAction_SelfHealedDirect" xml:space="preserve">
+    <value>Tự sửa (Đi thẳng)</value>
+  </data>
   <data name="BypassAction_UpstreamTunneled" xml:space="preserve">
     <value>Qua Tunnel</value>
   </data>
@@ -1553,5 +1556,77 @@
   </data>
   <data name="BypassAction_Failed" xml:space="preserve">
     <value>Thất bại</value>
+  </data>
+  <data name="CoverageMode_AllWebsitesSmart" xml:space="preserve">
+    <value>Mọi trang web (Auto-PAC thông minh)</value>
+  </data>
+  <data name="CoverageMode_RuleListOnly" xml:space="preserve">
+    <value>Chỉ theo danh sách quy tắc</value>
+  </data>
+  <data name="LearnedStrategy_Direct" xml:space="preserve">
+    <value>Đi thẳng</value>
+  </data>
+  <data name="LearnedStrategy_EscalatedDpi16B" xml:space="preserve">
+    <value>DPI 16B</value>
+  </data>
+  <data name="LearnedStrategy_UpstreamTunnel" xml:space="preserve">
+    <value>Qua Tunnel</value>
+  </data>
+  <data name="Bypass_CoverageMode" xml:space="preserve">
+    <value>Phạm vi áp dụng website</value>
+  </data>
+  <data name="Bypass_Opt_SmartSelfHealing" xml:space="preserve">
+    <value>Bật tự sửa lỗi 4 tầng (tự thử 16B / Đi thẳng / Tunnel)</value>
+  </data>
+  <data name="Bypass_Metric_SelfHealed" xml:space="preserve">
+    <value>Tự sửa / Nâng 16B</value>
+  </data>
+  <data name="Bypass_LearnedCount" xml:space="preserve">
+    <value>Tên miền đã tự học</value>
+  </data>
+  <data name="Bypass_Tester_BatchRun" xml:space="preserve">
+    <value>Kiểm tra nhiều trang</value>
+  </data>
+  <data name="Bypass_Tester_BatchResult" xml:space="preserve">
+    <value>Kiểm tra đa trang ({0}/{1} thông suốt): {2}</value>
+  </data>
+  <data name="Bypass_Exclusions_Title" xml:space="preserve">
+    <value>Ngoại lệ đi thẳng (luôn không qua proxy)</value>
+  </data>
+  <data name="Bypass_Exclusions_Desc" xml:space="preserve">
+    <value>Loại trừ các trang ngân hàng, mạng nội bộ hoặc trang cần đi thẳng 100%.</value>
+  </data>
+  <data name="Bypass_Exclusions_Add" xml:space="preserve">
+    <value>Loại trừ</value>
+  </data>
+  <data name="Bypass_Msg_ExclusionAdded" xml:space="preserve">
+    <value>Đã thêm '{0}' vào danh sách ngoại lệ đi thẳng.</value>
+  </data>
+  <data name="Bypass_Msg_ExclusionRemoved" xml:space="preserve">
+    <value>Đã xóa '{0}' khỏi danh sách ngoại lệ đi thẳng.</value>
+  </data>
+  <data name="Bypass_Learned_Title" xml:space="preserve">
+    <value>Tên miền đã tự học (cache thích ứng 30 phút)</value>
+  </data>
+  <data name="Bypass_Learned_Desc" xml:space="preserve">
+    <value>Tự động ghi nhớ chiến lược tối ưu cho từng trang web khi cần tách 16B, đi thẳng hoặc qua Tunnel.</value>
+  </data>
+  <data name="Bypass_Learned_Clear" xml:space="preserve">
+    <value>Xóa bộ nhớ học</value>
+  </data>
+  <data name="Bypass_Learned_Pin" xml:space="preserve">
+    <value>Ghim quy tắc</value>
+  </data>
+  <data name="Bypass_Msg_Promoted" xml:space="preserve">
+    <value>Đã ghim quy tắc vĩnh viễn cho '{0}'.</value>
+  </data>
+  <data name="Bypass_Msg_LearnedCleared" xml:space="preserve">
+    <value>Đã xóa bộ nhớ tên miền đã tự học.</value>
+  </data>
+  <data name="Bypass_Activity_Exclude" xml:space="preserve">
+    <value>Đi thẳng</value>
+  </data>
+  <data name="Dash_Bypass_Desc" xml:space="preserve">
+    <value>Tự động mở khóa Steam và mọi trang web qua Auto-PAC thông minh trong khi giữ lưu lượng game đi thẳng.</value>
   </data>
 </root>

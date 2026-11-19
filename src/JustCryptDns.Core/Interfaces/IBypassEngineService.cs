@@ -41,4 +41,29 @@ public interface IBypassEngineService : IAsyncDisposable
     Task SetRuleEnabledAsync(string ruleId, bool enabled, CancellationToken cancellationToken = default);
 
     Task ResetBuiltInRulesAsync(CancellationToken cancellationToken = default);
+
+    IReadOnlyList<string> GetDirectExclusions();
+
+    Task<(bool Success, string? Error)> AddDirectExclusionAsync(
+        string pattern,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> RemoveDirectExclusionAsync(
+        string pattern,
+        CancellationToken cancellationToken = default);
+
+    IReadOnlyList<LearnedHostEntry> GetLearnedHosts();
+
+    void ClearLearnedHosts();
+
+    Task<(bool Success, string? Error)> PromoteLearnedHostAsync(
+        string host,
+        LearnedHostStrategy strategy,
+        CancellationToken cancellationToken = default);
+
+    Task RefreshSystemPacAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<BypassTestResult>> TestMultipleDomainsAsync(
+        IEnumerable<string> hosts,
+        CancellationToken cancellationToken = default);
 }

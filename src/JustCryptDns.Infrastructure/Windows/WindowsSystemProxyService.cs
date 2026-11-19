@@ -317,7 +317,7 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
             var current = _configurator.ReadCurrent();
             var isOurPac = current.AutoConfigUrl is not null
                 && current.AutoConfigUrl.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase)
-                && current.AutoConfigUrl.EndsWith("/proxy.pac", StringComparison.OrdinalIgnoreCase);
+                && current.AutoConfigUrl.Contains("/proxy.pac", StringComparison.OrdinalIgnoreCase);
             var isOurManual = current.ProxyEnable == 1
                 && current.ProxyServer is not null
                 && current.ProxyServer.StartsWith("127.0.0.1:", StringComparison.OrdinalIgnoreCase);

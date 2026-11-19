@@ -33,6 +33,9 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly IBypassEngineService? _bypassEngine;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
+    private long _lastBypassUiTick;
+    private BypassRuntimeStats? _pendingBypassStats;
+    private int _bypassFlushScheduled;
 
     [ObservableProperty] private NetworkAdapterInfo? _primaryAdapter;
     [ObservableProperty] private LocalConnectivity _connectivity = LocalConnectivity.Offline;
@@ -63,9 +66,11 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     [ObservableProperty] private string _bypassEndpoint = "127.0.0.1:10808";
     [ObservableProperty] private WindowsProxyMode _bypassWindowsProxyMode = WindowsProxyMode.AutoPac;
+    [ObservableProperty] private BypassCoverageMode _bypassCoverageMode = BypassCoverageMode.AllWebsitesSmart;
     [ObservableProperty] private bool _bypassWindowsApplied;
     [ObservableProperty] private string _bypassDpiCountDisplay = "—";
     [ObservableProperty] private string _bypassTunnelCountDisplay = "—";
+    [ObservableProperty] private string _bypassLearnedCountDisplay = "0";
 
     public DashboardViewModel(
         INetworkInfoService network,
@@ -416,6 +421,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         BypassState = stats.State;
         BypassEndpoint = stats.ProxyEndpoint;
         BypassWindowsProxyMode = stats.ActiveWindowsProxyMode;
+        BypassCoverageMode = stats.CoverageMode;
         BypassWindowsApplied = stats.WindowsProxyApplied;
         BypassDpiCountDisplay = stats.DpiBypassedConnections > 0 || IsBypassRunning
             ? stats.DpiBypassedConnections.ToString("N0", CultureInfo.CurrentCulture)
@@ -423,9 +429,40 @@ public sealed partial class DashboardViewModel : PageViewModel
         BypassTunnelCountDisplay = stats.TunneledConnections > 0 || IsBypassRunning
             ? stats.TunneledConnections.ToString("N0", CultureInfo.CurrentCulture)
             : "—";
+        BypassLearnedCountDisplay = stats.LearnedHostCount.ToString("N0", CultureInfo.CurrentCulture);
     }
 
     private void OnBypassStateChanged(object? sender, BypassRuntimeStats stats)
+    {
+        var now = Environment.TickCount64;
+        if (stats.State != BypassState || now - Interlocked.Read(ref _lastBypassUiTick) >= 250)
+        {
+            Interlocked.Exchange(ref _lastBypassUiTick, now);
+            _pendingBypassStats = null;
+            DispatchBypassStats(stats);
+            return;
+        }
+
+        _pendingBypassStats = stats;
+        if (Interlocked.CompareExchange(ref _bypassFlushScheduled, 1, 0) == 0)
+        {
+            _ = FlushPendingBypassStatsAsync();
+        }
+    }
+
+    private async Task FlushPendingBypassStatsAsync()
+    {
+        await Task.Delay(250).ConfigureAwait(false);
+        Interlocked.Exchange(ref _bypassFlushScheduled, 0);
+        if (_pendingBypassStats is { } latest)
+        {
+            Interlocked.Exchange(ref _lastBypassUiTick, Environment.TickCount64);
+            _pendingBypassStats = null;
+            DispatchBypassStats(latest);
+        }
+    }
+
+    private void DispatchBypassStats(BypassRuntimeStats stats)
     {
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {

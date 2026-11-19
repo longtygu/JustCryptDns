@@ -16,11 +16,12 @@
 - JustCryptDns uses official `dnscrypt-proxy` binaries rather than re-implementing cryptography.
 - Go to **DNS Manager → dnscrypt-proxy** and click **Install / Update** to download and verify the latest Windows x64 release into `%LOCALAPPDATA%\JustCryptDns\engines\dnscrypt-proxy\`.
 
-## 4. DPI Bypass, Steam & Windows Proxy Recovery
-- **Steam Store / Community or websites hang during loading even with encrypted DNS:**
-  1. Ensure **DPI Bypass & Tunnel** is started on the Dashboard or **DPI Bypass & Tunnel** page (`127.0.0.1:10808` and Auto-PAC `http://127.0.0.1:10809/proxy.pac`).
-  2. Click **Test Bypass** on `store.steampowered.com` inside **DPI Bypass & Tunnel**. If Direct HTTPS times out while TLS DPI Bypass succeeds, verify the domain's rule is enabled under **Domain bypass rules**.
-  3. If both Direct and TLS DPI Bypass fail for a specific site (IP-block / geo-block), switch Cloudflare WARP to proxy mode (`warp-cli mode proxy && warp-cli connect`), click **Detect Cloudflare WARP**, and enable Tier 2 Split-Tunnel upstream.
+## 4. DPI Bypass, All-Web Recovery & Banking Exclusions
+- **Websites or Steam Store hang during loading even with encrypted DNS:**
+  1. Ensure **DPI Bypass & Tunnel** is active (`127.0.0.1:10808`) and **Website coverage mode** is set to **All Websites (Smart Auto-PAC)** (or switch a custom rule cleanly).
+  2. Use **Test Bypass** or **Test Multiple Sites** inside **DPI Bypass & Tunnel** to inspect Direct vs. TLS Fragmentation vs. Tunnel reachability.
+  3. Enable **4-stage self-healing** so JustCryptDns automatically escalates to 16B splits, recovers legacy servers as Direct, or falls back to Tier 2 Split-Tunnel (`warp-cli mode proxy && warp-cli connect`).
+- **A banking or intranet site dislikes TLS splitting:** Self-healing detects TLS Alerts automatically and learns `Direct` for 30 minutes; you can also click **Direct** beside any entry in **Recent bypass connection stream** or add the domain under **Direct exclusions** for a permanent bypass exemption with instant Auto-PAC refresh.
 - **Emergency restore Windows Proxy:** If browser connections fail after an unclean shutdown, click **Restore Windows Proxy** inside **DPI Bypass & Tunnel** or right-click the tray icon and choose **Restore original DNS** (which also restores `%LOCALAPPDATA%\JustCryptDns\proxy-backup.json`).
 
 ## 5. Window Transparency on Windows 10 vs. Windows 11

@@ -7,39 +7,28 @@ using JustCryptDns.Core.Models;
 namespace JustCryptDns.Network.Bypass;
 
 /// <summary>
-/// Thread-safe rule matcher for DPI Bypass and Split-Tunnel routing, with a 15-minute
-/// adaptive fallback hint cache so repeated connections skip dead direct paths immediately.
+/// Thread-safe rule matcher for DPI Bypass and Split-Tunnel routing, with a 30-minute
+/// self-healing learned strategy cache per hostname.
 /// </summary>
 public sealed class BypassRuleMatcher
 {
-    private static readonly TimeSpan AdaptiveHintTtl = TimeSpan.FromMinutes(15);
-    private readonly ConcurrentDictionary<string, DateTimeOffset> _tunnelHints = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan AdaptiveHintTtl = TimeSpan.FromMinutes(30);
+    private readonly ConcurrentDictionary<string, LearnedHostEntry> _learnedHosts = new(StringComparer.OrdinalIgnoreCase);
 
-    public BypassMode Evaluate(string host, BypassSettings settings)
+    public BypassMode Evaluate(string host, BypassSettings settings) =>
+        EvaluateDecision(host, settings).Mode;
+
+    public (BypassMode Mode, LearnedHostStrategy? LearnedStrategy) EvaluateDecision(string host, BypassSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
         var normalized = NormalizeHost(host);
-        if (string.IsNullOrEmpty(normalized))
+        if (string.IsNullOrEmpty(normalized) || IsDirectExcluded(normalized, settings.DirectExclusionDomains))
         {
-            return BypassMode.Direct;
+            return (BypassMode.Direct, null);
         }
 
-        if (IsDirectExcluded(normalized, settings.DirectExclusionDomains))
-        {
-            return BypassMode.Direct;
-        }
-
-        if (settings.Upstream.Enabled
-            && settings.AutoFallbackToTunnelOnDpiFailure
-            && _tunnelHints.TryGetValue(normalized, out var expiresAt))
-        {
-            if (expiresAt > DateTimeOffset.UtcNow)
-            {
-                return BypassMode.UpstreamTunnel;
-            }
-
-            _tunnelHints.TryRemove(normalized, out _);
-        }
+        var upstreamAvailable = settings.Upstream.Enabled && settings.Upstream.Kind != UpstreamTunnelKind.None;
+        var hasLearned = TryGetActiveLearnedEntry(normalized, out var learned);
 
         var rules = settings.Rules;
         if (rules is not null)
@@ -53,24 +42,102 @@ public sealed class BypassRuleMatcher
 
                 if (RoutingMatcher.IsMatch(normalized, rule.Pattern, rule.MatchKind))
                 {
-                    return rule.Mode;
+                    if (rule.Mode == BypassMode.AutoHybrid && hasLearned && learned is not null && settings.EnableSmartSelfHealing)
+                    {
+                        var mapped = MapLearnedMode(learned.Strategy, upstreamAvailable);
+                        if (mapped.HasValue)
+                        {
+                            return (mapped.Value, learned.Strategy);
+                        }
+                    }
+
+                    return (rule.Mode, null);
                 }
             }
         }
 
-        return BypassMode.Direct;
+        if (hasLearned && learned is not null && settings.EnableSmartSelfHealing)
+        {
+            var mapped = MapLearnedMode(learned.Strategy, upstreamAvailable);
+            if (mapped.HasValue)
+            {
+                return (mapped.Value, learned.Strategy);
+            }
+        }
+
+        return settings.CoverageMode == BypassCoverageMode.AllWebsitesSmart
+            ? (settings.DefaultUnmatchedMode, null)
+            : (BypassMode.Direct, null);
     }
 
-    public void RecordAutoFallbackHint(string host)
+    public void RecordAutoFallbackHint(string host) =>
+        RecordLearnedHost(host, LearnedHostStrategy.UpstreamTunnel, "Auto-fallback after DPI failure");
+
+    public void RecordLearnedHost(string host, LearnedHostStrategy strategy, string reason)
     {
         var normalized = NormalizeHost(host);
-        if (!string.IsNullOrEmpty(normalized))
+        if (string.IsNullOrEmpty(normalized))
         {
-            _tunnelHints[normalized] = DateTimeOffset.UtcNow.Add(AdaptiveHintTtl);
+            return;
         }
+
+        var now = DateTimeOffset.UtcNow;
+        _learnedHosts[normalized] = new LearnedHostEntry(
+            normalized,
+            strategy,
+            reason,
+            now,
+            now.Add(AdaptiveHintTtl));
     }
 
-    public void ClearHints() => _tunnelHints.Clear();
+    public IReadOnlyList<LearnedHostEntry> GetLearnedHosts()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var active = new List<LearnedHostEntry>();
+        foreach (var kvp in _learnedHosts)
+        {
+            if (kvp.Value.ExpiresAt <= now)
+            {
+                _learnedHosts.TryRemove(kvp.Key, out _);
+            }
+            else
+            {
+                active.Add(kvp.Value);
+            }
+        }
+
+        active.Sort(static (a, b) => b.LearnedAt.CompareTo(a.LearnedAt));
+        return active;
+    }
+
+    public int ActiveLearnedHostCount => GetLearnedHosts().Count;
+
+    public void ClearHints() => _learnedHosts.Clear();
+
+    private bool TryGetActiveLearnedEntry(string normalizedHost, out LearnedHostEntry? entry)
+    {
+        if (_learnedHosts.TryGetValue(normalizedHost, out var found))
+        {
+            if (found.ExpiresAt > DateTimeOffset.UtcNow)
+            {
+                entry = found;
+                return true;
+            }
+
+            _learnedHosts.TryRemove(normalizedHost, out _);
+        }
+
+        entry = null;
+        return false;
+    }
+
+    private static BypassMode? MapLearnedMode(LearnedHostStrategy strategy, bool upstreamAvailable) => strategy switch
+    {
+        LearnedHostStrategy.Direct => BypassMode.Direct,
+        LearnedHostStrategy.EscalatedDpi16B => BypassMode.DpiFragment,
+        LearnedHostStrategy.UpstreamTunnel => upstreamAvailable ? BypassMode.UpstreamTunnel : null,
+        _ => null,
+    };
 
     public static bool IsDirectExcluded(string normalizedHost, IEnumerable<string>? customExclusions)
     {

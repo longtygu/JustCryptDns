@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v10: Phases 1–11. v11: DPI Bypass, Split-Tunnel proxy, and Auto-PAC settings.</summary>
-    public const int CurrentSchemaVersion = 11;
+    /// <summary>v1–v11: Phases 1–13. v12: Universal All-Website Smart DPI Bypass coverage and 4-stage self-healing.</summary>
+    public const int CurrentSchemaVersion = 12;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -516,6 +516,12 @@ public sealed class BypassSettings
 
     public bool AutoStartWithDnsEngine { get; set; } = true;
 
+    public BypassCoverageMode CoverageMode { get; set; } = BypassCoverageMode.AllWebsitesSmart;
+
+    public BypassMode DefaultUnmatchedMode { get; set; } = BypassMode.AutoHybrid;
+
+    public bool EnableSmartSelfHealing { get; set; } = true;
+
     public string ListenAddress { get; set; } = DefaultListenAddress;
 
     public int ProxyPort { get; set; } = DefaultProxyPort;
@@ -558,6 +564,16 @@ public sealed class BypassSettings
         if (ProxyPort > 0 && PacPort == ProxyPort)
         {
             PacPort = ProxyPort == 65535 ? 65534 : ProxyPort + 1;
+        }
+
+        if (!Enum.IsDefined(CoverageMode))
+        {
+            CoverageMode = BypassCoverageMode.AllWebsitesSmart;
+        }
+
+        if (!Enum.IsDefined(DefaultUnmatchedMode))
+        {
+            DefaultUnmatchedMode = BypassMode.AutoHybrid;
         }
 
         if (!Enum.IsDefined(WindowsProxyMode))

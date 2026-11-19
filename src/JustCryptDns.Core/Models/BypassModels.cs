@@ -14,6 +14,21 @@ public enum BypassMode
     AutoHybrid,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<BypassCoverageMode>))]
+public enum BypassCoverageMode
+{
+    AllWebsitesSmart,
+    RuleListOnly,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<LearnedHostStrategy>))]
+public enum LearnedHostStrategy
+{
+    Direct,
+    EscalatedDpi16B,
+    UpstreamTunnel,
+}
+
 [JsonConverter(typeof(JsonStringEnumConverter<TlsFragmentationStrategy>))]
 public enum TlsFragmentationStrategy
 {
@@ -53,11 +68,20 @@ public enum BypassEngineState
 public enum BypassActionKind
 {
     DpiFragmented,
+    EscalatedDpi16B,
+    SelfHealedDirect,
     UpstreamTunneled,
     AutoFallbackTunnel,
     DirectPassthrough,
     Failed,
 }
+
+public sealed record LearnedHostEntry(
+    string Host,
+    LearnedHostStrategy Strategy,
+    string Reason,
+    DateTimeOffset LearnedAt,
+    DateTimeOffset ExpiresAt);
 
 public sealed record BypassRule
 {
@@ -158,6 +182,14 @@ public sealed record BypassRuntimeStats
     public string? LastError { get; init; }
 
     public bool HasProxyBackup { get; init; }
+
+    public BypassCoverageMode CoverageMode { get; init; } = BypassCoverageMode.AllWebsitesSmart;
+
+    public int LearnedHostCount { get; init; }
+
+    public long SelfHealedDirectCount { get; init; }
+
+    public long EscalatedDpiCount { get; init; }
 }
 
 public sealed record BypassConnectionEvent

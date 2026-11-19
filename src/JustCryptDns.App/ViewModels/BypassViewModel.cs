@@ -75,6 +75,9 @@ public sealed partial class BypassViewModel : PageViewModel
     private readonly IWindowsProxyManager _windowsProxy;
     private readonly ISettingsService _settings;
     private bool _loading;
+    private long _lastStatsUiTick;
+    private BypassRuntimeStats? _pendingStats;
+    private int _statsFlushScheduled;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEngineRunning))]
@@ -84,9 +87,12 @@ public sealed partial class BypassViewModel : PageViewModel
     [ObservableProperty] private string _pacUrl = "http://127.0.0.1:10809/proxy.pac";
     [ObservableProperty] private bool _windowsProxyApplied;
     [ObservableProperty] private bool _hasProxyBackup;
+    [ObservableProperty] private BypassCoverageMode _activeCoverageMode = BypassCoverageMode.AllWebsitesSmart;
     [ObservableProperty] private string _dpiBypassedDisplay = "0";
     [ObservableProperty] private string _tunneledDisplay = "0";
     [ObservableProperty] private string _autoFallbacksDisplay = "0";
+    [ObservableProperty] private string _selfHealedDisplay = "0";
+    [ObservableProperty] private string _learnedCountDisplay = "0";
     [ObservableProperty] private string _activeAndDirectDisplay = "0 / 0";
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private string? _errorMessage;
@@ -95,8 +101,11 @@ public sealed partial class BypassViewModel : PageViewModel
     [ObservableProperty] private string _testDomainInput = "store.steampowered.com";
     [ObservableProperty] private bool _isTesting;
     [ObservableProperty] private BypassTestResult? _lastTestResult;
+    [ObservableProperty] private string? _batchTestSummary;
 
     // DPI Engine & Windows Proxy Settings
+    [ObservableProperty] private BypassCoverageMode _selectedCoverageMode = BypassCoverageMode.AllWebsitesSmart;
+    [ObservableProperty] private bool _enableSmartSelfHealing = true;
     [ObservableProperty] private bool _autoStartWithDnsEngine = true;
     [ObservableProperty] private bool _applyWindowsProxyAutomatically = true;
     [ObservableProperty] private bool _resolveTargetViaLocalDns = true;
@@ -118,11 +127,12 @@ public sealed partial class BypassViewModel : PageViewModel
     [ObservableProperty] private string _upstreamPassword = string.Empty;
     [ObservableProperty] private string? _upstreamFeedback;
 
-    // New Rule Form
+    // New Rule & Direct Exclusion Inputs
     [ObservableProperty] private string _newRuleName = string.Empty;
     [ObservableProperty] private string _newRulePattern = string.Empty;
     [ObservableProperty] private RoutingMatchKind _newRuleMatchKind = RoutingMatchKind.DomainSuffix;
     [ObservableProperty] private BypassMode _newRuleMode = BypassMode.AutoHybrid;
+    [ObservableProperty] private string _newExclusionInput = string.Empty;
 
     public BypassViewModel(
         IBypassEngineService bypassEngine,
@@ -139,6 +149,8 @@ public sealed partial class BypassViewModel : PageViewModel
 
     public bool IsEngineRunning => EngineState is BypassEngineState.Running or BypassEngineState.Degraded;
 
+    public IReadOnlyList<BypassCoverageMode> CoverageModes { get; } = Enum.GetValues<BypassCoverageMode>();
+
     public IReadOnlyList<WindowsProxyMode> ProxyModes { get; } = Enum.GetValues<WindowsProxyMode>();
 
     public IReadOnlyList<TlsFragmentationStrategy> FragmentationStrategies { get; } = Enum.GetValues<TlsFragmentationStrategy>();
@@ -150,6 +162,10 @@ public sealed partial class BypassViewModel : PageViewModel
     public IReadOnlyList<RoutingMatchKind> MatchKinds { get; } = Enum.GetValues<RoutingMatchKind>();
 
     public ObservableCollection<BypassRuleItemViewModel> Rules { get; } = [];
+
+    public ObservableCollection<string> DirectExclusions { get; } = [];
+
+    public ObservableCollection<LearnedHostEntry> LearnedHosts { get; } = [];
 
     public ObservableCollection<BypassConnectionEvent> RecentEvents { get; } = [];
 
@@ -259,6 +275,48 @@ public sealed partial class BypassViewModel : PageViewModel
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task RunBatchSiteTestAsync()
+    {
+        IsTesting = true;
+        ErrorMessage = null;
+        BatchTestSummary = null;
+        try
+        {
+            string[] sites =
+            [
+                "store.steampowered.com",
+                "steamcommunity.com",
+                "discord.com",
+                "www.bbc.com",
+                "github.com",
+                "www.google.com",
+            ];
+            var results = await _bypassEngine.TestMultipleDomainsAsync(sites);
+            var passed = results.Count(r => r.DirectSucceeded || r.DpiBypassSucceeded || r.TunnelSucceeded);
+            var parts = results.Select(r =>
+            {
+                var status = r.DirectSucceeded
+                    ? $"Direct {r.DirectLatencyMs:0.#}ms"
+                    : r.DpiBypassSucceeded
+                        ? $"DPI {r.DpiBypassLatencyMs:0.#}ms"
+                        : r.TunnelSucceeded
+                            ? $"Tunnel {r.TunnelLatencyMs:0.#}ms"
+                            : "ERR";
+                return $"{r.Host} ({status})";
+            });
+            BatchTestSummary = LocalizationManager.Instance.Format("Bypass_Tester_BatchResult", passed, results.Count, string.Join(" · ", parts));
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsTesting = false;
+        }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task AddTestedDomainRuleAsync()
     {
         if (LastTestResult is null || string.IsNullOrWhiteSpace(LastTestResult.Host))
@@ -304,6 +362,10 @@ public sealed partial class BypassViewModel : PageViewModel
                 ErrorMessage = err;
                 return;
             }
+        }
+        else
+        {
+            await _bypassEngine.RefreshSystemPacAsync();
         }
 
         StatusMessage = LocalizationManager.Instance["Bypass_Msg_SettingsSaved"];
@@ -407,6 +469,83 @@ public sealed partial class BypassViewModel : PageViewModel
         RecentEvents.Clear();
     }
 
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task AddDirectExclusionAsync()
+    {
+        ErrorMessage = null;
+        var (ok, err) = await _bypassEngine.AddDirectExclusionAsync(NewExclusionInput);
+        if (!ok)
+        {
+            ErrorMessage = err;
+            return;
+        }
+
+        var added = NewExclusionInput.Trim();
+        NewExclusionInput = string.Empty;
+        StatusMessage = LocalizationManager.Instance.Format("Bypass_Msg_ExclusionAdded", added);
+        RefreshExclusionsAndLearned();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task RemoveDirectExclusionAsync(string? pattern)
+    {
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            return;
+        }
+
+        await _bypassEngine.RemoveDirectExclusionAsync(pattern);
+        StatusMessage = LocalizationManager.Instance.Format("Bypass_Msg_ExclusionRemoved", pattern);
+        RefreshExclusionsAndLearned();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ExcludeHostFromActivityAsync(BypassConnectionEvent? entry)
+    {
+        if (entry is null || string.IsNullOrWhiteSpace(entry.Host))
+        {
+            return;
+        }
+
+        var (ok, err) = await _bypassEngine.AddDirectExclusionAsync(entry.Host);
+        if (!ok)
+        {
+            ErrorMessage = err;
+            return;
+        }
+
+        StatusMessage = LocalizationManager.Instance.Format("Bypass_Msg_ExclusionAdded", entry.Host);
+        RefreshExclusionsAndLearned();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task PinLearnedHostAsync(LearnedHostEntry? entry)
+    {
+        if (entry is null)
+        {
+            return;
+        }
+
+        var (ok, err) = await _bypassEngine.PromoteLearnedHostAsync(entry.Host, entry.Strategy);
+        if (!ok)
+        {
+            ErrorMessage = err;
+            return;
+        }
+
+        StatusMessage = LocalizationManager.Instance.Format("Bypass_Msg_Promoted", entry.Host);
+        RefreshRules();
+        RefreshExclusionsAndLearned();
+    }
+
+    [RelayCommand]
+    private void ClearLearnedHosts()
+    {
+        _bypassEngine.ClearLearnedHosts();
+        StatusMessage = LocalizationManager.Instance["Bypass_Msg_LearnedCleared"];
+        RefreshExclusionsAndLearned();
+    }
+
     private async Task PersistSettingsAsync()
     {
         var fragSize = int.TryParse(FragmentSizeText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var fs) ? fs : 40;
@@ -417,6 +556,8 @@ public sealed partial class BypassViewModel : PageViewModel
 
         await _settings.UpdateAsync(s =>
         {
+            s.Bypass.CoverageMode = SelectedCoverageMode;
+            s.Bypass.EnableSmartSelfHealing = EnableSmartSelfHealing;
             s.Bypass.AutoStartWithDnsEngine = AutoStartWithDnsEngine;
             s.Bypass.ApplyWindowsProxyAutomatically = ApplyWindowsProxyAutomatically;
             s.Bypass.ResolveTargetViaLocalDns = ResolveTargetViaLocalDns;
@@ -444,6 +585,8 @@ public sealed partial class BypassViewModel : PageViewModel
         try
         {
             var b = _settings.Current.Bypass;
+            SelectedCoverageMode = b.CoverageMode;
+            EnableSmartSelfHealing = b.EnableSmartSelfHealing;
             AutoStartWithDnsEngine = b.AutoStartWithDnsEngine;
             ApplyWindowsProxyAutomatically = b.ApplyWindowsProxyAutomatically;
             ResolveTargetViaLocalDns = b.ResolveTargetViaLocalDns;
@@ -470,6 +613,7 @@ public sealed partial class BypassViewModel : PageViewModel
 
         ApplyStats(_bypassEngine.GetStats());
         RefreshRules();
+        RefreshExclusionsAndLearned();
 
         RecentEvents.Clear();
         foreach (var evt in _bypassEngine.GetRecentEvents().Reverse().Take(MaxUiEvents))
@@ -490,6 +634,21 @@ public sealed partial class BypassViewModel : PageViewModel
         }
     }
 
+    private void RefreshExclusionsAndLearned()
+    {
+        DirectExclusions.Clear();
+        foreach (var excl in _bypassEngine.GetDirectExclusions())
+        {
+            DirectExclusions.Add(excl);
+        }
+
+        LearnedHosts.Clear();
+        foreach (var entry in _bypassEngine.GetLearnedHosts())
+        {
+            LearnedHosts.Add(entry);
+        }
+    }
+
     private void ApplyStats(BypassRuntimeStats stats)
     {
         EngineState = stats.State;
@@ -497,9 +656,12 @@ public sealed partial class BypassViewModel : PageViewModel
         PacUrl = stats.PacUrl;
         WindowsProxyApplied = stats.WindowsProxyApplied;
         HasProxyBackup = stats.HasProxyBackup;
+        ActiveCoverageMode = stats.CoverageMode;
         DpiBypassedDisplay = stats.DpiBypassedConnections.ToString("N0", CultureInfo.CurrentCulture);
         TunneledDisplay = stats.TunneledConnections.ToString("N0", CultureInfo.CurrentCulture);
         AutoFallbacksDisplay = stats.AutoFallbackCount.ToString("N0", CultureInfo.CurrentCulture);
+        SelfHealedDisplay = $"{stats.SelfHealedDirectCount:N0} / {stats.EscalatedDpiCount:N0}";
+        LearnedCountDisplay = stats.LearnedHostCount.ToString("N0", CultureInfo.CurrentCulture);
         ActiveAndDirectDisplay = $"{stats.ActiveTunnels} / {stats.DirectConnections:N0}";
         if (!string.IsNullOrWhiteSpace(stats.LastError) && ErrorMessage is null)
         {
@@ -508,6 +670,37 @@ public sealed partial class BypassViewModel : PageViewModel
     }
 
     private void OnBypassStateChanged(object? sender, BypassRuntimeStats stats)
+    {
+        var now = Environment.TickCount64;
+        var isLifecycleBoundary = stats.State != EngineState;
+        if (isLifecycleBoundary || now - Interlocked.Read(ref _lastStatsUiTick) >= 250)
+        {
+            Interlocked.Exchange(ref _lastStatsUiTick, now);
+            _pendingStats = null;
+            DispatchStatsToUi(stats);
+            return;
+        }
+
+        _pendingStats = stats;
+        if (Interlocked.CompareExchange(ref _statsFlushScheduled, 1, 0) == 0)
+        {
+            _ = FlushPendingStatsAsync();
+        }
+    }
+
+    private async Task FlushPendingStatsAsync()
+    {
+        await Task.Delay(250).ConfigureAwait(false);
+        Interlocked.Exchange(ref _statsFlushScheduled, 0);
+        if (_pendingStats is { } latest)
+        {
+            Interlocked.Exchange(ref _lastStatsUiTick, Environment.TickCount64);
+            _pendingStats = null;
+            DispatchStatsToUi(latest);
+        }
+    }
+
+    private void DispatchStatsToUi(BypassRuntimeStats stats)
     {
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
@@ -527,6 +720,11 @@ public sealed partial class BypassViewModel : PageViewModel
             while (RecentEvents.Count > MaxUiEvents)
             {
                 RecentEvents.RemoveAt(RecentEvents.Count - 1);
+            }
+
+            if (entry.Action is BypassActionKind.EscalatedDpi16B or BypassActionKind.SelfHealedDirect or BypassActionKind.AutoFallbackTunnel)
+            {
+                RefreshExclusionsAndLearned();
             }
         }
 

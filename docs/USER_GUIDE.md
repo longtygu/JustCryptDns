@@ -29,12 +29,15 @@
 - Enable **Gaming Mode** to activate platform routing rules (**Steam**, **Riot Games**, **Epic Games**, **EA Games**, **Ubisoft Connect**, **Battle.net**, **General Gaming**, or **Custom**), keep the DNS cache warm, and pin the active resolver during gaming sessions.
 - **Technical note:** DNS latency only affects hostname lookup before connecting to a game server; it does not reduce established in-game ping.
 
-## 6. DPI Bypass & Split-Tunnel (Steam & Blocked Sites)
-- JustCryptDns v1.1.0 includes a pure-C# local smart proxy (`127.0.0.1:10808` supporting HTTP CONNECT and SOCKS5) and local **Auto-PAC** server (`http://127.0.0.1:10809/proxy.pac`).
-- **Game traffic stays 100% direct:** In **Auto-PAC** mode, only matched domains (e.g., `steampowered.com`, `steamcommunity.com`, `discord.com`, `medium.com`) traverse the local bypass proxy; active game matches and everyday traffic remain direct with zero VPN latency overhead.
-- **Tier 1 (Local DPI Bypass):** Splits TLS `ClientHello` handshake records and plain HTTP `Host:` headers to bypass ISP SNI/host inspection without kernel drivers or anti-cheat conflicts. Target IPs are resolved via JustCryptDns's active encrypted DNS resolver.
-- **Tier 2 (Split-Tunnel Upstream & Auto-Hybrid):** Optionally enable an upstream proxy (**Cloudflare WARP local SOCKS5** on `127.0.0.1:40000`, SOCKS5, or HTTP CONNECT). Under **Auto-Hybrid**, JustCryptDns tries zero-latency TLS fragmentation first and automatically fails over to the upstream tunnel for IP-blocked or geo-blocked hosts.
-  - To prepare Cloudflare WARP as an upstream tunnel without affecting system-wide game ping: install Cloudflare WARP, run `warp-cli mode proxy` and `warp-cli connect`, then click **Detect Cloudflare WARP** inside **DPI Bypass & Tunnel**.
+## 6. All-Website Smart DPI Bypass & Split-Tunnel
+- JustCryptDns v1.2.0 includes a pure-C# local smart proxy (`127.0.0.1:10808` supporting HTTP CONNECT and SOCKS5) and local **Auto-PAC** server (`http://127.0.0.1:10809/proxy.pac`).
+- **All Websites (Smart Auto-PAC) Coverage:** By default (`AllWebsitesSmart`), **every external website** is protected automatically without adding manual rules, while LAN/RFC1918 networks (`10.*`, `172.16-31.*`, `192.168.*`), `.local`/`.lan`, banking/intranet **Direct Exclusions**, and **PC game match UDP/TCP sockets** remain 100% direct (`0 ms` ping overhead). You can switch to **Rule List Only** anytime.
+- **4-Stage Self-Healing Cascade:**
+  1. Primary TLS/HTTP fragmentation (40B TLS chunks / HTTP `Host:` split) via encrypted DNS.
+  2. Automatic 16B aggressive TLS escalation if stricter DPI drops the initial attempt.
+  3. Instant self-healing Direct Unfragmented recovery if a legacy/banking server rejects split `ClientHello` packets.
+  4. Tier 2 Split-Tunnel fallback (**Cloudflare WARP local SOCKS5** on `127.0.0.1:40000`, SOCKS5, or HTTP CONNECT) for IP/geo-blocked sites, with 30-minute adaptive host learning and 1-click pinning/exclusion.
+  - To prepare Cloudflare WARP without affecting game ping: run `warp-cli mode proxy` and `warp-cli connect`, then click **Detect Cloudflare WARP** inside **DPI Bypass & Tunnel**.
 - Original Windows WinINet proxy settings are backed up with SHA-256 verification to `%LOCALAPPDATA%\JustCryptDns\proxy-backup.json` and restored cleanly on stop, exit, or crash recovery.
 
 ## 7. Network Diagnostics & Live Monitor

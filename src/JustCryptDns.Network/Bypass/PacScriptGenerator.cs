@@ -27,6 +27,7 @@ public static class PacScriptGenerator
         sb.AppendLine("  if (h.charAt(h.length - 1) === '.') h = h.substring(0, h.length - 1);");
         sb.AppendLine("  if (isPlainHostName(h) || h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]') return 'DIRECT';");
         sb.AppendLine("  if (shExpMatch(h, '127.*') || shExpMatch(h, '10.*') || shExpMatch(h, '192.168.*') || shExpMatch(h, '169.254.*')) return 'DIRECT';");
+        sb.AppendLine("  if (/^172\\.(1[6-9]|2[0-9]|3[0-1])\\./.test(h)) return 'DIRECT';");
         sb.AppendLine("  if (dnsDomainIs(h, '.local') || dnsDomainIs(h, '.lan')) return 'DIRECT';");
 
         foreach (var excl in settings.DirectExclusionDomains ?? [])
@@ -38,9 +39,24 @@ public static class PacScriptGenerator
             }
         }
 
+        foreach (var rule in settings.Rules ?? [])
+        {
+            if (!rule.Enabled || rule.Mode != BypassMode.Direct)
+            {
+                continue;
+            }
+
+            var pat = RoutingMatcher.NormalizeDomain(rule.Pattern);
+            if (!string.IsNullOrEmpty(pat))
+            {
+                AppendHostMatchCheck(sb, pat, rule.MatchKind, "'DIRECT'");
+            }
+        }
+
         sb.Append("  var proxy = 'PROXY ").Append(EscapeJs(address)).Append(':').Append(port.ToString(CultureInfo.InvariantCulture)).AppendLine("; DIRECT';");
 
-        if (settings.WindowsProxyMode == WindowsProxyMode.GlobalSystemProxy)
+        if (settings.WindowsProxyMode == WindowsProxyMode.GlobalSystemProxy
+            || settings.CoverageMode == BypassCoverageMode.AllWebsitesSmart)
         {
             sb.AppendLine("  return proxy;");
             sb.AppendLine("}");
@@ -55,48 +71,51 @@ public static class PacScriptGenerator
             }
 
             var pat = RoutingMatcher.NormalizeDomain(rule.Pattern);
-            if (string.IsNullOrEmpty(pat))
+            if (!string.IsNullOrEmpty(pat))
             {
-                continue;
-            }
-
-            switch (rule.MatchKind)
-            {
-                case RoutingMatchKind.Exact:
-                    sb.Append("  if (h === '").Append(EscapeJs(pat)).AppendLine("') return proxy;");
-                    break;
-                case RoutingMatchKind.DomainSuffix:
-                    if (pat.StartsWith("*.", StringComparison.Ordinal))
-                    {
-                        pat = pat[2..];
-                    }
-                    else if (pat.StartsWith('.'))
-                    {
-                        pat = pat[1..];
-                    }
-
-                    if (!string.IsNullOrEmpty(pat))
-                    {
-                        sb.Append("  if (h === '").Append(EscapeJs(pat)).Append("' || dnsDomainIs(h, '.").Append(EscapeJs(pat)).AppendLine("')) return proxy;");
-                    }
-                    break;
-                case RoutingMatchKind.Wildcard:
-                    if (pat.StartsWith("*.", StringComparison.Ordinal) && !pat[2..].Contains('*') && !pat[2..].Contains('?'))
-                    {
-                        var root = pat[2..];
-                        sb.Append("  if (h === '").Append(EscapeJs(root)).Append("' || dnsDomainIs(h, '.").Append(EscapeJs(root)).AppendLine("')) return proxy;");
-                    }
-                    else
-                    {
-                        sb.Append("  if (shExpMatch(h, '").Append(EscapeJs(pat)).AppendLine("')) return proxy;");
-                    }
-                    break;
+                AppendHostMatchCheck(sb, pat, rule.MatchKind, "proxy");
             }
         }
 
         sb.AppendLine("  return 'DIRECT';");
         sb.AppendLine("}");
         return sb.ToString();
+    }
+
+    private static void AppendHostMatchCheck(StringBuilder sb, string pat, RoutingMatchKind matchKind, string resultExpr)
+    {
+        switch (matchKind)
+        {
+            case RoutingMatchKind.Exact:
+                sb.Append("  if (h === '").Append(EscapeJs(pat)).Append("') return ").Append(resultExpr).AppendLine(";");
+                break;
+            case RoutingMatchKind.DomainSuffix:
+                if (pat.StartsWith("*.", StringComparison.Ordinal))
+                {
+                    pat = pat[2..];
+                }
+                else if (pat.StartsWith('.'))
+                {
+                    pat = pat[1..];
+                }
+
+                if (!string.IsNullOrEmpty(pat))
+                {
+                    sb.Append("  if (h === '").Append(EscapeJs(pat)).Append("' || dnsDomainIs(h, '.").Append(EscapeJs(pat)).Append("')) return ").Append(resultExpr).AppendLine(";");
+                }
+                break;
+            case RoutingMatchKind.Wildcard:
+                if (pat.StartsWith("*.", StringComparison.Ordinal) && !pat[2..].Contains('*') && !pat[2..].Contains('?'))
+                {
+                    var root = pat[2..];
+                    sb.Append("  if (h === '").Append(EscapeJs(root)).Append("' || dnsDomainIs(h, '.").Append(EscapeJs(root)).Append("')) return ").Append(resultExpr).AppendLine(";");
+                }
+                else
+                {
+                    sb.Append("  if (shExpMatch(h, '").Append(EscapeJs(pat)).Append("')) return ").Append(resultExpr).AppendLine(";");
+                }
+                break;
+        }
     }
 
     private static void AppendExclusionCheck(StringBuilder sb, string norm)

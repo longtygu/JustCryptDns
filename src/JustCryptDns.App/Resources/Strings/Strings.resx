@@ -1326,9 +1326,6 @@
   <data name="Dash_Bypass_Title" xml:space="preserve">
     <value>DPI Bypass &amp; Split-Tunnel</value>
   </data>
-  <data name="Dash_Bypass_Desc" xml:space="preserve">
-    <value>Automatically unblocks Steam and blocked domains via Auto-PAC while keeping game traffic direct.</value>
-  </data>
   <data name="Dash_Bypass_Configure" xml:space="preserve">
     <value>Configure DPI &amp; Bypass</value>
   </data>
@@ -1542,6 +1539,12 @@
   <data name="BypassAction_DpiFragmented" xml:space="preserve">
     <value>DPI Bypassed</value>
   </data>
+  <data name="BypassAction_EscalatedDpi16B" xml:space="preserve">
+    <value>DPI 16B Escalated</value>
+  </data>
+  <data name="BypassAction_SelfHealedDirect" xml:space="preserve">
+    <value>Self-Healed Direct</value>
+  </data>
   <data name="BypassAction_UpstreamTunneled" xml:space="preserve">
     <value>Tunneled</value>
   </data>
@@ -1553,5 +1556,77 @@
   </data>
   <data name="BypassAction_Failed" xml:space="preserve">
     <value>Failed</value>
+  </data>
+  <data name="CoverageMode_AllWebsitesSmart" xml:space="preserve">
+    <value>All Websites (Smart Auto-PAC)</value>
+  </data>
+  <data name="CoverageMode_RuleListOnly" xml:space="preserve">
+    <value>Rule List Only</value>
+  </data>
+  <data name="LearnedStrategy_Direct" xml:space="preserve">
+    <value>Direct</value>
+  </data>
+  <data name="LearnedStrategy_EscalatedDpi16B" xml:space="preserve">
+    <value>DPI 16B</value>
+  </data>
+  <data name="LearnedStrategy_UpstreamTunnel" xml:space="preserve">
+    <value>Tunnel</value>
+  </data>
+  <data name="Bypass_CoverageMode" xml:space="preserve">
+    <value>Website coverage mode</value>
+  </data>
+  <data name="Bypass_Opt_SmartSelfHealing" xml:space="preserve">
+    <value>Enable 4-stage self-healing (auto 16B / Direct / Tunnel)</value>
+  </data>
+  <data name="Bypass_Metric_SelfHealed" xml:space="preserve">
+    <value>Self-Healed / 16B Escalated</value>
+  </data>
+  <data name="Bypass_LearnedCount" xml:space="preserve">
+    <value>Auto-learned hosts</value>
+  </data>
+  <data name="Bypass_Tester_BatchRun" xml:space="preserve">
+    <value>Test Multiple Sites</value>
+  </data>
+  <data name="Bypass_Tester_BatchResult" xml:space="preserve">
+    <value>Multi-site check ({0}/{1} reachable): {2}</value>
+  </data>
+  <data name="Bypass_Exclusions_Title" xml:space="preserve">
+    <value>Direct exclusions (always bypass proxy)</value>
+  </data>
+  <data name="Bypass_Exclusions_Desc" xml:space="preserve">
+    <value>Exempt banking, local intranet, or sensitive websites so they always connect 100% directly.</value>
+  </data>
+  <data name="Bypass_Exclusions_Add" xml:space="preserve">
+    <value>Exclude</value>
+  </data>
+  <data name="Bypass_Msg_ExclusionAdded" xml:space="preserve">
+    <value>Added '{0}' to Direct Exclusions.</value>
+  </data>
+  <data name="Bypass_Msg_ExclusionRemoved" xml:space="preserve">
+    <value>Removed '{0}' from Direct Exclusions.</value>
+  </data>
+  <data name="Bypass_Learned_Title" xml:space="preserve">
+    <value>Auto-learned hosts (30 min adaptive cache)</value>
+  </data>
+  <data name="Bypass_Learned_Desc" xml:space="preserve">
+    <value>Automatically adapts per site when a server needs 16B DPI splitting, unfragmented Direct TLS, or Upstream Tunnel.</value>
+  </data>
+  <data name="Bypass_Learned_Clear" xml:space="preserve">
+    <value>Clear cache</value>
+  </data>
+  <data name="Bypass_Learned_Pin" xml:space="preserve">
+    <value>Pin rule</value>
+  </data>
+  <data name="Bypass_Msg_Promoted" xml:space="preserve">
+    <value>Pinned learned rule for '{0}'.</value>
+  </data>
+  <data name="Bypass_Msg_LearnedCleared" xml:space="preserve">
+    <value>Cleared auto-learned host cache.</value>
+  </data>
+  <data name="Bypass_Activity_Exclude" xml:space="preserve">
+    <value>Direct</value>
+  </data>
+  <data name="Dash_Bypass_Desc" xml:space="preserve">
+    <value>Automatically unblocks Steam and all websites via Smart Auto-PAC while keeping game traffic direct.</value>
   </data>
 </root>

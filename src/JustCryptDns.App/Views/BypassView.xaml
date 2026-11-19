@@ -138,6 +138,32 @@
                             </TextBlock>
                         </StackPanel>
                     </UniformGrid>
+
+                    <UniformGrid Rows="1" Columns="4">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_CoverageMode}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Margin="0,4,0,0">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="CoverageMode_">
+                                        <Binding Path="ActiveCoverageMode" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_Metric_SelfHealed}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding SelfHealedDisplay}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_LearnedCount}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding LearnedCountDisplay}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Active / Direct" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding ActiveAndDirectDisplay}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </UniformGrid>
                 </StackPanel>
             </Border>
 
@@ -149,12 +175,19 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBox Text="{Binding TestDomainInput, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
                                  Margin="0,0,10,0" AutomationProperties.Name="{l:Loc Bypass_Tester_Title}" />
                         <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding RunDomainTestCommand}"
-                                Content="{l:Loc Bypass_Tester_Run}" />
+                                Content="{l:Loc Bypass_Tester_Run}" Margin="0,0,8,0" />
+                        <Button Grid.Column="2" Command="{Binding RunBatchSiteTestCommand}" Content="{l:Loc Bypass_Tester_BatchRun}" />
                     </Grid>
+
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,8" Margin="0,0,0,10"
+                            Visibility="{Binding BatchTestSummary, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Caption}" FontFamily="{StaticResource Font.Mono}" Text="{Binding BatchTestSummary}" />
+                    </Border>
 
                     <WrapPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <Button Style="{StaticResource Button.Subtle}" Command="{Binding SelectPresetTestDomainCommand}" CommandParameter="store.steampowered.com"
@@ -208,6 +241,29 @@
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Settings_Title}" Margin="0,8,0,10" />
             <Border Style="{StaticResource SectionCard}">
                 <StackPanel>
+                    <UniformGrid Columns="2" Rows="1" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_CoverageMode}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding CoverageModes}" SelectedItem="{Binding SelectedCoverageMode}"
+                                      AutomationProperties.Name="{l:Loc Bypass_CoverageMode}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="CoverageMode_">
+                                                    <Binding />
+                                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        <CheckBox Style="{StaticResource Toggle.Switch}" VerticalAlignment="Bottom" Margin="0,0,0,4"
+                                  IsChecked="{Binding EnableSmartSelfHealing}" Content="{l:Loc Bypass_Opt_SmartSelfHealing}" />
+                    </UniformGrid>
+
                     <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_WinProxyMode}" Margin="0,0,0,4" />
@@ -376,7 +432,7 @@
                         <Button Grid.Column="4" Style="{StaticResource Button.Primary}" Command="{Binding AddCustomRuleCommand}" Content="{l:Loc Routing_AddRule}" />
                     </Grid>
 
-                    <ListBox ItemsSource="{Binding Rules}" MaxHeight="320" Background="Transparent" BorderThickness="0"
+                    <ListBox ItemsSource="{Binding Rules}" MaxHeight="260" Background="Transparent" BorderThickness="0"
                              VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
@@ -407,6 +463,95 @@
                 </StackPanel>
             </Border>
 
+            <!-- Direct Exclusions & Auto-Learned Hosts -->
+            <Grid Margin="0,8,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Direct Exclusions (Banks / Intranet / Local) -->
+                <Border Style="{StaticResource SectionCard}" Margin="0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Exclusions_Title}" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Bypass_Exclusions_Desc}" Margin="0,2,0,10" />
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding NewExclusionInput, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                     Margin="0,0,8,0" AutomationProperties.Name="{l:Loc Bypass_Exclusions_Title}" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding AddDirectExclusionCommand}"
+                                    Content="{l:Loc Bypass_Exclusions_Add}" />
+                        </Grid>
+                        <ListBox ItemsSource="{Binding DirectExclusions}" Height="150" Background="Transparent" BorderThickness="0"
+                                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2,0,2" Width="380">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding}" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Content="{l:Loc Common_Remove}" Padding="8,3"
+                                                Command="{Binding DataContext.RemoveDirectExclusionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- Auto-Learned Self-Healing Hosts -->
+                <Border Grid.Column="2" Style="{StaticResource SectionCard}" Margin="0">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Learned_Title}" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.Subtle}" Command="{Binding ClearLearnedHostsCommand}"
+                                    Content="{l:Loc Bypass_Learned_Clear}" Padding="8,3" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Bypass_Learned_Desc}" Margin="0,2,0,10" />
+                        <ListBox ItemsSource="{Binding LearnedHosts}" Height="186" Background="Transparent" BorderThickness="0"
+                                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:LearnedHostEntry}">
+                                    <Grid Margin="0,2,0,2" Width="380">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="95" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Host}"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" VerticalAlignment="Center">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="LearnedStrategy_">
+                                                    <Binding Path="Strategy" />
+                                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                        <Button Grid.Column="2" Content="{l:Loc Bypass_Learned_Pin}" Padding="8,3"
+                                                Command="{Binding DataContext.PinLearnedHostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
             <!-- Recent Bypass Activity -->
             <Grid Margin="0,8,0,10">
                 <Grid.ColumnDefinitions>
@@ -425,15 +570,16 @@
                         <DataTemplate DataType="{x:Type models:BypassConnectionEvent}">
                             <Grid Margin="0,2,0,2" Width="850">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="75" />
-                                    <ColumnDefinition Width="155" />
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="140" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="130" />
-                                    <ColumnDefinition Width="75" />
+                                    <ColumnDefinition Width="125" />
+                                    <ColumnDefinition Width="68" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
-                                           Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
-                                <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" FontWeight="SemiBold">
+                                           Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" VerticalAlignment="Center">
                                     <TextBlock.Text>
                                         <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="BypassAction_">
                                             <Binding Path="Action" />
@@ -442,10 +588,13 @@
                                     </TextBlock.Text>
                                 </TextBlock>
                                 <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
-                                           Text="{Binding Host}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
-                                <TextBlock Grid.Column="3" Style="{StaticResource Text.Caption}" Text="{Binding StrategyUsed}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                           Text="{Binding Host}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Style="{StaticResource Text.Caption}" Text="{Binding StrategyUsed}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="4" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
-                                           Text="{Binding LatencyMs, StringFormat={}{0:0.#} ms, TargetNullValue=—}" HorizontalAlignment="Right" />
+                                           Text="{Binding LatencyMs, StringFormat={}{0:0.#} ms, TargetNullValue=—}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <Button Grid.Column="5" Style="{StaticResource Button.Subtle}" Padding="8,2" Content="{l:Loc Bypass_Activity_Exclude}"
+                                        Command="{Binding DataContext.ExcludeHostFromActivityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}" />
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

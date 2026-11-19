@@ -70,7 +70,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
 
         _listener = new TcpListener(_listenAddress, _requestedPort);
-        _listener.Start(256);
+        _listener.Start(512);
         BoundPort = ((IPEndPoint)_listener.LocalEndpoint).Port;
         _acceptTask = Task.Run(() => AcceptLoopAsync(_cts.Token), _cts.Token);
         _logger.LogInformation("Smart bypass proxy listening on {Address}:{Port}", _listenAddress, BoundPort);
@@ -346,98 +346,42 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         var sw = Stopwatch.StartNew();
         var settings = _getSettings();
         var allowIpv6 = _getAllowIpv6();
-        var mode = _matcher.Evaluate(targetHost, settings);
+        var (mode, learnedStrategy) = _matcher.EvaluateDecision(targetHost, settings);
 
         if (mode == BypassMode.Direct)
         {
-            TcpClient? direct = null;
-            try
-            {
-                (direct, _) = await _connector.ConnectDirectAsync(
-                    targetHost,
-                    targetPort,
-                    settings.ResolveTargetViaLocalDns,
-                    allowIpv6,
-                    settings.ConnectTimeoutMs,
-                    ct).ConfigureAwait(false);
-
-                var directStream = direct.GetStream();
-                if (preBufferedPayload is { Length: > 0 })
-                {
-                    await directStream.WriteAsync(preBufferedPayload, ct).ConfigureAwait(false);
-                    await directStream.FlushAsync(ct).ConfigureAwait(false);
-                }
-
-                sw.Stop();
-                _recordEvent(BypassActionKind.DirectPassthrough, targetHost, targetPort, clientProtocol, "Direct", Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
-                await RelayBidirectionalAsync(client, clientStream, direct, directStream, ct).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (!ct.IsCancellationRequested)
-            {
-                direct?.Dispose();
-                sw.Stop();
-                _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, "Direct", Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
-            }
-
+            var strategy = learnedStrategy == LearnedHostStrategy.Direct ? "Learned Direct" : "Direct";
+            await ExecuteDirectSessionAsync(client, clientStream, targetHost, targetPort, clientProtocol, strategy, preBufferedPayload, settings, allowIpv6, sw, ct).ConfigureAwait(false);
             return;
         }
 
         if (mode == BypassMode.UpstreamTunnel)
         {
-            if (!settings.Upstream.Enabled || settings.Upstream.Kind == UpstreamTunnelKind.None)
+            if (settings.Upstream.Enabled && settings.Upstream.Kind != UpstreamTunnelKind.None)
             {
-                mode = BypassMode.DpiFragment;
-            }
-            else
-            {
-                TcpClient? upstream = null;
-                try
-                {
-                    upstream = await UpstreamTunnelConnector.ConnectViaUpstreamAsync(
-                        targetHost,
-                        targetPort,
-                        settings.Upstream,
-                        settings.ConnectTimeoutMs,
-                        ct).ConfigureAwait(false);
-                    var upstreamStream = upstream.GetStream();
-                    if (preBufferedPayload is { Length: > 0 })
-                    {
-                        await upstreamStream.WriteAsync(preBufferedPayload, ct).ConfigureAwait(false);
-                        await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
-                    }
-
-                    sw.Stop();
-                    _recordEvent(BypassActionKind.UpstreamTunneled, targetHost, targetPort, clientProtocol, settings.Upstream.Kind.ToString(), Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
-                    await RelayBidirectionalAsync(client, clientStream, upstream, upstreamStream, ct).ConfigureAwait(false);
-                }
-                catch (Exception ex) when (!ct.IsCancellationRequested)
-                {
-                    upstream?.Dispose();
-                    sw.Stop();
-                    _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, settings.Upstream.Kind.ToString(), Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
-                }
-
+                await ExecuteUpstreamSessionAsync(client, clientStream, targetHost, targetPort, clientProtocol, preBufferedPayload, settings, sw, ct).ConfigureAwait(false);
                 return;
             }
+
+            mode = BypassMode.DpiFragment;
         }
 
         // DpiFragment or AutoHybrid: read the complete first payload (ClientHello or HTTP request)
-        // so we can fragment it cleanly AND replay it cleanly over upstream if AutoHybrid fallback is needed.
-        InitialPayloadReadResult initial;
-        if (preBufferedPayload is { Length: > 0 })
-        {
-            initial = new InitialPayloadReadResult(preBufferedPayload, [], false);
-        }
-        else
-        {
-            initial = await TlsClientHelloFragmenter.ReadCompleteFirstPayloadAsync(
-                clientStream,
-                Math.Min(settings.ConnectTimeoutMs, 4000),
-                ct).ConfigureAwait(false);
-        }
+        // so all 4 self-healing stages can fragment, escalate, recover direct, or replay via upstream seamlessly.
+        var initial = preBufferedPayload is { Length: > 0 }
+            ? new InitialPayloadReadResult(preBufferedPayload, [], false)
+            : await TlsClientHelloFragmenter.ReadCompleteFirstPayloadAsync(clientStream, Math.Min(settings.ConnectTimeoutMs, 4000), ct).ConfigureAwait(false);
 
         if (initial.FirstPayload.Length == 0)
         {
+            return;
+        }
+
+        var isTlsHello = TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload);
+        var isHttpSplit = !isTlsHello && settings.FragmentHttpHostHeader && TlsClientHelloFragmenter.TrySplitHttpHostHeader(initial.FirstPayload, out _);
+        if (!isTlsHello && !isHttpSplit)
+        {
+            await ExecuteDirectFirstPayloadRelayAsync(client, clientStream, targetHost, targetPort, clientProtocol, initial, settings, allowIpv6, sw, ct).ConfigureAwait(false);
             return;
         }
 
@@ -446,55 +390,324 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
             && settings.Upstream.Enabled
             && settings.Upstream.Kind != UpstreamTunnelKind.None;
 
-        var firstResponseBuf = new byte[4096];
-        var firstResponseLen = 0;
-        var strategyLabel = DescribeStrategy(initial.FirstPayload, settings);
-        TcpClient? dpiUpstream = null;
+        var primaryStrategy = learnedStrategy == LearnedHostStrategy.EscalatedDpi16B
+            ? TlsFragmentationStrategy.AggressiveSmallRecords
+            : settings.FragmentationStrategy;
+        var primaryDelay = learnedStrategy == LearnedHostStrategy.EscalatedDpi16B
+            ? Math.Max(settings.FragmentDelayMs, 2)
+            : settings.FragmentDelayMs;
+        var primaryAction = learnedStrategy == LearnedHostStrategy.EscalatedDpi16B
+            ? BypassActionKind.EscalatedDpi16B
+            : BypassActionKind.DpiFragmented;
+        var stage1Timeout = Math.Clamp(settings.ConnectTimeoutMs, 1000, settings.EnableSmartSelfHealing ? 3000 : 4000);
 
-        try
+        // Stage 1: Primary DPI Fragmentation
+        var stage1 = await TryConnectAndRelayFirstFlightAsync(
+            client,
+            clientStream,
+            targetHost,
+            targetPort,
+            clientProtocol,
+            initial,
+            settings,
+            allowIpv6,
+            fragmentPayload: true,
+            primaryStrategy,
+            settings.FragmentSizeBytes,
+            primaryDelay,
+            stage1Timeout,
+            primaryAction,
+            DescribeStrategy(initial.FirstPayload, primaryStrategy, settings.FragmentSizeBytes),
+            sw,
+            ct).ConfigureAwait(false);
+
+        if (stage1.Succeeded)
         {
-            (dpiUpstream, _) = await _connector.ConnectDirectAsync(
+            return;
+        }
+
+        string? lastFailureError = stage1.Error;
+
+        // Stage 2: Auto-Escalated 16B Aggressive DPI (skip if TCP SYN failed or remote sent TLS Fatal Alert)
+        if (!stage1.TcpConnectFailed
+            && !stage1.ReceivedTlsAlert
+            && settings.EnableSmartSelfHealing
+            && isTlsHello
+            && primaryStrategy != TlsFragmentationStrategy.AggressiveSmallRecords)
+        {
+            var stage2 = await TryConnectAndRelayFirstFlightAsync(
+                client,
+                clientStream,
                 targetHost,
                 targetPort,
-                settings.ResolveTargetViaLocalDns,
+                clientProtocol,
+                initial,
+                settings,
                 allowIpv6,
-                settings.ConnectTimeoutMs,
-                ct).ConfigureAwait(false);
+                fragmentPayload: true,
+                TlsFragmentationStrategy.AggressiveSmallRecords,
+                16,
+                Math.Max(settings.FragmentDelayMs, 2),
+                Math.Min(settings.ConnectTimeoutMs, 2500),
+                BypassActionKind.EscalatedDpi16B,
+                "TLS 16B Escalated",
+                sw,
+                ct,
+                onConnectedBeforeRelay: () => _matcher.RecordLearnedHost(targetHost, LearnedHostStrategy.EscalatedDpi16B, "Auto-escalated to 16B TLS split")).ConfigureAwait(false);
 
-            var upstreamStream = dpiUpstream.GetStream();
-            await SendPotentiallyFragmentedFirstPayloadAsync(upstreamStream, initial, settings, ct).ConfigureAwait(false);
-
-            // Verify first server response byte before committing (enables seamless AutoHybrid fallback).
-            using var firstByteCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            firstByteCts.CancelAfter(Math.Clamp(settings.ConnectTimeoutMs, 1000, 4000));
-            firstResponseLen = await upstreamStream.ReadAsync(firstResponseBuf, firstByteCts.Token).ConfigureAwait(false);
-            if (firstResponseLen <= 0)
+            if (stage2.Succeeded)
             {
-                throw new IOException("Remote host closed connection before handshake response.");
+                return;
             }
 
+            lastFailureError = stage2.Error ?? lastFailureError;
+        }
+
+        // Stage 3: Self-Healing Direct Unfragmented Recovery (skip only if TCP SYN itself failed)
+        if (!stage1.TcpConnectFailed && settings.EnableSmartSelfHealing)
+        {
+            var stage3 = await TryConnectAndRelayFirstFlightAsync(
+                client,
+                clientStream,
+                targetHost,
+                targetPort,
+                clientProtocol,
+                initial,
+                settings,
+                allowIpv6,
+                fragmentPayload: false,
+                primaryStrategy,
+                settings.FragmentSizeBytes,
+                0,
+                Math.Min(settings.ConnectTimeoutMs, 2000),
+                BypassActionKind.SelfHealedDirect,
+                "Self-Healed Direct",
+                sw,
+                ct,
+                onConnectedBeforeRelay: () => _matcher.RecordLearnedHost(targetHost, LearnedHostStrategy.Direct, "Server prefers unfragmented TLS")).ConfigureAwait(false);
+
+            if (stage3.Succeeded)
+            {
+                return;
+            }
+
+            lastFailureError = stage3.Error ?? lastFailureError;
+        }
+
+        // Stage 4: Tier 2 Split-Tunnel Upstream Fallback
+        if (canFallbackToUpstream)
+        {
+            var tunnelOk = await TryUpstreamFallbackWithPayloadAsync(client, clientStream, targetHost, targetPort, clientProtocol, initial, settings, sw, ct).ConfigureAwait(false);
+            if (tunnelOk)
+            {
+                return;
+            }
+        }
+        else if (!ct.IsCancellationRequested)
+        {
+            sw.Stop();
+            _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, DescribeStrategy(initial.FirstPayload, primaryStrategy, settings.FragmentSizeBytes), Math.Round(sw.Elapsed.TotalMilliseconds, 1), lastFailureError);
+        }
+    }
+
+    private readonly record struct FirstFlightOutcome(bool Succeeded, bool TcpConnectFailed, bool ReceivedTlsAlert, string? Error);
+
+    private async Task ExecuteDirectSessionAsync(
+        TcpClient client,
+        NetworkStream clientStream,
+        string targetHost,
+        int targetPort,
+        string clientProtocol,
+        string strategyLabel,
+        byte[]? preBufferedPayload,
+        BypassSettings settings,
+        bool allowIpv6,
+        Stopwatch sw,
+        CancellationToken ct)
+    {
+        TcpClient? direct = null;
+        try
+        {
+            (direct, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            var directStream = direct.GetStream();
+            if (preBufferedPayload is { Length: > 0 })
+            {
+                await directStream.WriteAsync(preBufferedPayload, ct).ConfigureAwait(false);
+                await directStream.FlushAsync(ct).ConfigureAwait(false);
+            }
+
+            sw.Stop();
+            _recordEvent(BypassActionKind.DirectPassthrough, targetHost, targetPort, clientProtocol, strategyLabel, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
+            await RelayBidirectionalAsync(client, clientStream, direct, directStream, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            direct?.Dispose();
+            sw.Stop();
+            _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, strategyLabel, Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
+        }
+    }
+
+    private async Task ExecuteDirectFirstPayloadRelayAsync(
+        TcpClient client,
+        NetworkStream clientStream,
+        string targetHost,
+        int targetPort,
+        string clientProtocol,
+        InitialPayloadReadResult initial,
+        BypassSettings settings,
+        bool allowIpv6,
+        Stopwatch sw,
+        CancellationToken ct)
+    {
+        TcpClient? direct = null;
+        try
+        {
+            (direct, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            var directStream = direct.GetStream();
+            await directStream.WriteAsync(initial.FirstPayload, ct).ConfigureAwait(false);
+            if (initial.TrailingBytes.Length > 0)
+            {
+                await directStream.WriteAsync(initial.TrailingBytes, ct).ConfigureAwait(false);
+            }
+
+            await directStream.FlushAsync(ct).ConfigureAwait(false);
+            sw.Stop();
+            _recordEvent(BypassActionKind.DirectPassthrough, targetHost, targetPort, clientProtocol, "DirectStream", Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
+            await RelayBidirectionalAsync(client, clientStream, direct, directStream, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            direct?.Dispose();
+            sw.Stop();
+            _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, "DirectStream", Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
+        }
+    }
+
+    private async Task ExecuteUpstreamSessionAsync(
+        TcpClient client,
+        NetworkStream clientStream,
+        string targetHost,
+        int targetPort,
+        string clientProtocol,
+        byte[]? preBufferedPayload,
+        BypassSettings settings,
+        Stopwatch sw,
+        CancellationToken ct)
+    {
+        TcpClient? upstream = null;
+        try
+        {
+            upstream = await UpstreamTunnelConnector.ConnectViaUpstreamAsync(targetHost, targetPort, settings.Upstream, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            var upstreamStream = upstream.GetStream();
+            if (preBufferedPayload is { Length: > 0 })
+            {
+                await upstreamStream.WriteAsync(preBufferedPayload, ct).ConfigureAwait(false);
+                await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
+            }
+
+            sw.Stop();
+            _recordEvent(BypassActionKind.UpstreamTunneled, targetHost, targetPort, clientProtocol, settings.Upstream.Kind.ToString(), Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
+            await RelayBidirectionalAsync(client, clientStream, upstream, upstreamStream, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            upstream?.Dispose();
+            sw.Stop();
+            _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, settings.Upstream.Kind.ToString(), Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
+        }
+    }
+
+    private async Task<FirstFlightOutcome> TryConnectAndRelayFirstFlightAsync(
+        TcpClient client,
+        NetworkStream clientStream,
+        string targetHost,
+        int targetPort,
+        string clientProtocol,
+        InitialPayloadReadResult initial,
+        BypassSettings settings,
+        bool allowIpv6,
+        bool fragmentPayload,
+        TlsFragmentationStrategy strategy,
+        int fragmentSizeBytes,
+        int fragmentDelayMs,
+        int firstByteTimeoutMs,
+        BypassActionKind actionKind,
+        string strategyLabel,
+        Stopwatch sw,
+        CancellationToken ct,
+        Action? onConnectedBeforeRelay = null)
+    {
+        TcpClient? upstream = null;
+        var tcpConnected = false;
+        try
+        {
+            (upstream, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            tcpConnected = true;
+
+            var upstreamStream = upstream.GetStream();
+            if (fragmentPayload)
+            {
+                await SendPotentiallyFragmentedFirstPayloadAsync(upstreamStream, initial, strategy, fragmentSizeBytes, fragmentDelayMs, settings.FragmentHttpHostHeader, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                await upstreamStream.WriteAsync(initial.FirstPayload, ct).ConfigureAwait(false);
+                if (initial.TrailingBytes.Length > 0)
+                {
+                    await upstreamStream.WriteAsync(initial.TrailingBytes, ct).ConfigureAwait(false);
+                }
+
+                await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
+            }
+
+            var firstResponseBuf = new byte[4096];
+            using var firstByteCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            firstByteCts.CancelAfter(Math.Clamp(firstByteTimeoutMs, 800, 5000));
+            var firstResponseLen = await upstreamStream.ReadAsync(firstResponseBuf, firstByteCts.Token).ConfigureAwait(false);
+            if (firstResponseLen <= 0)
+            {
+                upstream.Dispose();
+                return new FirstFlightOutcome(false, false, false, "Remote host closed connection before handshake response.");
+            }
+
+            // Detect TLS Fatal Alert rejecting split ClientHello when self-healing is enabled.
+            if (fragmentPayload
+                && TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload)
+                && firstResponseBuf[0] == 0x15
+                && settings.EnableSmartSelfHealing)
+            {
+                upstream.Dispose();
+                return new FirstFlightOutcome(false, false, true, "Server sent TLS Alert in response to fragmented ClientHello.");
+            }
+
+            onConnectedBeforeRelay?.Invoke();
             await clientStream.WriteAsync(firstResponseBuf.AsMemory(0, firstResponseLen), ct).ConfigureAwait(false);
             await clientStream.FlushAsync(ct).ConfigureAwait(false);
 
             sw.Stop();
-            _recordEvent(BypassActionKind.DpiFragmented, targetHost, targetPort, clientProtocol, strategyLabel, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
-            await RelayBidirectionalAsync(client, clientStream, dpiUpstream, upstreamStream, ct).ConfigureAwait(false);
-            return;
+            _recordEvent(actionKind, targetHost, targetPort, clientProtocol, strategyLabel, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
+            await RelayBidirectionalAsync(client, clientStream, upstream, upstreamStream, ct).ConfigureAwait(false);
+            return new FirstFlightOutcome(true, false, false, null);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            dpiUpstream?.Dispose();
-            if (!canFallbackToUpstream)
-            {
-                sw.Stop();
-                _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, strategyLabel, Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
-                return;
-            }
-
-            _logger.LogDebug(ex, "DPI bypass failed for {Host}:{Port}; falling back to upstream tunnel.", targetHost, targetPort);
+            upstream?.Dispose();
+            return new FirstFlightOutcome(false, !tcpConnected, false, ex.Message);
         }
+    }
 
-        // AutoHybrid transparent fallback to upstream tunnel, replaying original intact ClientHello.
+    private async Task<bool> TryUpstreamFallbackWithPayloadAsync(
+        TcpClient client,
+        NetworkStream clientStream,
+        string targetHost,
+        int targetPort,
+        string clientProtocol,
+        InitialPayloadReadResult initial,
+        BypassSettings settings,
+        Stopwatch sw,
+        CancellationToken ct)
+    {
         TcpClient? fallbackTunnel = null;
         try
         {
@@ -514,7 +727,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
 
             await tunnelStream.FlushAsync(ct).ConfigureAwait(false);
 
-            _matcher.RecordAutoFallbackHint(targetHost);
+            _matcher.RecordLearnedHost(targetHost, LearnedHostStrategy.UpstreamTunnel, $"Fallback -> {settings.Upstream.Kind}");
             sw.Stop();
             _recordEvent(
                 BypassActionKind.AutoFallbackTunnel,
@@ -525,67 +738,69 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
                 Math.Round(sw.Elapsed.TotalMilliseconds, 1),
                 null);
             await RelayBidirectionalAsync(client, clientStream, fallbackTunnel, tunnelStream, ct).ConfigureAwait(false);
+            return true;
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             fallbackTunnel?.Dispose();
             sw.Stop();
             _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, $"Fallback -> {settings.Upstream.Kind}", Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
+            return false;
         }
     }
 
-    private static string DescribeStrategy(ReadOnlySpan<byte> payload, BypassSettings settings)
+    private static string DescribeStrategy(ReadOnlySpan<byte> payload, TlsFragmentationStrategy strategy, int fragmentSizeBytes)
     {
         if (TlsClientHelloFragmenter.IsTlsClientHelloHeader(payload))
         {
-            return settings.FragmentationStrategy switch
+            return strategy switch
             {
                 TlsFragmentationStrategy.SniMidpointSplit => "TLS SNI Split",
                 TlsFragmentationStrategy.AggressiveSmallRecords => "TLS 16B Split",
-                _ => $"TLS {settings.FragmentSizeBytes}B Split",
+                _ => $"TLS {fragmentSizeBytes}B Split",
             };
         }
 
-        if (settings.FragmentHttpHostHeader && TlsClientHelloFragmenter.TrySplitHttpHostHeader(payload, out _))
-        {
-            return "HTTP Host Split";
-        }
-
-        return "DirectStream";
+        return TlsClientHelloFragmenter.TrySplitHttpHostHeader(payload, out _)
+            ? "HTTP Host Split"
+            : "DirectStream";
     }
 
     private static async Task SendPotentiallyFragmentedFirstPayloadAsync(
         NetworkStream upstreamStream,
         InitialPayloadReadResult initial,
-        BypassSettings settings,
+        TlsFragmentationStrategy strategy,
+        int fragmentSizeBytes,
+        int fragmentDelayMs,
+        bool fragmentHttpHostHeader,
         CancellationToken ct)
     {
         if (TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload))
         {
             var records = TlsClientHelloFragmenter.BuildFragmentedTlsRecords(
                 initial.FirstPayload,
-                settings.FragmentationStrategy,
-                settings.FragmentSizeBytes);
+                strategy,
+                fragmentSizeBytes);
             for (var i = 0; i < records.Count; i++)
             {
                 await upstreamStream.WriteAsync(records[i], ct).ConfigureAwait(false);
                 await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
-                if (settings.FragmentDelayMs > 0 && i < records.Count - 1)
+                if (fragmentDelayMs > 0 && i < records.Count - 1)
                 {
-                    await Task.Delay(settings.FragmentDelayMs, ct).ConfigureAwait(false);
+                    await Task.Delay(fragmentDelayMs, ct).ConfigureAwait(false);
                 }
             }
         }
-        else if (settings.FragmentHttpHostHeader
+        else if (fragmentHttpHostHeader
             && TlsClientHelloFragmenter.TrySplitHttpHostHeader(initial.FirstPayload, out var splitOffset)
             && splitOffset > 0
             && splitOffset < initial.FirstPayload.Length)
         {
             await upstreamStream.WriteAsync(initial.FirstPayload.AsMemory(0, splitOffset), ct).ConfigureAwait(false);
             await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
-            if (settings.FragmentDelayMs > 0)
+            if (fragmentDelayMs > 0)
             {
-                await Task.Delay(settings.FragmentDelayMs, ct).ConfigureAwait(false);
+                await Task.Delay(fragmentDelayMs, ct).ConfigureAwait(false);
             }
 
             await upstreamStream.WriteAsync(initial.FirstPayload.AsMemory(splitOffset), ct).ConfigureAwait(false);
@@ -625,29 +840,35 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         Socket destinationSocket,
         CancellationToken ct)
     {
-        var buffer = ArrayPool<byte>.Shared.Rent(RelayBufferSize);
         try
         {
             while (!ct.IsCancellationRequested)
             {
-                var read = await source.ReadAsync(buffer.AsMemory(0, RelayBufferSize), ct).ConfigureAwait(false);
-                if (read <= 0)
-                {
-                    try { destinationSocket.Shutdown(SocketShutdown.Send); } catch { }
-                    break;
-                }
+                // Zero-buffer wait so idle keep-alive browser sockets hold 0 KB of pooled relay memory.
+                _ = await source.ReadAsync(Memory<byte>.Empty, ct).ConfigureAwait(false);
 
-                await destination.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
-                await destination.FlushAsync(ct).ConfigureAwait(false);
+                var buffer = ArrayPool<byte>.Shared.Rent(RelayBufferSize);
+                try
+                {
+                    var read = await source.ReadAsync(buffer.AsMemory(0, RelayBufferSize), ct).ConfigureAwait(false);
+                    if (read <= 0)
+                    {
+                        try { destinationSocket.Shutdown(SocketShutdown.Send); } catch { }
+                        break;
+                    }
+
+                    await destination.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+                    await destination.FlushAsync(ct).ConfigureAwait(false);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
             }
         }
         catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException or ObjectDisposedException)
         {
             try { destinationSocket.Shutdown(SocketShutdown.Send); } catch { }
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 

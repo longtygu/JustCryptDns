@@ -437,7 +437,6 @@ Page_Bypass_Subtitle|Pure-C# TLS fragmentation and domain-based split tunneling 
 Tray_EnableBypass|Enable DPI Bypass proxy|Bật proxy vượt DPI
 Tray_DisableBypass|Disable DPI Bypass proxy|Tắt proxy vượt DPI
 Dash_Bypass_Title|DPI Bypass & Split-Tunnel|Vượt DPI & Split-Tunnel
-Dash_Bypass_Desc|Automatically unblocks Steam and blocked domains via Auto-PAC while keeping game traffic direct.|Tự động mở khóa Steam và các trang bị chặn qua Auto-PAC trong khi vẫn giữ lưu lượng game đi thẳng.
 Dash_Bypass_Configure|Configure DPI & Bypass|Cấu hình DPI & Bypass
 Dash_Bypass_Tunneled|Split-Tunneled|Đi qua Tunnel
 Gaming_BypassSynergy_Title|Gaming + DPI Bypass Synergy|Kết hợp Chơi game & Vượt tường lửa DPI
@@ -509,7 +508,33 @@ UpstreamKind_CloudflareWarpLocal|Cloudflare WARP (127.0.0.1:40000)|Cloudflare WA
 UpstreamKind_Socks5|SOCKS5 Proxy|Proxy SOCKS5
 UpstreamKind_HttpConnect|HTTP CONNECT Proxy|Proxy HTTP CONNECT
 BypassAction_DpiFragmented|DPI Bypassed|Đã vượt DPI
+BypassAction_EscalatedDpi16B|DPI 16B Escalated|Vượt DPI (16B nâng cao)
+BypassAction_SelfHealedDirect|Self-Healed Direct|Tự sửa (Đi thẳng)
 BypassAction_UpstreamTunneled|Tunneled|Qua Tunnel
 BypassAction_AutoFallbackTunnel|Auto-Fallback|Tự chuyển Tunnel
 BypassAction_DirectPassthrough|Direct|Đi thẳng
 BypassAction_Failed|Failed|Thất bại
+CoverageMode_AllWebsitesSmart|All Websites (Smart Auto-PAC)|Mọi trang web (Auto-PAC thông minh)
+CoverageMode_RuleListOnly|Rule List Only|Chỉ theo danh sách quy tắc
+LearnedStrategy_Direct|Direct|Đi thẳng
+LearnedStrategy_EscalatedDpi16B|DPI 16B|DPI 16B
+LearnedStrategy_UpstreamTunnel|Tunnel|Qua Tunnel
+Bypass_CoverageMode|Website coverage mode|Phạm vi áp dụng website
+Bypass_Opt_SmartSelfHealing|Enable 4-stage self-healing (auto 16B / Direct / Tunnel)|Bật tự sửa lỗi 4 tầng (tự thử 16B / Đi thẳng / Tunnel)
+Bypass_Metric_SelfHealed|Self-Healed / 16B Escalated|Tự sửa / Nâng 16B
+Bypass_LearnedCount|Auto-learned hosts|Tên miền đã tự học
+Bypass_Tester_BatchRun|Test Multiple Sites|Kiểm tra nhiều trang
+Bypass_Tester_BatchResult|Multi-site check ({0}/{1} reachable): {2}|Kiểm tra đa trang ({0}/{1} thông suốt): {2}
+Bypass_Exclusions_Title|Direct exclusions (always bypass proxy)|Ngoại lệ đi thẳng (luôn không qua proxy)
+Bypass_Exclusions_Desc|Exempt banking, local intranet, or sensitive websites so they always connect 100% directly.|Loại trừ các trang ngân hàng, mạng nội bộ hoặc trang cần đi thẳng 100%.
+Bypass_Exclusions_Add|Exclude|Loại trừ
+Bypass_Msg_ExclusionAdded|Added '{0}' to Direct Exclusions.|Đã thêm '{0}' vào danh sách ngoại lệ đi thẳng.
+Bypass_Msg_ExclusionRemoved|Removed '{0}' from Direct Exclusions.|Đã xóa '{0}' khỏi danh sách ngoại lệ đi thẳng.
+Bypass_Learned_Title|Auto-learned hosts (30 min adaptive cache)|Tên miền đã tự học (cache thích ứng 30 phút)
+Bypass_Learned_Desc|Automatically adapts per site when a server needs 16B DPI splitting, unfragmented Direct TLS, or Upstream Tunnel.|Tự động ghi nhớ chiến lược tối ưu cho từng trang web khi cần tách 16B, đi thẳng hoặc qua Tunnel.
+Bypass_Learned_Clear|Clear cache|Xóa bộ nhớ học
+Bypass_Learned_Pin|Pin rule|Ghim quy tắc
+Bypass_Msg_Promoted|Pinned learned rule for '{0}'.|Đã ghim quy tắc vĩnh viễn cho '{0}'.
+Bypass_Msg_LearnedCleared|Cleared auto-learned host cache.|Đã xóa bộ nhớ tên miền đã tự học.
+Bypass_Activity_Exclude|Direct|Đi thẳng
+Dash_Bypass_Desc|Automatically unblocks Steam and all websites via Smart Auto-PAC while keeping game traffic direct.|Tự động mở khóa Steam và mọi trang web qua Auto-PAC thông minh trong khi giữ lưu lượng game đi thẳng.

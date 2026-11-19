@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
@@ -10,17 +11,23 @@ using JustCryptDns.Core.Models;
 namespace JustCryptDns.Network.Bypass;
 
 /// <summary>
-/// Establishes outbound direct TCP connections (using JustCryptDns's encrypted resolver when configured)
-/// and upstream split-tunnel connections via Cloudflare WARP local SOCKS5, SOCKS5, or HTTP CONNECT.
+/// Establishes outbound direct TCP connections (using JustCryptDns's encrypted resolver when configured
+/// with a fast 60-second host IP cache) and upstream split-tunnel connections via Cloudflare WARP, SOCKS5, or HTTP CONNECT.
 /// </summary>
 public sealed class UpstreamTunnelConnector
 {
+    private const int MaxDnsCacheEntries = 512;
+    private static readonly TimeSpan DnsCacheTtl = TimeSpan.FromSeconds(60);
+
     private readonly IDnsEngine? _dnsEngine;
+    private readonly ConcurrentDictionary<string, (IReadOnlyList<IPAddress> Ips, DateTimeOffset ExpiresAt)> _dnsCache = new(StringComparer.OrdinalIgnoreCase);
 
     public UpstreamTunnelConnector(IDnsEngine? dnsEngine = null)
     {
         _dnsEngine = dnsEngine;
     }
+
+    public void ClearDnsCache() => _dnsCache.Clear();
 
     public async Task<(TcpClient Client, IPAddress RemoteIp)> ConnectDirectAsync(
         string host,
@@ -179,11 +186,18 @@ public sealed class UpstreamTunnelConnector
             return [literal];
         }
 
+        var cacheKey = $"{cleanHost}|v6={allowIpv6}";
+        if (_dnsCache.TryGetValue(cacheKey, out var cached) && cached.ExpiresAt > DateTimeOffset.UtcNow)
+        {
+            return cached.Ips;
+        }
+
         if (resolveViaLocalDns && _dnsEngine is not null)
         {
             var encrypted = await _dnsEngine.ResolveHostAsync(cleanHost, includeIpv6: allowIpv6, cancellationToken).ConfigureAwait(false);
             if (encrypted.Count > 0)
             {
+                StoreDnsCache(cacheKey, encrypted);
                 return encrypted;
             }
         }
@@ -191,9 +205,15 @@ public sealed class UpstreamTunnelConnector
         try
         {
             var all = await Dns.GetHostAddressesAsync(cleanHost, cancellationToken).ConfigureAwait(false);
-            return allowIpv6
+            var filtered = allowIpv6
                 ? all
                 : all.Where(a => a.AddressFamily == AddressFamily.InterNetwork).ToArray();
+            if (filtered.Length > 0)
+            {
+                StoreDnsCache(cacheKey, filtered);
+            }
+
+            return filtered;
         }
         catch (Exception ex) when (ex is SocketException or OperationCanceledException or ArgumentException)
         {
@@ -204,6 +224,28 @@ public sealed class UpstreamTunnelConnector
 
             return [];
         }
+    }
+
+    private void StoreDnsCache(string cacheKey, IReadOnlyList<IPAddress> ips)
+    {
+        if (_dnsCache.Count >= MaxDnsCacheEntries)
+        {
+            var now = DateTimeOffset.UtcNow;
+            foreach (var item in _dnsCache)
+            {
+                if (item.Value.ExpiresAt <= now)
+                {
+                    _dnsCache.TryRemove(item.Key, out _);
+                }
+            }
+
+            if (_dnsCache.Count >= MaxDnsCacheEntries)
+            {
+                _dnsCache.Clear();
+            }
+        }
+
+        _dnsCache[cacheKey] = (ips, DateTimeOffset.UtcNow.Add(DnsCacheTtl));
     }
 
     private static async Task<bool> ProbeSocks5PortAsync(string host, int port, CancellationToken ct)

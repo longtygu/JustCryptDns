@@ -38,6 +38,9 @@ public sealed class BypassEngineService : IBypassEngineService
     private long _directConnections;
     private long _failedConnections;
     private long _autoFallbackCount;
+    private long _selfHealedDirectCount;
+    private long _escalatedDpiCount;
+    private int _pacRevision = 1;
     private bool _disposed;
 
     public BypassEngineService(
@@ -69,7 +72,7 @@ public sealed class BypassEngineService : IBypassEngineService
         {
             State = _state,
             ProxyEndpoint = $"{listenIp}:{proxyPort}",
-            PacUrl = $"http://{listenIp}:{pacPort}/proxy.pac",
+            PacUrl = BuildVersionedPacUrl(listenIp, pacPort),
             BoundProxyPort = proxyPort,
             BoundPacPort = pacPort,
             WindowsProxyApplied = _windowsProxyApplied,
@@ -87,8 +90,15 @@ public sealed class BypassEngineService : IBypassEngineService
                 : "Disabled",
             LastError = _lastError,
             HasProxyBackup = _windowsProxy.HasActiveBackup(),
+            CoverageMode = bypass.CoverageMode,
+            LearnedHostCount = _matcher.ActiveLearnedHostCount,
+            SelfHealedDirectCount = Interlocked.Read(ref _selfHealedDirectCount),
+            EscalatedDpiCount = Interlocked.Read(ref _escalatedDpiCount),
         };
     }
+
+    private string BuildVersionedPacUrl(IPAddress listenIp, int pacPort) =>
+        $"http://{listenIp}:{pacPort}/proxy.pac?v={Volatile.Read(ref _pacRevision)}";
 
     public async Task<(bool Success, string? Error)> StartAsync(CancellationToken cancellationToken = default)
     {
@@ -151,12 +161,13 @@ public sealed class BypassEngineService : IBypassEngineService
             _windowsProxyApplied = false;
 
             string? warning = null;
+            var pacUrl = BuildVersionedPacUrl(listenIp, pacServer.BoundPort);
             if (bypass.ApplyWindowsProxyAutomatically && bypass.WindowsProxyMode != WindowsProxyMode.ManualOnly)
             {
                 WindowsProxyOperationResult proxyResult;
                 if (bypass.WindowsProxyMode == WindowsProxyMode.AutoPac)
                 {
-                    proxyResult = await _windowsProxy.ApplyPacProxyAsync(pacServer.PacUrl, cancellationToken).ConfigureAwait(false);
+                    proxyResult = await _windowsProxy.ApplyPacProxyAsync(pacUrl, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -177,9 +188,10 @@ public sealed class BypassEngineService : IBypassEngineService
 
             SetState(warning is null ? BypassEngineState.Running : BypassEngineState.Degraded, warning);
             _logger.LogInformation(
-                "Bypass engine started (proxy={Proxy}, pac={Pac}, winProxy={Applied}).",
+                "Bypass engine started (proxy={Proxy}, pac={Pac}, coverage={Coverage}, winProxy={Applied}).",
                 $"{listenIp}:{proxy.BoundPort}",
-                pacServer.PacUrl,
+                pacUrl,
+                bypass.CoverageMode,
                 _windowsProxyApplied);
             return (true, warning);
         }
@@ -380,7 +392,7 @@ public sealed class BypassEngineService : IBypassEngineService
         }, cancellationToken).ConfigureAwait(false);
 
         _matcher.ClearHints();
-        RaiseStateChanged();
+        await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
         return (true, normalized, null);
     }
 
@@ -405,7 +417,7 @@ public sealed class BypassEngineService : IBypassEngineService
         if (removed)
         {
             _matcher.ClearHints();
-            RaiseStateChanged();
+            await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
         }
 
         return removed;
@@ -428,7 +440,7 @@ public sealed class BypassEngineService : IBypassEngineService
         }, cancellationToken).ConfigureAwait(false);
 
         _matcher.ClearHints();
-        RaiseStateChanged();
+        await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task ResetBuiltInRulesAsync(CancellationToken cancellationToken = default)
@@ -440,7 +452,147 @@ public sealed class BypassEngineService : IBypassEngineService
         }, cancellationToken).ConfigureAwait(false);
 
         _matcher.ClearHints();
+        await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public IReadOnlyList<string> GetDirectExclusions() =>
+        _settings.Current.Bypass.DirectExclusionDomains ?? [];
+
+    public async Task<(bool Success, string? Error)> AddDirectExclusionAsync(
+        string pattern,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = RoutingMatcher.NormalizeDomain(pattern);
+        if (string.IsNullOrWhiteSpace(normalized) || normalized.Contains(' ') || normalized.Contains('/') || normalized.Contains(':'))
+        {
+            return (false, "Enter a valid domain or wildcard pattern (e.g. bank.vn or *.corp.local).");
+        }
+
+        await _settings.UpdateAsync(s =>
+        {
+            s.Bypass.DirectExclusionDomains ??= [];
+            if (!s.Bypass.DirectExclusionDomains.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+            {
+                s.Bypass.DirectExclusionDomains.Add(normalized);
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        _matcher.ClearHints();
+        await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+        return (true, null);
+    }
+
+    public async Task<bool> RemoveDirectExclusionAsync(
+        string pattern,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = RoutingMatcher.NormalizeDomain(pattern);
+        var removed = false;
+        await _settings.UpdateAsync(s =>
+        {
+            if (s.Bypass.DirectExclusionDomains is null)
+            {
+                return;
+            }
+
+            removed = s.Bypass.DirectExclusionDomains.RemoveAll(d => string.Equals(d, normalized, StringComparison.OrdinalIgnoreCase)) > 0;
+        }, cancellationToken).ConfigureAwait(false);
+
+        if (removed)
+        {
+            _matcher.ClearHints();
+            await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return removed;
+    }
+
+    public IReadOnlyList<LearnedHostEntry> GetLearnedHosts() => _matcher.GetLearnedHosts();
+
+    public void ClearLearnedHosts()
+    {
+        _matcher.ClearHints();
         RaiseStateChanged();
+    }
+
+    public async Task<(bool Success, string? Error)> PromoteLearnedHostAsync(
+        string host,
+        LearnedHostStrategy strategy,
+        CancellationToken cancellationToken = default)
+    {
+        var clean = BypassRuleMatcher.NormalizeHost(host);
+        if (string.IsNullOrWhiteSpace(clean))
+        {
+            return (false, "Invalid hostname.");
+        }
+
+        if (strategy == LearnedHostStrategy.Direct)
+        {
+            return await AddDirectExclusionAsync(clean, cancellationToken).ConfigureAwait(false);
+        }
+
+        var mode = strategy == LearnedHostStrategy.UpstreamTunnel
+            ? BypassMode.UpstreamTunnel
+            : BypassMode.DpiFragment;
+
+        var (ok, _, err) = await SaveRuleAsync(new BypassRule
+        {
+            Id = $"promoted-{clean}",
+            Name = clean,
+            Pattern = clean,
+            MatchKind = RoutingMatchKind.Exact,
+            Mode = mode,
+            Category = "Promoted",
+            Enabled = true,
+            IsBuiltIn = false,
+        }, cancellationToken).ConfigureAwait(false);
+        return (ok, err);
+    }
+
+    public async Task RefreshSystemPacAsync(CancellationToken cancellationToken = default)
+    {
+        Interlocked.Increment(ref _pacRevision);
+        var bypass = _settings.Current.Bypass;
+        if (_state is BypassEngineState.Running or BypassEngineState.Degraded
+            && _pacServer is { BoundPort: > 0 } pacServer
+            && bypass.ApplyWindowsProxyAutomatically
+            && bypass.WindowsProxyMode == WindowsProxyMode.AutoPac)
+        {
+            var listenIp = ParseListenIp(bypass.ListenAddress);
+            var url = BuildVersionedPacUrl(listenIp, pacServer.BoundPort);
+            var res = await _windowsProxy.ApplyPacProxyAsync(url, cancellationToken).ConfigureAwait(false);
+            _windowsProxyApplied = res.Success;
+        }
+
+        RaiseStateChanged();
+    }
+
+    public async Task<IReadOnlyList<BypassTestResult>> TestMultipleDomainsAsync(
+        IEnumerable<string> hosts,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(hosts);
+        var distinct = hosts
+            .Select(BypassRuleMatcher.NormalizeHost)
+            .Where(h => !string.IsNullOrWhiteSpace(h))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        using var throttler = new SemaphoreSlim(4, 4);
+        var tasks = distinct.Select(async h =>
+        {
+            await throttler.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await TestDomainBypassAsync(h, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                throttler.Release();
+            }
+        });
+
+        return await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private static async Task<(bool Ok, double LatencyMs, int? StatusCode, string? Error)> ProbeHttpsDirectAsync(
@@ -588,6 +740,14 @@ public sealed class BypassEngineService : IBypassEngineService
         {
             case BypassActionKind.DpiFragmented:
                 Interlocked.Increment(ref _dpiBypassedConnections);
+                break;
+            case BypassActionKind.EscalatedDpi16B:
+                Interlocked.Increment(ref _dpiBypassedConnections);
+                Interlocked.Increment(ref _escalatedDpiCount);
+                break;
+            case BypassActionKind.SelfHealedDirect:
+                Interlocked.Increment(ref _directConnections);
+                Interlocked.Increment(ref _selfHealedDirectCount);
                 break;
             case BypassActionKind.UpstreamTunneled:
                 Interlocked.Increment(ref _tunneledConnections);

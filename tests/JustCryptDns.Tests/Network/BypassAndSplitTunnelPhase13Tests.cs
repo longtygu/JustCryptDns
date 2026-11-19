@@ -100,6 +100,7 @@ public sealed class BypassAndSplitTunnelPhase13Tests : IDisposable
     {
         var settings = new BypassSettings
         {
+            CoverageMode = BypassCoverageMode.RuleListOnly,
             ListenAddress = "127.0.0.1",
             ProxyPort = 10808,
             PacPort = 0,
@@ -124,7 +125,7 @@ public sealed class BypassAndSplitTunnelPhase13Tests : IDisposable
         using var tcp = new TcpClient();
         await tcp.ConnectAsync(IPAddress.Loopback, pacServer.BoundPort);
         var stream = tcp.GetStream();
-        await stream.WriteAsync("GET /proxy.pac HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"u8.ToArray());
+        await stream.WriteAsync("GET /proxy.pac?v=2 HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"u8.ToArray());
         await stream.FlushAsync();
 
         using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -282,8 +283,18 @@ public sealed class BypassAndSplitTunnelPhase13Tests : IDisposable
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var dropTask = Task.Run(async () =>
         {
-            using var conn = await droppingDirect.AcceptTcpClientAsync(cts.Token);
-            conn.Close();
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    using var conn = await droppingDirect.AcceptTcpClientAsync(cts.Token);
+                    conn.Close();
+                }
+                catch (Exception)
+                {
+                    break;
+                }
+            }
         }, cts.Token);
 
         string? requestedUpstreamHost = null;
@@ -392,7 +403,10 @@ public sealed class BypassAndSplitTunnelPhase13Tests : IDisposable
             Assert.Equal("FROM-UPSTREAM-TUNNEL", Encoding.ASCII.GetString(outBuf, 0, outLen));
         }
 
-        await Task.WhenAll(dropTask, upstreamTask);
+        await upstreamTask;
+        await cts.CancelAsync();
+        droppingDirect.Stop();
+        await dropTask;
         Assert.Equal("blocked-ip.test", requestedUpstreamHost);
         var list = recordedActions.ToArray();
         Assert.Equal([BypassActionKind.AutoFallbackTunnel, BypassActionKind.UpstreamTunneled], list);
@@ -432,7 +446,7 @@ public sealed class BypassAndSplitTunnelPhase13Tests : IDisposable
         var result = store.Load();
 
         Assert.Equal(SettingsLoadOutcome.Migrated, result.Outcome);
-        Assert.Equal(11, result.Settings.SchemaVersion);
+        Assert.Equal(AppSettings.CurrentSchemaVersion, result.Settings.SchemaVersion);
         Assert.True(result.Settings.Bypass.IsBypassEnabled);
         Assert.Equal(WindowsProxyMode.AutoPac, result.Settings.Bypass.WindowsProxyMode);
         Assert.NotNull(result.Settings.Bypass.Rules);

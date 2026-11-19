@@ -173,6 +173,24 @@ internal sealed class MigrationV10ToV11 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v12 upgrades <see cref="BypassSettings"/> to All-Website Smart DPI coverage with 4-stage self-healing.
+/// </summary>
+internal sealed class MigrationV11ToV12 : ISettingsMigration
+{
+    public int FromVersion => 11;
+
+    public void Apply(JsonObject document)
+    {
+        if (document["bypass"] is JsonObject bypass)
+        {
+            bypass["coverageMode"] ??= nameof(Models.BypassCoverageMode.AllWebsitesSmart);
+            bypass["defaultUnmatchedMode"] ??= nameof(Models.BypassMode.AutoHybrid);
+            bypass["enableSmartSelfHealing"] ??= true;
+        }
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -186,7 +204,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12()];
 
     public static int ReadVersion(JsonObject document)
     {

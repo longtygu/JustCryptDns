@@ -302,11 +302,11 @@
                             <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding BypassEndpoint}" />
                         </StackPanel>
                         <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_WinProxyMode}" />
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_CoverageMode}" />
                             <TextBlock Style="{StaticResource ValueText}">
                                 <TextBlock.Text>
-                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="WinProxyMode_">
-                                        <Binding Path="BypassWindowsProxyMode" />
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="CoverageMode_">
+                                        <Binding Path="BypassCoverageMode" />
                                         <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
                                     </MultiBinding>
                                 </TextBlock.Text>
