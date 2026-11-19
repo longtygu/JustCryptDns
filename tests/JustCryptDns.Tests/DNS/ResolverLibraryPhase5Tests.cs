@@ -85,6 +85,12 @@ public sealed class ResolverLibraryPhase5Tests
         public Task<(bool Success, double LatencyMs, string Summary)> TestLocalProxyAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult((true, 10.0, "OK"));
 
+        public Task<IReadOnlyList<System.Net.IPAddress>> ResolveHostAsync(
+            string host,
+            bool includeIpv6 = false,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<System.Net.IPAddress>>([System.Net.IPAddress.Loopback]);
+
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 

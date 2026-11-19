@@ -13,6 +13,7 @@ public sealed partial class GamingViewModel : PageViewModel
     private readonly IGamingEngineService _gaming;
     private readonly IResolverLibraryService _resolvers;
     private readonly IDnsEngine _dnsEngine;
+    private readonly IBypassEngineService? _bypassEngine;
     private bool _loading;
 
     [ObservableProperty] private bool _isGamingModeEnabled;
@@ -31,16 +32,20 @@ public sealed partial class GamingViewModel : PageViewModel
     [ObservableProperty] private string? _errorMessage;
     [ObservableProperty] private string _newProfileName = string.Empty;
     [ObservableProperty] private string _newProfileDomains = string.Empty;
+    [ObservableProperty] private bool _isBypassActive;
+    [ObservableProperty] private string _bypassSynergySummary = string.Empty;
 
     public GamingViewModel(
         IGamingEngineService gaming,
         IResolverLibraryService resolvers,
-        IDnsEngine dnsEngine)
+        IDnsEngine dnsEngine,
+        IBypassEngineService? bypassEngine = null)
         : base("Nav_Gaming", "Page_Gaming_Subtitle")
     {
         _gaming = gaming;
         _resolvers = resolvers;
         _dnsEngine = dnsEngine;
+        _bypassEngine = bypassEngine;
 
         _loading = true;
         _isGamingModeEnabled = _gaming.IsGamingModeEnabled;
@@ -63,6 +68,11 @@ public sealed partial class GamingViewModel : PageViewModel
     {
         _gaming.GamingStateChanged += OnGamingStateChanged;
         _dnsEngine.StateChanged += OnEngineStateChanged;
+        if (_bypassEngine is not null)
+        {
+            _bypassEngine.StateChanged += OnBypassStateChanged;
+        }
+
         RefreshAll();
     }
 
@@ -70,6 +80,10 @@ public sealed partial class GamingViewModel : PageViewModel
     {
         _gaming.GamingStateChanged -= OnGamingStateChanged;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
+        if (_bypassEngine is not null)
+        {
+            _bypassEngine.StateChanged -= OnBypassStateChanged;
+        }
     }
 
     protected override void Dispose(bool disposing)
@@ -78,6 +92,10 @@ public sealed partial class GamingViewModel : PageViewModel
         {
             _gaming.GamingStateChanged -= OnGamingStateChanged;
             _dnsEngine.StateChanged -= OnEngineStateChanged;
+            if (_bypassEngine is not null)
+            {
+                _bypassEngine.StateChanged -= OnBypassStateChanged;
+            }
         }
 
         base.Dispose(disposing);
@@ -247,10 +265,39 @@ public sealed partial class GamingViewModel : PageViewModel
             }
 
             ApplyEngineStats(_dnsEngine.GetStats());
+            ApplyBypassSynergy();
         }
         finally
         {
             _loading = false;
+        }
+    }
+
+    private void ApplyBypassSynergy()
+    {
+        if (_bypassEngine is null)
+        {
+            IsBypassActive = false;
+            BypassSynergySummary = LocalizationManager.Instance["Gaming_BypassSynergy_Inactive"];
+            return;
+        }
+
+        var stats = _bypassEngine.GetStats();
+        IsBypassActive = stats.State is BypassEngineState.Running or BypassEngineState.Degraded;
+        BypassSynergySummary = IsBypassActive
+            ? LocalizationManager.Instance.Format("Gaming_BypassSynergy_Active", stats.ProxyEndpoint)
+            : LocalizationManager.Instance["Gaming_BypassSynergy_Inactive"];
+    }
+
+    private void OnBypassStateChanged(object? sender, BypassRuntimeStats stats)
+    {
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(ApplyBypassSynergy);
+        }
+        else
+        {
+            ApplyBypassSynergy();
         }
     }
 

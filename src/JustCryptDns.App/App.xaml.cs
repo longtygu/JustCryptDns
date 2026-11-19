@@ -1,3 +1,4 @@
+using System.Net;
 using System.Windows;
 using System.Windows.Threading;
 using JustCryptDns.App.Composition;
@@ -6,7 +7,9 @@ using JustCryptDns.App.Services;
 using JustCryptDns.App.ViewModels;
 using JustCryptDns.App.Views;
 using JustCryptDns.Core.Configuration;
+using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
+using JustCryptDns.DNS.Proxy;
 using JustCryptDns.Infrastructure.Logging;
 using JustCryptDns.Infrastructure.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -98,9 +101,8 @@ public partial class App : Application
         });
         tray.Initialize();
 
-        // Probe background service status and recover any orphaned adapter DNS backup non-blockingly.
-        _ = _services.GetRequiredService<IServiceClient>().RefreshStatusAsync();
-        _ = _services.GetRequiredService<Core.Interfaces.IWindowsDnsManager>().RecoverAfterCrashIfNeededAsync(proxyIsRunning: false);
+        // Probe background service, recover orphaned backups, and auto-start local engines in standalone mode.
+        _ = InitializeStandaloneEnginesAsync(_services, _logger);
 
         var window = _services.GetRequiredService<MainWindow>();
         _logger.LogDebug("Main window constructed.");
@@ -134,7 +136,12 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _logger.LogInformation("JustCryptDns UI exiting with code {Code}.", e.ApplicationExitCode);
-        if (_services?.GetService<Core.Interfaces.IDnsEngine>() is { } dnsEngine)
+        if (_services?.GetService<IBypassEngineService>() is { } bypassEngine)
+        {
+            bypassEngine.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+
+        if (_services?.GetService<IDnsEngine>() is { } dnsEngine)
         {
             dnsEngine.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
@@ -148,6 +155,72 @@ public partial class App : Application
         _instanceGuard?.Dispose();
         LoggingSetup.Shutdown();
         base.OnExit(e);
+    }
+
+    private static async Task InitializeStandaloneEnginesAsync(ServiceProvider services, ILogger<App> logger)
+    {
+        try
+        {
+            var serviceClient = services.GetRequiredService<IServiceClient>();
+            var windowsDns = services.GetRequiredService<IWindowsDnsManager>();
+            var windowsProxy = services.GetRequiredService<IWindowsProxyManager>();
+            var settings = services.GetRequiredService<ISettingsService>();
+            var dnsEngine = services.GetRequiredService<IDnsEngine>();
+            var bypassEngine = services.GetRequiredService<IBypassEngineService>();
+
+            await serviceClient.RefreshStatusAsync().ConfigureAwait(false);
+            await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false).ConfigureAwait(false);
+
+            if (serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            {
+                return;
+            }
+
+            await windowsDns.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false).ConfigureAwait(false);
+
+            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_DIR"))
+                || !settings.Current.General.AutoStartDnsEngine)
+            {
+                return;
+            }
+
+            var dns = settings.Current.Dns;
+            if (string.Equals(dns.ListenAddress, DnsSettings.DefaultListenAddress, StringComparison.OrdinalIgnoreCase)
+                && dns.ListenPort == DnsSettings.DefaultListenPort
+                && PortConflictDetector.CheckConflict(IPAddress.Loopback, 53) is not null
+                && PortConflictDetector.FindAvailableLoopbackForPort53(IPAddress.Loopback) is { } altIp)
+            {
+                logger.LogInformation("Port 53 on 127.0.0.1 is busy; auto-selecting alternate loopback {AltIp}:53.", altIp);
+                await settings.UpdateAsync(s =>
+                {
+                    s.Dns.ListenAddress = altIp;
+                    s.Dns.EnableIpv6 = false;
+                    s.Dns.ConfigureWindowsAdapter = true;
+                }).ConfigureAwait(false);
+            }
+
+            var (ok, err) = await dnsEngine.StartAsync().ConfigureAwait(false);
+            if (!ok)
+            {
+                logger.LogWarning("Standalone DNS auto-start did not succeed: {Error}", err);
+                return;
+            }
+
+            _ = dnsEngine.ProbeActiveResolverAsync();
+
+            if (settings.Current.Bypass.IsBypassEnabled && settings.Current.Bypass.AutoStartWithDnsEngine)
+            {
+                var (bypassOk, bypassErr) = await bypassEngine.StartAsync().ConfigureAwait(false);
+                if (!bypassOk)
+                {
+                    logger.LogWarning("Standalone DPI bypass auto-start did not succeed: {Error}", bypassErr);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Standalone startup initialization encountered an error.");
+        }
     }
 
     private void ApplyPresentation(AppSettings settings)

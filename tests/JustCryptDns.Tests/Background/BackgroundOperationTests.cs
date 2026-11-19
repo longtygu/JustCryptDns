@@ -164,7 +164,7 @@ public sealed class BackgroundOperationTests : IDisposable
     }
 
     [Fact]
-    public void TrayIconService_BuildsContextMenuWithAllSixActions()
+    public void TrayIconService_BuildsContextMenuWithAllSevenActions()
     {
         Exception? error = null;
         var itemCount = 0;
@@ -189,7 +189,7 @@ public sealed class BackgroundOperationTests : IDisposable
         thread.Join();
 
         Assert.Null(error);
-        Assert.Equal(6, itemCount);
+        Assert.Equal(7, itemCount);
     }
 
     private sealed class MemorySettingsStore(AppSettings settings) : ISettingsStore

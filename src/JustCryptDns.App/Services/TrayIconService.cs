@@ -7,6 +7,7 @@ using JustCryptDns.App.Localization;
 using JustCryptDns.App.ViewModels;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
+using JustCryptDns.Core.Models;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.App.Services;
@@ -48,6 +49,9 @@ public sealed class TrayIconService : ITrayIconService
     private readonly IServiceClient _serviceClient;
     private readonly IDnsEngine? _localEngine;
     private readonly IWindowsDnsManager? _windowsDns;
+    private readonly IGamingEngineService? _gamingEngine;
+    private readonly IBypassEngineService? _bypassEngine;
+    private readonly IWindowsProxyManager? _windowsProxy;
     private readonly INavigationService _navigation;
     private readonly ILogger<TrayIconService> _logger;
     private readonly uint _taskbarCreatedMsg;
@@ -63,13 +67,19 @@ public sealed class TrayIconService : ITrayIconService
         INavigationService navigation,
         ILogger<TrayIconService> logger,
         IDnsEngine? localEngine = null,
-        IWindowsDnsManager? windowsDns = null)
+        IWindowsDnsManager? windowsDns = null,
+        IGamingEngineService? gamingEngine = null,
+        IBypassEngineService? bypassEngine = null,
+        IWindowsProxyManager? windowsProxy = null)
     {
         _serviceClient = serviceClient;
         _navigation = navigation;
         _logger = logger;
         _localEngine = localEngine;
         _windowsDns = windowsDns;
+        _gamingEngine = gamingEngine;
+        _bypassEngine = bypassEngine;
+        _windowsProxy = windowsProxy;
         _taskbarCreatedMsg = RegisterWindowMessageW("TaskbarCreated");
     }
 
@@ -216,9 +226,12 @@ public sealed class TrayIconService : ITrayIconService
         var loc = LocalizationManager.Instance;
         var status = _serviceClient.LastStatus;
         var localStats = _localEngine?.GetStats();
+        var bypassStats = _bypassEngine?.GetStats();
         var engineEnabled = status?.IsEngineEnabled == true
             || localStats?.State is DnsEngineState.Running or DnsEngineState.Degraded;
-        var gamingEnabled = status?.IsGamingModeEnabled == true;
+        var bypassEnabled = status?.IsBypassRunning == true
+            || bypassStats?.State is BypassEngineState.Running or BypassEngineState.Degraded;
+        var gamingEnabled = status?.IsGamingModeEnabled == true || _gamingEngine?.IsGamingModeEnabled == true;
         var resolverText = status?.ActiveResolverName ?? localStats?.ActiveResolverName ?? loc["Common_NotAvailable"];
 
         var menu = new ContextMenu();
@@ -249,10 +262,38 @@ public sealed class TrayIconService : ITrayIconService
         });
         menu.Items.Add(dnsItem);
 
+        var bypassLabel = bypassEnabled ? loc["Tray_DisableBypass"] : loc["Tray_EnableBypass"];
+        var bypassItem = CreateItem("\uE705", bypassLabel, async () =>
+        {
+            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            {
+                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetBypassEnabled, !bypassEnabled)).ConfigureAwait(false);
+            }
+            else if (_bypassEngine is not null)
+            {
+                if (bypassEnabled)
+                {
+                    await _bypassEngine.StopAsync().ConfigureAwait(false);
+                }
+                else
+                {
+                    await _bypassEngine.StartAsync().ConfigureAwait(false);
+                }
+            }
+        });
+        menu.Items.Add(bypassItem);
+
         var gamingLabel = gamingEnabled ? loc["Tray_DisableGaming"] : loc["Tray_EnableGaming"];
         var gamingItem = CreateItem("\uE7FC", gamingLabel, async () =>
         {
-            await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetGamingMode, !gamingEnabled)).ConfigureAwait(false);
+            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            {
+                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetGamingMode, !gamingEnabled)).ConfigureAwait(false);
+            }
+            else if (_gamingEngine is not null)
+            {
+                await _gamingEngine.SetGamingModeAsync(!gamingEnabled).ConfigureAwait(false);
+            }
         });
         menu.Items.Add(gamingItem);
 
@@ -272,6 +313,11 @@ public sealed class TrayIconService : ITrayIconService
             else if (_windowsDns is not null)
             {
                 await _windowsDns.RestoreOriginalDnsAsync().ConfigureAwait(false);
+            }
+
+            if (_windowsProxy is not null && _windowsProxy.HasActiveBackup())
+            {
+                await _windowsProxy.RestoreOriginalProxyAsync().ConfigureAwait(false);
             }
         });
         menu.Items.Add(restoreItem);

@@ -32,6 +32,7 @@ public enum IpcRequestKind
     ReloadConfiguration,
     SetGamingMode,
     RestoreOriginalDns,
+    SetBypassEnabled,
 }
 
 public sealed record IpcRequest(
@@ -69,6 +70,12 @@ public sealed record ServiceStatusSnapshot
     public bool HasAdapterBackup { get; init; }
 
     public string? LastError { get; init; }
+
+    public bool IsBypassRunning { get; init; }
+
+    public string? BypassEndpoint { get; init; }
+
+    public long DpiBypassedConnections { get; init; }
 }
 
 public sealed record IpcResponse(

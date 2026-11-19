@@ -30,6 +30,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly ILogger<DashboardViewModel> _logger;
     private readonly IDnsFilteringService? _filtering;
     private readonly ISettingsService? _settings;
+    private readonly IBypassEngineService? _bypassEngine;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
 
@@ -56,13 +57,24 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string? _testProxyFeedback;
     [ObservableProperty] private string? _engineError;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBypassRunning))]
+    private BypassEngineState _bypassState = BypassEngineState.Stopped;
+
+    [ObservableProperty] private string _bypassEndpoint = "127.0.0.1:10808";
+    [ObservableProperty] private WindowsProxyMode _bypassWindowsProxyMode = WindowsProxyMode.AutoPac;
+    [ObservableProperty] private bool _bypassWindowsApplied;
+    [ObservableProperty] private string _bypassDpiCountDisplay = "—";
+    [ObservableProperty] private string _bypassTunnelCountDisplay = "—";
+
     public DashboardViewModel(
         INetworkInfoService network,
         IDnsEngine dnsEngine,
         INavigationService navigation,
         ILogger<DashboardViewModel> logger,
         IDnsFilteringService? filtering = null,
-        ISettingsService? settings = null)
+        ISettingsService? settings = null,
+        IBypassEngineService? bypassEngine = null)
         : base("Nav_Dashboard", "Page_Dashboard_Subtitle")
     {
         _network = network;
@@ -71,20 +83,33 @@ public sealed partial class DashboardViewModel : PageViewModel
         _logger = logger;
         _filtering = filtering;
         _settings = settings;
+        _bypassEngine = bypassEngine;
         _ui = SynchronizationContext.Current;
         IsFilteringActive = _filtering?.IsFilteringEnabled ?? false;
         ApplyEngineStats(dnsEngine.GetStats());
+        if (_bypassEngine is not null)
+        {
+            ApplyBypassStats(_bypassEngine.GetStats());
+        }
     }
 
     public bool IsEngineAvailable => true;
 
     public bool IsEngineRunning => EngineState is DnsEngineState.Running or DnsEngineState.Degraded;
 
+    public bool IsBypassRunning => BypassState is BypassEngineState.Running or BypassEngineState.Degraded;
+
     public override void OnNavigatedTo()
     {
         _cts = new CancellationTokenSource();
         _network.NetworkChanged += OnNetworkChanged;
         _dnsEngine.StateChanged += OnEngineStateChanged;
+        if (_bypassEngine is not null)
+        {
+            _bypassEngine.StateChanged += OnBypassStateChanged;
+            ApplyBypassStats(_bypassEngine.GetStats());
+        }
+
         ApplyEngineStats(_dnsEngine.GetStats());
         _ = RefreshCommand.ExecuteAsync(null);
     }
@@ -93,6 +118,11 @@ public sealed partial class DashboardViewModel : PageViewModel
     {
         _network.NetworkChanged -= OnNetworkChanged;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
+        if (_bypassEngine is not null)
+        {
+            _bypassEngine.StateChanged -= OnBypassStateChanged;
+        }
+
         _cts?.Cancel();
     }
 
@@ -102,6 +132,11 @@ public sealed partial class DashboardViewModel : PageViewModel
         {
             _network.NetworkChanged -= OnNetworkChanged;
             _dnsEngine.StateChanged -= OnEngineStateChanged;
+            if (_bypassEngine is not null)
+            {
+                _bypassEngine.StateChanged -= OnBypassStateChanged;
+            }
+
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
@@ -118,6 +153,10 @@ public sealed partial class DashboardViewModel : PageViewModel
         if (IsEngineRunning)
         {
             await _dnsEngine.StopAsync();
+            if (_bypassEngine is not null && IsBypassRunning)
+            {
+                await _bypassEngine.StopAsync();
+            }
         }
         else
         {
@@ -129,11 +168,53 @@ public sealed partial class DashboardViewModel : PageViewModel
             else
             {
                 _ = _dnsEngine.ProbeActiveResolverAsync();
+                if (_bypassEngine is not null
+                    && (_settings?.Current.Bypass.IsBypassEnabled ?? true)
+                    && (_settings?.Current.Bypass.AutoStartWithDnsEngine ?? true)
+                    && !IsBypassRunning)
+                {
+                    var (_, bypassWarn) = await _bypassEngine.StartAsync();
+                    if (!string.IsNullOrWhiteSpace(bypassWarn))
+                    {
+                        EngineError ??= bypassWarn;
+                    }
+                }
             }
         }
 
         ApplyEngineStats(_dnsEngine.GetStats());
+        if (_bypassEngine is not null)
+        {
+            ApplyBypassStats(_bypassEngine.GetStats());
+        }
     }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ToggleBypassAsync()
+    {
+        if (_bypassEngine is null)
+        {
+            return;
+        }
+
+        if (IsBypassRunning)
+        {
+            await _bypassEngine.StopAsync();
+        }
+        else
+        {
+            var (ok, err) = await _bypassEngine.StartAsync();
+            if (!ok && !string.IsNullOrWhiteSpace(err))
+            {
+                EngineError = err;
+            }
+        }
+
+        ApplyBypassStats(_bypassEngine.GetStats());
+    }
+
+    [RelayCommand]
+    private void OpenBypass() => _navigation.Navigate(PageKeys.Bypass);
 
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task TestLocalProxyAsync()
@@ -327,6 +408,32 @@ public sealed partial class DashboardViewModel : PageViewModel
         else
         {
             ApplyEngineStats(stats);
+        }
+    }
+
+    internal void ApplyBypassStats(BypassRuntimeStats stats)
+    {
+        BypassState = stats.State;
+        BypassEndpoint = stats.ProxyEndpoint;
+        BypassWindowsProxyMode = stats.ActiveWindowsProxyMode;
+        BypassWindowsApplied = stats.WindowsProxyApplied;
+        BypassDpiCountDisplay = stats.DpiBypassedConnections > 0 || IsBypassRunning
+            ? stats.DpiBypassedConnections.ToString("N0", CultureInfo.CurrentCulture)
+            : "—";
+        BypassTunnelCountDisplay = stats.TunneledConnections > 0 || IsBypassRunning
+            ? stats.TunneledConnections.ToString("N0", CultureInfo.CurrentCulture)
+            : "—";
+    }
+
+    private void OnBypassStateChanged(object? sender, BypassRuntimeStats stats)
+    {
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(() => ApplyBypassStats(stats));
+        }
+        else
+        {
+            ApplyBypassStats(stats);
         }
     }
 }

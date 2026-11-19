@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v9: Phases 1–9. v10: Phase 11 monitoring modes & performance diagnostics.</summary>
-    public const int CurrentSchemaVersion = 10;
+    /// <summary>v1–v10: Phases 1–11. v11: DPI Bypass, Split-Tunnel proxy, and Auto-PAC settings.</summary>
+    public const int CurrentSchemaVersion = 11;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -37,6 +37,8 @@ public sealed class AppSettings
 
     public PerformanceSettings Performance { get; set; } = new();
 
+    public BypassSettings Bypass { get; set; } = new();
+
     /// <summary>Normalizes out-of-range or missing values after deserialization.</summary>
     public AppSettings Normalize()
     {
@@ -49,6 +51,7 @@ public sealed class AppSettings
         Gaming ??= new GamingSettings();
         Resilience ??= new ResilienceSettings();
         Performance ??= new PerformanceSettings();
+        Bypass ??= new BypassSettings();
         General.Normalize();
         Appearance.Normalize();
         Dns.Normalize();
@@ -58,6 +61,7 @@ public sealed class AppSettings
         Gaming.Normalize();
         Resilience.Normalize();
         Performance.Normalize();
+        Bypass.Normalize();
         return this;
     }
 
@@ -499,6 +503,82 @@ public sealed class PerformanceSettings
         }
 
         LogRetentionDays = Math.Clamp(LogRetentionDays, 1, 90);
+    }
+}
+
+public sealed class BypassSettings
+{
+    public const string DefaultListenAddress = "127.0.0.1";
+    public const int DefaultProxyPort = 10808;
+    public const int DefaultPacPort = 10809;
+
+    public bool IsBypassEnabled { get; set; } = true;
+
+    public bool AutoStartWithDnsEngine { get; set; } = true;
+
+    public string ListenAddress { get; set; } = DefaultListenAddress;
+
+    public int ProxyPort { get; set; } = DefaultProxyPort;
+
+    public int PacPort { get; set; } = DefaultPacPort;
+
+    public WindowsProxyMode WindowsProxyMode { get; set; } = WindowsProxyMode.AutoPac;
+
+    public bool ApplyWindowsProxyAutomatically { get; set; } = true;
+
+    public TlsFragmentationStrategy FragmentationStrategy { get; set; } = TlsFragmentationStrategy.RecordChunkSplit;
+
+    public int FragmentSizeBytes { get; set; } = 40;
+
+    public int FragmentDelayMs { get; set; }
+
+    public bool FragmentHttpHostHeader { get; set; } = true;
+
+    public bool AutoFallbackToTunnelOnDpiFailure { get; set; } = true;
+
+    public int ConnectTimeoutMs { get; set; } = 5000;
+
+    public bool ResolveTargetViaLocalDns { get; set; } = true;
+
+    public UpstreamTunnelSettings Upstream { get; set; } = new();
+
+    public List<BypassRule>? Rules { get; set; }
+
+    public List<string> DirectExclusionDomains { get; set; } = [];
+
+    internal void Normalize()
+    {
+        if (!IPAddress.TryParse(ListenAddress, out var ip) || !IPAddress.IsLoopback(ip))
+        {
+            ListenAddress = DefaultListenAddress;
+        }
+
+        ProxyPort = Math.Clamp(ProxyPort, 0, 65535);
+        PacPort = Math.Clamp(PacPort, 0, 65535);
+        if (ProxyPort > 0 && PacPort == ProxyPort)
+        {
+            PacPort = ProxyPort == 65535 ? 65534 : ProxyPort + 1;
+        }
+
+        if (!Enum.IsDefined(WindowsProxyMode))
+        {
+            WindowsProxyMode = WindowsProxyMode.AutoPac;
+        }
+
+        if (!Enum.IsDefined(FragmentationStrategy))
+        {
+            FragmentationStrategy = TlsFragmentationStrategy.RecordChunkSplit;
+        }
+
+        FragmentSizeBytes = Math.Clamp(FragmentSizeBytes, 8, 256);
+        FragmentDelayMs = Math.Clamp(FragmentDelayMs, 0, 50);
+        ConnectTimeoutMs = Math.Clamp(ConnectTimeoutMs, 1000, 20000);
+
+        Upstream ??= new UpstreamTunnelSettings();
+        Upstream.Normalize();
+
+        Rules ??= BuiltInBypassRules.CreateDefaultRules().ToList();
+        DirectExclusionDomains ??= [];
     }
 }
 

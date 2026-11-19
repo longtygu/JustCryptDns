@@ -231,6 +231,99 @@
                 </Border>
             </UniformGrid>
 
+            <!-- DPI Bypass & Firewall Protection Card -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource Card.Gap}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource Brush.NeutralSubtle}" />
+                                <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Neutral}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BypassState}" Value="{x:Static models:BypassEngineState.Running}">
+                                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding BypassState}" Value="{x:Static models:BypassEngineState.Degraded}">
+                                        <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE705;" FontSize="18"
+                                   Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Bypass_Title}" />
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Margin="0,2,0,2">
+                            <TextBlock.Text>
+                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="BypassState_">
+                                    <Binding Path="BypassState" />
+                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Bypass_Desc}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Command="{Binding OpenBypassCommand}" Content="{l:Loc Dash_Bypass_Configure}" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding ToggleBypassCommand}">
+                            <TextBlock>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="{l:Loc Bypass_StartEngine}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsBypassRunning}" Value="True">
+                                                <Setter Property="Text" Value="{l:Loc Bypass_StopEngine}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+                    </StackPanel>
+
+                    <UniformGrid Grid.Row="1" Grid.ColumnSpan="3" Rows="1" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_ProxyEndpoint}" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding BypassEndpoint}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_WinProxyMode}" />
+                            <TextBlock Style="{StaticResource ValueText}">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="WinProxyMode_">
+                                        <Binding Path="BypassWindowsProxyMode" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_Metric_DpiBypassed}" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding BypassDpiCountDisplay}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Bypass_Tunneled}" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding BypassTunnelCountDisplay}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </Grid>
+            </Border>
+
             <!-- Network: real local adapter data. -->
             <Border Style="{StaticResource Card}">
                 <StackPanel>

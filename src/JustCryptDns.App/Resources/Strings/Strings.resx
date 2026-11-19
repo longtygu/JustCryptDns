@@ -1311,4 +1311,247 @@
   <data name="TrafficFix_ServiceStoppedSuccess" xml:space="preserve">
     <value>Stopped '{0}' and switched JustCryptDns to 127.0.0.1:53.</value>
   </data>
+  <data name="Nav_Bypass" xml:space="preserve">
+    <value>DPI Bypass &amp; Tunnel</value>
+  </data>
+  <data name="Page_Bypass_Subtitle" xml:space="preserve">
+    <value>Pure-C# TLS fragmentation and domain-based split tunneling for Steam and blocked sites with zero gaming ping impact.</value>
+  </data>
+  <data name="Tray_EnableBypass" xml:space="preserve">
+    <value>Enable DPI Bypass proxy</value>
+  </data>
+  <data name="Tray_DisableBypass" xml:space="preserve">
+    <value>Disable DPI Bypass proxy</value>
+  </data>
+  <data name="Dash_Bypass_Title" xml:space="preserve">
+    <value>DPI Bypass &amp; Split-Tunnel</value>
+  </data>
+  <data name="Dash_Bypass_Desc" xml:space="preserve">
+    <value>Automatically unblocks Steam and blocked domains via Auto-PAC while keeping game traffic direct.</value>
+  </data>
+  <data name="Dash_Bypass_Configure" xml:space="preserve">
+    <value>Configure DPI &amp; Bypass</value>
+  </data>
+  <data name="Dash_Bypass_Tunneled" xml:space="preserve">
+    <value>Split-Tunneled</value>
+  </data>
+  <data name="Gaming_BypassSynergy_Title" xml:space="preserve">
+    <value>Gaming + DPI Bypass Synergy</value>
+  </data>
+  <data name="Gaming_BypassSynergy_Active" xml:space="preserve">
+    <value>In-game match traffic flows 100% direct (0 ms overhead); Steam/Discord storefronts bypass SNI DPI via Auto-PAC ({0}).</value>
+  </data>
+  <data name="Gaming_BypassSynergy_Inactive" xml:space="preserve">
+    <value>Start the DPI Bypass engine on Dashboard or DPI Bypass page to unblock Steam Store &amp; Community alongside Gaming Mode.</value>
+  </data>
+  <data name="Bypass_StartEngine" xml:space="preserve">
+    <value>Start Bypass Proxy</value>
+  </data>
+  <data name="Bypass_StopEngine" xml:space="preserve">
+    <value>Stop Bypass Proxy</value>
+  </data>
+  <data name="Bypass_RestoreProxy" xml:space="preserve">
+    <value>Restore Windows Proxy</value>
+  </data>
+  <data name="Bypass_EngineStatus" xml:space="preserve">
+    <value>DPI Bypass Engine</value>
+  </data>
+  <data name="Bypass_ArchitectureNote" xml:space="preserve">
+    <value>Zero kernel drivers, zero anti-cheat conflict. Only rules-matched domains traverse the local proxy via Auto-PAC.</value>
+  </data>
+  <data name="Bypass_WinProxyActive" xml:space="preserve">
+    <value>Windows Auto-PAC active</value>
+  </data>
+  <data name="Bypass_ProxyEndpoint" xml:space="preserve">
+    <value>Smart Proxy (HTTP / SOCKS5)</value>
+  </data>
+  <data name="Bypass_PacUrl" xml:space="preserve">
+    <value>Auto-PAC URL</value>
+  </data>
+  <data name="Bypass_Metric_DpiBypassed" xml:space="preserve">
+    <value>DPI Bypassed</value>
+  </data>
+  <data name="Bypass_Metric_TunnelFallback" xml:space="preserve">
+    <value>Tunneled / Auto-Fallbacks</value>
+  </data>
+  <data name="Bypass_Tester_Title" xml:space="preserve">
+    <value>Live domain connectivity &amp; DPI bypass tester</value>
+  </data>
+  <data name="Bypass_Tester_Run" xml:space="preserve">
+    <value>Test Bypass</value>
+  </data>
+  <data name="Bypass_Tester_AddRule" xml:space="preserve">
+    <value>Add to Rules</value>
+  </data>
+  <data name="Bypass_Settings_Title" xml:space="preserve">
+    <value>DPI Bypass &amp; Windows integration settings</value>
+  </data>
+  <data name="Bypass_WinProxyMode" xml:space="preserve">
+    <value>Windows proxy integration</value>
+  </data>
+  <data name="Bypass_TlsStrategy" xml:space="preserve">
+    <value>TLS fragmentation strategy</value>
+  </data>
+  <data name="Bypass_FragmentSize" xml:space="preserve">
+    <value>Chunk size (bytes)</value>
+  </data>
+  <data name="Bypass_FragmentDelay" xml:space="preserve">
+    <value>Fragment delay (ms)</value>
+  </data>
+  <data name="Bypass_ProxyPort" xml:space="preserve">
+    <value>Smart Proxy port</value>
+  </data>
+  <data name="Bypass_PacPort" xml:space="preserve">
+    <value>PAC server port</value>
+  </data>
+  <data name="Bypass_SaveApply" xml:space="preserve">
+    <value>Save &amp; Apply</value>
+  </data>
+  <data name="Bypass_Opt_AutoStart" xml:space="preserve">
+    <value>Auto-start with DNS Engine</value>
+  </data>
+  <data name="Bypass_Opt_AutoWinProxy" xml:space="preserve">
+    <value>Auto-apply Windows proxy (crash-safe)</value>
+  </data>
+  <data name="Bypass_Opt_EncryptedDns" xml:space="preserve">
+    <value>Resolve target IPs via encrypted DNS</value>
+  </data>
+  <data name="Bypass_Opt_HttpHostSplit" xml:space="preserve">
+    <value>Split plain HTTP Host header</value>
+  </data>
+  <data name="Bypass_Upstream_Title" xml:space="preserve">
+    <value>Tier 2: Split-Tunnel upstream (IP-block / Geo-block fallback)</value>
+  </data>
+  <data name="Bypass_Upstream_Enable" xml:space="preserve">
+    <value>Enable upstream Split-Tunnel</value>
+  </data>
+  <data name="Bypass_Upstream_Desc" xml:space="preserve">
+    <value>Routes only blocked/fallback domains through Cloudflare WARP local proxy, SOCKS5, or HTTP proxy without slowing down games.</value>
+  </data>
+  <data name="Bypass_Upstream_AutoFallback" xml:space="preserve">
+    <value>Auto-fallback to tunnel if DPI bypass fails</value>
+  </data>
+  <data name="Bypass_Upstream_Kind" xml:space="preserve">
+    <value>Upstream protocol</value>
+  </data>
+  <data name="Bypass_Upstream_Host" xml:space="preserve">
+    <value>Upstream host</value>
+  </data>
+  <data name="Bypass_Upstream_Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="Bypass_Upstream_User" xml:space="preserve">
+    <value>Username (optional)</value>
+  </data>
+  <data name="Bypass_Upstream_DetectWarp" xml:space="preserve">
+    <value>Detect Cloudflare WARP</value>
+  </data>
+  <data name="Bypass_Upstream_Test" xml:space="preserve">
+    <value>Test upstream</value>
+  </data>
+  <data name="Bypass_Rules_Title" xml:space="preserve">
+    <value>Domain bypass rules</value>
+  </data>
+  <data name="Bypass_Preset_Steam" xml:space="preserve">
+    <value>Enable Steam preset</value>
+  </data>
+  <data name="Bypass_Preset_Gaming" xml:space="preserve">
+    <value>Enable Gaming launchers</value>
+  </data>
+  <data name="Bypass_ResetRules" xml:space="preserve">
+    <value>Reset defaults</value>
+  </data>
+  <data name="Bypass_Activity_Title" xml:space="preserve">
+    <value>Recent bypass connection stream</value>
+  </data>
+  <data name="Bypass_Msg_Started" xml:space="preserve">
+    <value>DPI Bypass proxy and Auto-PAC are now active.</value>
+  </data>
+  <data name="Bypass_Msg_Stopped" xml:space="preserve">
+    <value>DPI Bypass proxy stopped and Windows proxy settings restored.</value>
+  </data>
+  <data name="Bypass_Msg_ProxyRestored" xml:space="preserve">
+    <value>Original Windows proxy settings restored safely.</value>
+  </data>
+  <data name="Bypass_Msg_RuleAdded" xml:space="preserve">
+    <value>Added bypass rule for '{0}'.</value>
+  </data>
+  <data name="Bypass_Msg_SettingsSaved" xml:space="preserve">
+    <value>Bypass settings saved.</value>
+  </data>
+  <data name="Bypass_Msg_RulesReset" xml:space="preserve">
+    <value>Built-in Steam, gaming, and blocked web rules restored.</value>
+  </data>
+  <data name="BypassState_Stopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="BypassState_Starting" xml:space="preserve">
+    <value>Starting</value>
+  </data>
+  <data name="BypassState_Running" xml:space="preserve">
+    <value>Active &amp; Protecting</value>
+  </data>
+  <data name="BypassState_Degraded" xml:space="preserve">
+    <value>Active (Limited OS Proxy)</value>
+  </data>
+  <data name="BypassState_Stopping" xml:space="preserve">
+    <value>Stopping</value>
+  </data>
+  <data name="BypassMode_Direct" xml:space="preserve">
+    <value>Direct (0 ms)</value>
+  </data>
+  <data name="BypassMode_DpiFragment" xml:space="preserve">
+    <value>DPI Fragmentation</value>
+  </data>
+  <data name="BypassMode_UpstreamTunnel" xml:space="preserve">
+    <value>Upstream Tunnel</value>
+  </data>
+  <data name="BypassMode_AutoHybrid" xml:space="preserve">
+    <value>Auto-Hybrid (DPI then Tunnel)</value>
+  </data>
+  <data name="TlsFrag_RecordChunkSplit" xml:space="preserve">
+    <value>TLS Record Chunks (Recommended)</value>
+  </data>
+  <data name="TlsFrag_SniMidpointSplit" xml:space="preserve">
+    <value>SNI Midpoint 2-Record Split</value>
+  </data>
+  <data name="TlsFrag_AggressiveSmallRecords" xml:space="preserve">
+    <value>Aggressive Small Records (16 B)</value>
+  </data>
+  <data name="WinProxyMode_AutoPac" xml:space="preserve">
+    <value>Auto-PAC (Games Stay Direct)</value>
+  </data>
+  <data name="WinProxyMode_GlobalSystemProxy" xml:space="preserve">
+    <value>Global Windows Proxy</value>
+  </data>
+  <data name="WinProxyMode_ManualOnly" xml:space="preserve">
+    <value>Manual / External App Only</value>
+  </data>
+  <data name="UpstreamKind_None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="UpstreamKind_CloudflareWarpLocal" xml:space="preserve">
+    <value>Cloudflare WARP (127.0.0.1:40000)</value>
+  </data>
+  <data name="UpstreamKind_Socks5" xml:space="preserve">
+    <value>SOCKS5 Proxy</value>
+  </data>
+  <data name="UpstreamKind_HttpConnect" xml:space="preserve">
+    <value>HTTP CONNECT Proxy</value>
+  </data>
+  <data name="BypassAction_DpiFragmented" xml:space="preserve">
+    <value>DPI Bypassed</value>
+  </data>
+  <data name="BypassAction_UpstreamTunneled" xml:space="preserve">
+    <value>Tunneled</value>
+  </data>
+  <data name="BypassAction_AutoFallbackTunnel" xml:space="preserve">
+    <value>Auto-Fallback</value>
+  </data>
+  <data name="BypassAction_DirectPassthrough" xml:space="preserve">
+    <value>Direct</value>
+  </data>
+  <data name="BypassAction_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
 </root>

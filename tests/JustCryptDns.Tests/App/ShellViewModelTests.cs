@@ -140,7 +140,7 @@ public sealed class ShellViewModelTests
 
         Assert.Equal(
             [PageKeys.Dashboard, PageKeys.DnsManager, PageKeys.Resolvers, PageKeys.Routing, PageKeys.Gaming,
-             PageKeys.Filtering, PageKeys.Diagnostics, PageKeys.Monitor, PageKeys.Settings],
+             PageKeys.Bypass, PageKeys.Filtering, PageKeys.Diagnostics, PageKeys.Monitor, PageKeys.Settings],
             keys);
     }
 

@@ -30,9 +30,6 @@
             <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
                 <views:DashboardView />
             </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:PlannedFeatureViewModel}">
-                <views:PlannedFeatureView />
-            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
                 <views:SettingsView />
             </DataTemplate>
@@ -53,6 +50,9 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:GamingViewModel}">
                 <views:GamingView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:BypassViewModel}">
+                <views:BypassView />
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:DiagnosticsViewModel}">
                 <views:DiagnosticsView />

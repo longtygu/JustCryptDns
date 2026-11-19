@@ -97,6 +97,12 @@ public sealed partial class LocalizationResourceTests
         expected.AddRange(Enum.GetNames<DnsFilteringCapability>().Select(n => "FilteringCap_" + n));
         expected.AddRange(Enum.GetNames<RoutingMatchKind>().Select(n => "RoutingMatch_" + n));
         expected.AddRange(Enum.GetNames<BlocklistCategory>().Select(n => "BlockCat_" + n));
+        expected.AddRange(Enum.GetNames<BypassEngineState>().Select(n => "BypassState_" + n));
+        expected.AddRange(Enum.GetNames<BypassMode>().Select(n => "BypassMode_" + n));
+        expected.AddRange(Enum.GetNames<TlsFragmentationStrategy>().Select(n => "TlsFrag_" + n));
+        expected.AddRange(Enum.GetNames<WindowsProxyMode>().Select(n => "WinProxyMode_" + n));
+        expected.AddRange(Enum.GetNames<UpstreamTunnelKind>().Select(n => "UpstreamKind_" + n));
+        expected.AddRange(Enum.GetNames<BypassActionKind>().Select(n => "BypassAction_" + n));
         expected.AddRange(LanguageCodes.All.Select(c => "Lang_" + c));
 
         foreach (var key in expected)

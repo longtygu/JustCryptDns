@@ -49,6 +49,7 @@ public static class PageKeys
     public const string Resolvers = "Resolvers";
     public const string Routing = "Routing";
     public const string Gaming = "Gaming";
+    public const string Bypass = "Bypass";
     public const string Filtering = "Filtering";
     public const string Diagnostics = "Diagnostics";
     public const string Monitor = "Monitor";

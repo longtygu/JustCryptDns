@@ -17,6 +17,9 @@ public interface IAppPaths
     /// <summary>Full path of the verified Windows adapter DNS backup file.</summary>
     string DnsBackupFile { get; }
 
+    /// <summary>Full path of the verified Windows system proxy backup file.</summary>
+    string ProxyBackupFile { get; }
+
     /// <summary>Directory holding managed engine binaries and runtime configs (e.g. dnscrypt-proxy).</summary>
     string EngineDirectory { get; }
 }
@@ -36,6 +39,7 @@ public sealed class AppPaths : IAppPaths
         LogsDirectory = Path.Combine(DataDirectory, "logs");
         SettingsFile = Path.Combine(DataDirectory, "settings.json");
         DnsBackupFile = Path.Combine(DataDirectory, "dns-backup.json");
+        ProxyBackupFile = Path.Combine(DataDirectory, "proxy-backup.json");
         EngineDirectory = Path.Combine(DataDirectory, "engine");
     }
 
@@ -46,6 +50,8 @@ public sealed class AppPaths : IAppPaths
     public string SettingsFile { get; }
 
     public string DnsBackupFile { get; }
+
+    public string ProxyBackupFile { get; }
 
     public string EngineDirectory { get; }
 

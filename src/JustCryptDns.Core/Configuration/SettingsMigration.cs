@@ -160,6 +160,19 @@ internal sealed class MigrationV9ToV10 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v11 adds <see cref="BypassSettings"/> (DPI fragmentation, local Auto-PAC smart proxy, and Split-Tunnel upstream).
+/// </summary>
+internal sealed class MigrationV10ToV11 : ISettingsMigration
+{
+    public int FromVersion => 10;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by BypassSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -173,7 +186,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11()];
 
     public static int ReadVersion(JsonObject document)
     {

@@ -432,3 +432,84 @@ TrafficFix_UseLoopback53|Use {0}:53 & apply to Windows (Recommended)|Dùng {0}:5
 TrafficFix_StopService53|Stop '{0}' & use 127.0.0.1:53|Dừng '{0}' & dùng 127.0.0.1:53
 TrafficFix_AlternateLoopbackSuccess|JustCryptDns is now listening on {0}:53 and intercepting Windows system DNS traffic without stopping other services.|JustCryptDns đã chuyển sang {0}:53 và đang tiếp nhận lưu lượng DNS hệ thống của Windows mà không cần tắt dịch vụ cũ.
 TrafficFix_ServiceStoppedSuccess|Stopped '{0}' and switched JustCryptDns to 127.0.0.1:53.|Đã dừng '{0}' và chuyển JustCryptDns về 127.0.0.1:53.
+Nav_Bypass|DPI Bypass & Tunnel|Vượt DPI & Tunnel
+Page_Bypass_Subtitle|Pure-C# TLS fragmentation and domain-based split tunneling for Steam and blocked sites with zero gaming ping impact.|Tách mảnh TLS thuần C# và định tuyến tunnel theo tên miền cho Steam cùng các trang bị chặn mà không ảnh hưởng ping game.
+Tray_EnableBypass|Enable DPI Bypass proxy|Bật proxy vượt DPI
+Tray_DisableBypass|Disable DPI Bypass proxy|Tắt proxy vượt DPI
+Dash_Bypass_Title|DPI Bypass & Split-Tunnel|Vượt DPI & Split-Tunnel
+Dash_Bypass_Desc|Automatically unblocks Steam and blocked domains via Auto-PAC while keeping game traffic direct.|Tự động mở khóa Steam và các trang bị chặn qua Auto-PAC trong khi vẫn giữ lưu lượng game đi thẳng.
+Dash_Bypass_Configure|Configure DPI & Bypass|Cấu hình DPI & Bypass
+Dash_Bypass_Tunneled|Split-Tunneled|Đi qua Tunnel
+Gaming_BypassSynergy_Title|Gaming + DPI Bypass Synergy|Kết hợp Chơi game & Vượt tường lửa DPI
+Gaming_BypassSynergy_Active|In-game match traffic flows 100% direct (0 ms overhead); Steam/Discord storefronts bypass SNI DPI via Auto-PAC ({0}).|Lưu lượng trận game đi thẳng 100% (0 ms độ trễ); cửa hàng Steam/Discord vượt chặn DPI SNI qua Auto-PAC ({0}).
+Gaming_BypassSynergy_Inactive|Start the DPI Bypass engine on Dashboard or DPI Bypass page to unblock Steam Store & Community alongside Gaming Mode.|Hãy bật bộ vượt DPI tại Tổng quan hoặc mục Vượt DPI & Tunnel để mở khóa Steam Store/Community song song với Chế độ Game.
+Bypass_StartEngine|Start Bypass Proxy|Bật Bypass Proxy
+Bypass_StopEngine|Stop Bypass Proxy|Dừng Bypass Proxy
+Bypass_RestoreProxy|Restore Windows Proxy|Khôi phục Proxy Windows
+Bypass_EngineStatus|DPI Bypass Engine|Trạng thái bộ vượt DPI
+Bypass_ArchitectureNote|Zero kernel drivers, zero anti-cheat conflict. Only rules-matched domains traverse the local proxy via Auto-PAC.|Không dùng kernel driver, không xung đột Anti-Cheat. Chỉ các tên miền theo quy tắc mới đi qua proxy cục bộ nhờ Auto-PAC.
+Bypass_WinProxyActive|Windows Auto-PAC active|Auto-PAC Windows đang bật
+Bypass_ProxyEndpoint|Smart Proxy (HTTP / SOCKS5)|Proxy thông minh (HTTP / SOCKS5)
+Bypass_PacUrl|Auto-PAC URL|Đường dẫn Auto-PAC
+Bypass_Metric_DpiBypassed|DPI Bypassed|Đã vượt DPI
+Bypass_Metric_TunnelFallback|Tunneled / Auto-Fallbacks|Tunnel / Tự chuyển tầng
+Bypass_Tester_Title|Live domain connectivity & DPI bypass tester|Kiểm tra kết nối & vượt DPI theo tên miền
+Bypass_Tester_Run|Test Bypass|Kiểm tra vượt chặn
+Bypass_Tester_AddRule|Add to Rules|Thêm vào quy tắc
+Bypass_Settings_Title|DPI Bypass & Windows integration settings|Cài đặt vượt DPI & tích hợp Windows
+Bypass_WinProxyMode|Windows proxy integration|Tích hợp Proxy Windows
+Bypass_TlsStrategy|TLS fragmentation strategy|Chiến lược tách gói TLS
+Bypass_FragmentSize|Chunk size (bytes)|Kích thước mảnh (byte)
+Bypass_FragmentDelay|Fragment delay (ms)|Độ trễ mảnh (ms)
+Bypass_ProxyPort|Smart Proxy port|Cổng Proxy thông minh
+Bypass_PacPort|PAC server port|Cổng máy chủ PAC
+Bypass_SaveApply|Save & Apply|Lưu & Áp dụng
+Bypass_Opt_AutoStart|Auto-start with DNS Engine|Tự bật cùng DNS Engine
+Bypass_Opt_AutoWinProxy|Auto-apply Windows proxy (crash-safe)|Tự cấu hình Proxy Windows (an toàn khi sập nguồn)
+Bypass_Opt_EncryptedDns|Resolve target IPs via encrypted DNS|Phân giải IP đích qua DNS mã hóa
+Bypass_Opt_HttpHostSplit|Split plain HTTP Host header|Tách tiêu đề Host với HTTP thường
+Bypass_Upstream_Title|Tier 2: Split-Tunnel upstream (IP-block / Geo-block fallback)|Tầng 2: Split-Tunnel dự phòng (vượt chặn IP / khóa vùng)
+Bypass_Upstream_Enable|Enable upstream Split-Tunnel|Bật Split-Tunnel dự phòng
+Bypass_Upstream_Desc|Routes only blocked/fallback domains through Cloudflare WARP local proxy, SOCKS5, or HTTP proxy without slowing down games.|Chỉ đẩy các tên miền bị chặn IP hoặc tự động fallback qua proxy Cloudflare WARP, SOCKS5 hoặc HTTP mà không làm lag game.
+Bypass_Upstream_AutoFallback|Auto-fallback to tunnel if DPI bypass fails|Tự chuyển sang tunnel nếu vượt DPI thất bại
+Bypass_Upstream_Kind|Upstream protocol|Giao thức upstream
+Bypass_Upstream_Host|Upstream host|Máy chủ upstream
+Bypass_Upstream_Port|Port|Cổng
+Bypass_Upstream_User|Username (optional)|Tên đăng nhập (tùy chọn)
+Bypass_Upstream_DetectWarp|Detect Cloudflare WARP|Tìm Cloudflare WARP
+Bypass_Upstream_Test|Test upstream|Kiểm tra upstream
+Bypass_Rules_Title|Domain bypass rules|Quy tắc tên miền vượt chặn
+Bypass_Preset_Steam|Enable Steam preset|Bật gói Steam
+Bypass_Preset_Gaming|Enable Gaming launchers|Bật các Launcher Game
+Bypass_ResetRules|Reset defaults|Khôi phục mặc định
+Bypass_Activity_Title|Recent bypass connection stream|Luồng kết nối vượt chặn gần đây
+Bypass_Msg_Started|DPI Bypass proxy and Auto-PAC are now active.|Proxy vượt DPI và Auto-PAC đã được kích hoạt.
+Bypass_Msg_Stopped|DPI Bypass proxy stopped and Windows proxy settings restored.|Đã dừng Proxy vượt DPI và khôi phục cài đặt Proxy Windows.
+Bypass_Msg_ProxyRestored|Original Windows proxy settings restored safely.|Đã khôi phục an toàn cài đặt Proxy gốc của Windows.
+Bypass_Msg_RuleAdded|Added bypass rule for '{0}'.|Đã thêm quy tắc vượt chặn cho '{0}'.
+Bypass_Msg_SettingsSaved|Bypass settings saved.|Đã lưu cài đặt vượt chặn.
+Bypass_Msg_RulesReset|Built-in Steam, gaming, and blocked web rules restored.|Đã khôi phục các quy tắc mặc định cho Steam, game và web bị chặn.
+BypassState_Stopped|Stopped|Đã dừng
+BypassState_Starting|Starting|Đang khởi động
+BypassState_Running|Active & Protecting|Đang hoạt động
+BypassState_Degraded|Active (Limited OS Proxy)|Đang chạy (Hạn chế Proxy Windows)
+BypassState_Stopping|Stopping|Đang dừng
+BypassMode_Direct|Direct (0 ms)|Đi thẳng (0 ms)
+BypassMode_DpiFragment|DPI Fragmentation|Tách gói DPI
+BypassMode_UpstreamTunnel|Upstream Tunnel|Qua Tunnel
+BypassMode_AutoHybrid|Auto-Hybrid (DPI then Tunnel)|Lai tự động (DPI rồi Tunnel)
+TlsFrag_RecordChunkSplit|TLS Record Chunks (Recommended)|Tách mảnh TLS Record (Khuyên dùng)
+TlsFrag_SniMidpointSplit|SNI Midpoint 2-Record Split|Cắt đôi đúng điểm giữa SNI
+TlsFrag_AggressiveSmallRecords|Aggressive Small Records (16 B)|Tách siêu nhỏ (16 byte)
+WinProxyMode_AutoPac|Auto-PAC (Games Stay Direct)|Auto-PAC (Game đi thẳng 100%)
+WinProxyMode_GlobalSystemProxy|Global Windows Proxy|Proxy toàn hệ thống
+WinProxyMode_ManualOnly|Manual / External App Only|Chỉ mở cổng thủ công
+UpstreamKind_None|None|Không dùng
+UpstreamKind_CloudflareWarpLocal|Cloudflare WARP (127.0.0.1:40000)|Cloudflare WARP (127.0.0.1:40000)
+UpstreamKind_Socks5|SOCKS5 Proxy|Proxy SOCKS5
+UpstreamKind_HttpConnect|HTTP CONNECT Proxy|Proxy HTTP CONNECT
+BypassAction_DpiFragmented|DPI Bypassed|Đã vượt DPI
+BypassAction_UpstreamTunneled|Tunneled|Qua Tunnel
+BypassAction_AutoFallbackTunnel|Auto-Fallback|Tự chuyển Tunnel
+BypassAction_DirectPassthrough|Direct|Đi thẳng
+BypassAction_Failed|Failed|Thất bại

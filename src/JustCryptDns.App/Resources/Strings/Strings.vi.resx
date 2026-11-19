@@ -1311,4 +1311,247 @@
   <data name="TrafficFix_ServiceStoppedSuccess" xml:space="preserve">
     <value>Đã dừng '{0}' và chuyển JustCryptDns về 127.0.0.1:53.</value>
   </data>
+  <data name="Nav_Bypass" xml:space="preserve">
+    <value>Vượt DPI &amp; Tunnel</value>
+  </data>
+  <data name="Page_Bypass_Subtitle" xml:space="preserve">
+    <value>Tách mảnh TLS thuần C# và định tuyến tunnel theo tên miền cho Steam cùng các trang bị chặn mà không ảnh hưởng ping game.</value>
+  </data>
+  <data name="Tray_EnableBypass" xml:space="preserve">
+    <value>Bật proxy vượt DPI</value>
+  </data>
+  <data name="Tray_DisableBypass" xml:space="preserve">
+    <value>Tắt proxy vượt DPI</value>
+  </data>
+  <data name="Dash_Bypass_Title" xml:space="preserve">
+    <value>Vượt DPI &amp; Split-Tunnel</value>
+  </data>
+  <data name="Dash_Bypass_Desc" xml:space="preserve">
+    <value>Tự động mở khóa Steam và các trang bị chặn qua Auto-PAC trong khi vẫn giữ lưu lượng game đi thẳng.</value>
+  </data>
+  <data name="Dash_Bypass_Configure" xml:space="preserve">
+    <value>Cấu hình DPI &amp; Bypass</value>
+  </data>
+  <data name="Dash_Bypass_Tunneled" xml:space="preserve">
+    <value>Đi qua Tunnel</value>
+  </data>
+  <data name="Gaming_BypassSynergy_Title" xml:space="preserve">
+    <value>Kết hợp Chơi game &amp; Vượt tường lửa DPI</value>
+  </data>
+  <data name="Gaming_BypassSynergy_Active" xml:space="preserve">
+    <value>Lưu lượng trận game đi thẳng 100% (0 ms độ trễ); cửa hàng Steam/Discord vượt chặn DPI SNI qua Auto-PAC ({0}).</value>
+  </data>
+  <data name="Gaming_BypassSynergy_Inactive" xml:space="preserve">
+    <value>Hãy bật bộ vượt DPI tại Tổng quan hoặc mục Vượt DPI &amp; Tunnel để mở khóa Steam Store/Community song song với Chế độ Game.</value>
+  </data>
+  <data name="Bypass_StartEngine" xml:space="preserve">
+    <value>Bật Bypass Proxy</value>
+  </data>
+  <data name="Bypass_StopEngine" xml:space="preserve">
+    <value>Dừng Bypass Proxy</value>
+  </data>
+  <data name="Bypass_RestoreProxy" xml:space="preserve">
+    <value>Khôi phục Proxy Windows</value>
+  </data>
+  <data name="Bypass_EngineStatus" xml:space="preserve">
+    <value>Trạng thái bộ vượt DPI</value>
+  </data>
+  <data name="Bypass_ArchitectureNote" xml:space="preserve">
+    <value>Không dùng kernel driver, không xung đột Anti-Cheat. Chỉ các tên miền theo quy tắc mới đi qua proxy cục bộ nhờ Auto-PAC.</value>
+  </data>
+  <data name="Bypass_WinProxyActive" xml:space="preserve">
+    <value>Auto-PAC Windows đang bật</value>
+  </data>
+  <data name="Bypass_ProxyEndpoint" xml:space="preserve">
+    <value>Proxy thông minh (HTTP / SOCKS5)</value>
+  </data>
+  <data name="Bypass_PacUrl" xml:space="preserve">
+    <value>Đường dẫn Auto-PAC</value>
+  </data>
+  <data name="Bypass_Metric_DpiBypassed" xml:space="preserve">
+    <value>Đã vượt DPI</value>
+  </data>
+  <data name="Bypass_Metric_TunnelFallback" xml:space="preserve">
+    <value>Tunnel / Tự chuyển tầng</value>
+  </data>
+  <data name="Bypass_Tester_Title" xml:space="preserve">
+    <value>Kiểm tra kết nối &amp; vượt DPI theo tên miền</value>
+  </data>
+  <data name="Bypass_Tester_Run" xml:space="preserve">
+    <value>Kiểm tra vượt chặn</value>
+  </data>
+  <data name="Bypass_Tester_AddRule" xml:space="preserve">
+    <value>Thêm vào quy tắc</value>
+  </data>
+  <data name="Bypass_Settings_Title" xml:space="preserve">
+    <value>Cài đặt vượt DPI &amp; tích hợp Windows</value>
+  </data>
+  <data name="Bypass_WinProxyMode" xml:space="preserve">
+    <value>Tích hợp Proxy Windows</value>
+  </data>
+  <data name="Bypass_TlsStrategy" xml:space="preserve">
+    <value>Chiến lược tách gói TLS</value>
+  </data>
+  <data name="Bypass_FragmentSize" xml:space="preserve">
+    <value>Kích thước mảnh (byte)</value>
+  </data>
+  <data name="Bypass_FragmentDelay" xml:space="preserve">
+    <value>Độ trễ mảnh (ms)</value>
+  </data>
+  <data name="Bypass_ProxyPort" xml:space="preserve">
+    <value>Cổng Proxy thông minh</value>
+  </data>
+  <data name="Bypass_PacPort" xml:space="preserve">
+    <value>Cổng máy chủ PAC</value>
+  </data>
+  <data name="Bypass_SaveApply" xml:space="preserve">
+    <value>Lưu &amp; Áp dụng</value>
+  </data>
+  <data name="Bypass_Opt_AutoStart" xml:space="preserve">
+    <value>Tự bật cùng DNS Engine</value>
+  </data>
+  <data name="Bypass_Opt_AutoWinProxy" xml:space="preserve">
+    <value>Tự cấu hình Proxy Windows (an toàn khi sập nguồn)</value>
+  </data>
+  <data name="Bypass_Opt_EncryptedDns" xml:space="preserve">
+    <value>Phân giải IP đích qua DNS mã hóa</value>
+  </data>
+  <data name="Bypass_Opt_HttpHostSplit" xml:space="preserve">
+    <value>Tách tiêu đề Host với HTTP thường</value>
+  </data>
+  <data name="Bypass_Upstream_Title" xml:space="preserve">
+    <value>Tầng 2: Split-Tunnel dự phòng (vượt chặn IP / khóa vùng)</value>
+  </data>
+  <data name="Bypass_Upstream_Enable" xml:space="preserve">
+    <value>Bật Split-Tunnel dự phòng</value>
+  </data>
+  <data name="Bypass_Upstream_Desc" xml:space="preserve">
+    <value>Chỉ đẩy các tên miền bị chặn IP hoặc tự động fallback qua proxy Cloudflare WARP, SOCKS5 hoặc HTTP mà không làm lag game.</value>
+  </data>
+  <data name="Bypass_Upstream_AutoFallback" xml:space="preserve">
+    <value>Tự chuyển sang tunnel nếu vượt DPI thất bại</value>
+  </data>
+  <data name="Bypass_Upstream_Kind" xml:space="preserve">
+    <value>Giao thức upstream</value>
+  </data>
+  <data name="Bypass_Upstream_Host" xml:space="preserve">
+    <value>Máy chủ upstream</value>
+  </data>
+  <data name="Bypass_Upstream_Port" xml:space="preserve">
+    <value>Cổng</value>
+  </data>
+  <data name="Bypass_Upstream_User" xml:space="preserve">
+    <value>Tên đăng nhập (tùy chọn)</value>
+  </data>
+  <data name="Bypass_Upstream_DetectWarp" xml:space="preserve">
+    <value>Tìm Cloudflare WARP</value>
+  </data>
+  <data name="Bypass_Upstream_Test" xml:space="preserve">
+    <value>Kiểm tra upstream</value>
+  </data>
+  <data name="Bypass_Rules_Title" xml:space="preserve">
+    <value>Quy tắc tên miền vượt chặn</value>
+  </data>
+  <data name="Bypass_Preset_Steam" xml:space="preserve">
+    <value>Bật gói Steam</value>
+  </data>
+  <data name="Bypass_Preset_Gaming" xml:space="preserve">
+    <value>Bật các Launcher Game</value>
+  </data>
+  <data name="Bypass_ResetRules" xml:space="preserve">
+    <value>Khôi phục mặc định</value>
+  </data>
+  <data name="Bypass_Activity_Title" xml:space="preserve">
+    <value>Luồng kết nối vượt chặn gần đây</value>
+  </data>
+  <data name="Bypass_Msg_Started" xml:space="preserve">
+    <value>Proxy vượt DPI và Auto-PAC đã được kích hoạt.</value>
+  </data>
+  <data name="Bypass_Msg_Stopped" xml:space="preserve">
+    <value>Đã dừng Proxy vượt DPI và khôi phục cài đặt Proxy Windows.</value>
+  </data>
+  <data name="Bypass_Msg_ProxyRestored" xml:space="preserve">
+    <value>Đã khôi phục an toàn cài đặt Proxy gốc của Windows.</value>
+  </data>
+  <data name="Bypass_Msg_RuleAdded" xml:space="preserve">
+    <value>Đã thêm quy tắc vượt chặn cho '{0}'.</value>
+  </data>
+  <data name="Bypass_Msg_SettingsSaved" xml:space="preserve">
+    <value>Đã lưu cài đặt vượt chặn.</value>
+  </data>
+  <data name="Bypass_Msg_RulesReset" xml:space="preserve">
+    <value>Đã khôi phục các quy tắc mặc định cho Steam, game và web bị chặn.</value>
+  </data>
+  <data name="BypassState_Stopped" xml:space="preserve">
+    <value>Đã dừng</value>
+  </data>
+  <data name="BypassState_Starting" xml:space="preserve">
+    <value>Đang khởi động</value>
+  </data>
+  <data name="BypassState_Running" xml:space="preserve">
+    <value>Đang hoạt động</value>
+  </data>
+  <data name="BypassState_Degraded" xml:space="preserve">
+    <value>Đang chạy (Hạn chế Proxy Windows)</value>
+  </data>
+  <data name="BypassState_Stopping" xml:space="preserve">
+    <value>Đang dừng</value>
+  </data>
+  <data name="BypassMode_Direct" xml:space="preserve">
+    <value>Đi thẳng (0 ms)</value>
+  </data>
+  <data name="BypassMode_DpiFragment" xml:space="preserve">
+    <value>Tách gói DPI</value>
+  </data>
+  <data name="BypassMode_UpstreamTunnel" xml:space="preserve">
+    <value>Qua Tunnel</value>
+  </data>
+  <data name="BypassMode_AutoHybrid" xml:space="preserve">
+    <value>Lai tự động (DPI rồi Tunnel)</value>
+  </data>
+  <data name="TlsFrag_RecordChunkSplit" xml:space="preserve">
+    <value>Tách mảnh TLS Record (Khuyên dùng)</value>
+  </data>
+  <data name="TlsFrag_SniMidpointSplit" xml:space="preserve">
+    <value>Cắt đôi đúng điểm giữa SNI</value>
+  </data>
+  <data name="TlsFrag_AggressiveSmallRecords" xml:space="preserve">
+    <value>Tách siêu nhỏ (16 byte)</value>
+  </data>
+  <data name="WinProxyMode_AutoPac" xml:space="preserve">
+    <value>Auto-PAC (Game đi thẳng 100%)</value>
+  </data>
+  <data name="WinProxyMode_GlobalSystemProxy" xml:space="preserve">
+    <value>Proxy toàn hệ thống</value>
+  </data>
+  <data name="WinProxyMode_ManualOnly" xml:space="preserve">
+    <value>Chỉ mở cổng thủ công</value>
+  </data>
+  <data name="UpstreamKind_None" xml:space="preserve">
+    <value>Không dùng</value>
+  </data>
+  <data name="UpstreamKind_CloudflareWarpLocal" xml:space="preserve">
+    <value>Cloudflare WARP (127.0.0.1:40000)</value>
+  </data>
+  <data name="UpstreamKind_Socks5" xml:space="preserve">
+    <value>Proxy SOCKS5</value>
+  </data>
+  <data name="UpstreamKind_HttpConnect" xml:space="preserve">
+    <value>Proxy HTTP CONNECT</value>
+  </data>
+  <data name="BypassAction_DpiFragmented" xml:space="preserve">
+    <value>Đã vượt DPI</value>
+  </data>
+  <data name="BypassAction_UpstreamTunneled" xml:space="preserve">
+    <value>Qua Tunnel</value>
+  </data>
+  <data name="BypassAction_AutoFallbackTunnel" xml:space="preserve">
+    <value>Tự chuyển Tunnel</value>
+  </data>
+  <data name="BypassAction_DirectPassthrough" xml:space="preserve">
+    <value>Đi thẳng</value>
+  </data>
+  <data name="BypassAction_Failed" xml:space="preserve">
+    <value>Thất bại</value>
+  </data>
 </root>

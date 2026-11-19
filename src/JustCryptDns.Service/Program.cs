@@ -12,6 +12,7 @@ using JustCryptDns.Infrastructure.Ipc;
 using JustCryptDns.Infrastructure.Logging;
 using JustCryptDns.Infrastructure.Storage;
 using JustCryptDns.Infrastructure.Windows;
+using JustCryptDns.Network.Bypass;
 using JustCryptDns.Network.Diagnostics;
 using JustCryptDns.Network.Failover;
 using JustCryptDns.Network.Gaming;
@@ -54,6 +55,7 @@ public static class Program
                 new SettingsService(sp.GetRequiredService<ISettingsStore>(), sp.GetRequiredService<ILogger<SettingsService>>(), initial));
             builder.Services.AddSingleton<INetworkInfoService, NetworkInfoService>();
             builder.Services.AddSingleton<IWindowsDnsManager, WindowsNetworkDnsService>();
+            builder.Services.AddSingleton<IWindowsProxyManager, WindowsSystemProxyService>();
             builder.Services.AddSingleton<IDnsCryptProxyManager, DnsCryptProxyManager>();
             builder.Services.AddSingleton<IResolverLibraryService, ResolverLibraryService>();
             builder.Services.AddSingleton<IDnsRoutingService, DnsRoutingService>();
@@ -63,6 +65,7 @@ public static class Program
             builder.Services.AddSingleton<INetworkDiagnosticsService, NetworkDiagnosticsService>();
             builder.Services.AddSingleton<IDnsEngine, DnsEngineService>();
             builder.Services.AddSingleton<IGamingEngineService, GamingEngineService>();
+            builder.Services.AddSingleton<IBypassEngineService, BypassEngineService>();
             builder.Services.AddSingleton<ServiceStateManager>();
             builder.Services.AddSingleton<IServiceIpcHandler>(sp => sp.GetRequiredService<ServiceStateManager>());
             builder.Services.AddSingleton<NamedPipeIpcServer>();

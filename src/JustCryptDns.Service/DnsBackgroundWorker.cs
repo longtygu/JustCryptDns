@@ -12,6 +12,7 @@ public sealed class DnsBackgroundWorker : BackgroundService
 {
     private readonly ServiceStateManager _state;
     private readonly IDnsEngine _dnsEngine;
+    private readonly IBypassEngineService? _bypassEngine;
     private readonly NamedPipeIpcServer _ipcServer;
     private readonly ILogger<DnsBackgroundWorker> _logger;
 
@@ -19,12 +20,14 @@ public sealed class DnsBackgroundWorker : BackgroundService
         ServiceStateManager state,
         IDnsEngine dnsEngine,
         NamedPipeIpcServer ipcServer,
-        ILogger<DnsBackgroundWorker> logger)
+        ILogger<DnsBackgroundWorker> logger,
+        IBypassEngineService? bypassEngine = null)
     {
         _state = state;
         _dnsEngine = dnsEngine;
         _ipcServer = ipcServer;
         _logger = logger;
+        _bypassEngine = bypassEngine;
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
@@ -51,6 +54,11 @@ public sealed class DnsBackgroundWorker : BackgroundService
     {
         _logger.LogInformation("JustCryptDns background service stopping.");
         await _ipcServer.DisposeAsync().ConfigureAwait(false);
+        if (_bypassEngine is not null)
+        {
+            await _bypassEngine.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         await _dnsEngine.StopAsync(cancellationToken).ConfigureAwait(false);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }

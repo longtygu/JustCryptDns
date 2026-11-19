@@ -59,6 +59,7 @@ public sealed partial class ShellViewModel : ObservableObject
             new NavItem(PageKeys.Resolvers, "\uE8F1", "Nav_Resolvers"),
             new NavItem(PageKeys.Routing, "\uE8AB", "Nav_Routing"),
             new NavItem(PageKeys.Gaming, "\uE7FC", "Nav_Gaming"),
+            new NavItem(PageKeys.Bypass, "\uE705", "Nav_Bypass"),
             new NavItem(PageKeys.Filtering, "\uE71C", "Nav_Filtering"),
             new NavItem(PageKeys.Diagnostics, "\uE9D9", "Nav_Diagnostics"),
             new NavItem(PageKeys.Monitor, "\uE9D2", "Nav_Monitor"),

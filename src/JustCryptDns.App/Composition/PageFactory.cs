@@ -22,6 +22,7 @@ public sealed class PageFactory : IPageFactory
         PageKeys.Routing => _services.GetRequiredService<RoutingViewModel>(),
         PageKeys.Filtering => _services.GetRequiredService<FilteringViewModel>(),
         PageKeys.Gaming => _services.GetRequiredService<GamingViewModel>(),
+        PageKeys.Bypass => _services.GetRequiredService<BypassViewModel>(),
         PageKeys.Diagnostics => _services.GetRequiredService<DiagnosticsViewModel>(),
         PageKeys.Monitor => _services.GetRequiredService<LiveMonitorViewModel>(),
         _ => throw new ArgumentOutOfRangeException(nameof(pageKey), pageKey, "Unknown page."),

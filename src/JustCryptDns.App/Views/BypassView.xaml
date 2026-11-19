@@ -1,0 +1,456 @@
+<UserControl x:Class="JustCryptDns.App.Views.BypassView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
+             xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
+             xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1550"
+             d:DataContext="{d:DesignInstance Type=vm:BypassViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="SectionCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+        </Style>
+        <Style x:Key="RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.BodyLarge}" />
+        </Style>
+        <Style x:Key="Divider" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Divider}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Margin" Value="0,14,0,14" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel Margin="32,4,32,32" MaxWidth="940">
+            <!-- Page Header -->
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Bypass}" />
+                    <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Bypass_Subtitle}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding RestoreWindowsProxyCommand}" Content="{l:Loc Bypass_RestoreProxy}" Margin="0,0,8,0" />
+                    <Button Style="{StaticResource Button.Primary}" Command="{Binding ToggleBypassEngineCommand}">
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{l:Loc Bypass_StartEngine}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                            <Setter Property="Text" Value="{l:Loc Bypass_StopEngine}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Status / Error Banners -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+            </Border>
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+            </Border>
+
+            <!-- Hero Status & KPI Cards -->
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="48" Height="48" CornerRadius="24" VerticalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.NeutralSubtle}" />
+                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Neutral}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EngineState}" Value="{x:Static models:BypassEngineState.Running}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding EngineState}" Value="{x:Static models:BypassEngineState.Degraded}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE705;" FontSize="20"
+                                       Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_EngineStatus}" />
+                            <TextBlock FontSize="{DynamicResource Font.Size.Heading}" FontWeight="SemiBold" Margin="0,2,0,2">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="BypassState_">
+                                        <Binding Path="EngineState" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Bypass_ArchitectureNote}" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Style="{StaticResource Pill}"
+                                Background="{DynamicResource Brush.SuccessSubtle}"
+                                Visibility="{Binding WindowsProxyApplied, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Brush.Success}" Text="{l:Loc Bypass_WinProxyActive}" />
+                        </Border>
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+
+                    <UniformGrid Rows="1" Columns="4" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_ProxyEndpoint}" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding ProxyEndpoint}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_PacUrl}" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PacUrl}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_Metric_DpiBypassed}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding DpiBypassedDisplay}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_Metric_TunnelFallback}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Margin="0,4,0,0">
+                                <Run Text="{Binding TunneledDisplay, Mode=OneWay}" />
+                                <Run Text=" / " />
+                                <Run Text="{Binding AutoFallbacksDisplay, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- Live Domain Bypass Tester -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Tester_Title}" Margin="0,8,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding TestDomainInput, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                 Margin="0,0,10,0" AutomationProperties.Name="{l:Loc Bypass_Tester_Title}" />
+                        <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding RunDomainTestCommand}"
+                                Content="{l:Loc Bypass_Tester_Run}" />
+                    </Grid>
+
+                    <WrapPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding SelectPresetTestDomainCommand}" CommandParameter="store.steampowered.com"
+                                Content="store.steampowered.com" Margin="0,0,8,4" />
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding SelectPresetTestDomainCommand}" CommandParameter="steamcommunity.com"
+                                Content="steamcommunity.com" Margin="0,0,8,4" />
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding SelectPresetTestDomainCommand}" CommandParameter="discord.com"
+                                Content="discord.com" Margin="0,0,8,4" />
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding SelectPresetTestDomainCommand}" CommandParameter="medium.com"
+                                Content="medium.com" Margin="0,0,0,4" />
+                    </WrapPanel>
+
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="8" Padding="14,12"
+                            Visibility="{Binding LastTestResult, Converter={StaticResource NullToVisibility}}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding LastTestResult.Summary}" />
+                                <Button Grid.Column="1" Command="{Binding AddTestedDomainRuleCommand}" Content="{l:Loc Bypass_Tester_AddRule}" Margin="12,0,0,0" />
+                            </Grid>
+                            <UniformGrid Rows="1" Columns="4">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="IP" />
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding LastTestResult.ResolvedIp, TargetNullValue=—}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Direct HTTPS" />
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                               Text="{Binding LastTestResult.DirectLatencyMs, StringFormat={}{0:0.#} ms, TargetNullValue=—}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="TLS DPI Bypass" />
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                               Text="{Binding LastTestResult.DpiBypassLatencyMs, StringFormat={}{0:0.#} ms, TargetNullValue=—}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="Upstream Tunnel" />
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                               Text="{Binding LastTestResult.TunnelLatencyMs, StringFormat={}{0:0.#} ms, TargetNullValue=—}" />
+                                </StackPanel>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- DPI Engine & Windows Integration Settings -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Settings_Title}" Margin="0,8,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_WinProxyMode}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding ProxyModes}" SelectedItem="{Binding SelectedProxyMode}"
+                                      AutomationProperties.Name="{l:Loc Bypass_WinProxyMode}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="WinProxyMode_">
+                                                    <Binding />
+                                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_TlsStrategy}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding FragmentationStrategies}" SelectedItem="{Binding SelectedFragmentationStrategy}"
+                                      AutomationProperties.Name="{l:Loc Bypass_TlsStrategy}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="TlsFrag_">
+                                                    <Binding />
+                                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        <UniformGrid Columns="2" Rows="1">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_FragmentSize}" Margin="0,0,0,4" />
+                                <TextBox Text="{Binding FragmentSizeText, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_FragmentDelay}" Margin="0,0,0,4" />
+                                <TextBox Text="{Binding FragmentDelayText, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}" />
+                            </StackPanel>
+                        </UniformGrid>
+                    </UniformGrid>
+
+                    <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_ProxyPort}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding ProxyPortText, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_PacPort}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding PacPortText, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}" />
+                        </StackPanel>
+                        <Button VerticalAlignment="Bottom" Style="{StaticResource Button.Primary}" Command="{Binding SaveAndApplySettingsCommand}"
+                                Content="{l:Loc Bypass_SaveApply}" />
+                    </UniformGrid>
+
+                    <WrapPanel Orientation="Horizontal">
+                        <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding AutoStartWithDnsEngine}" Content="{l:Loc Bypass_Opt_AutoStart}" Margin="0,0,22,8" />
+                        <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding ApplyWindowsProxyAutomatically}" Content="{l:Loc Bypass_Opt_AutoWinProxy}" Margin="0,0,22,8" />
+                        <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding ResolveTargetViaLocalDns}" Content="{l:Loc Bypass_Opt_EncryptedDns}" Margin="0,0,22,8" />
+                        <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding FragmentHttpHostHeader}" Content="{l:Loc Bypass_Opt_HttpHostSplit}" Margin="0,0,0,8" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Tier 2 Split-Tunnel Upstream -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Upstream_Title}" Margin="0,8,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{l:Loc Bypass_Upstream_Enable}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Bypass_Upstream_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding UpstreamEnabled}" />
+                    </Grid>
+
+                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding AutoFallbackToTunnelOnDpiFailure}"
+                              Content="{l:Loc Bypass_Upstream_AutoFallback}" Margin="0,0,0,12" />
+
+                    <UniformGrid Columns="4" Rows="1" Margin="0,0,0,12">
+                        <StackPanel Margin="0,0,10,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_Upstream_Kind}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding UpstreamKinds}" SelectedItem="{Binding SelectedUpstreamKind}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="UpstreamKind_">
+                                                    <Binding />
+                                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,10,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_Upstream_Host}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding UpstreamHost, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,10,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_Upstream_Port}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding UpstreamPortText, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_Upstream_User}" Margin="0,0,0,4" />
+                            <TextBox Text="{Binding UpstreamUsername, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </UniformGrid>
+
+                    <WrapPanel Orientation="Horizontal">
+                        <Button Command="{Binding DetectWarpCommand}" Content="{l:Loc Bypass_Upstream_DetectWarp}" Margin="0,0,8,0" />
+                        <Button Command="{Binding TestUpstreamCommand}" Content="{l:Loc Bypass_Upstream_Test}" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding SaveAndApplySettingsCommand}" Content="{l:Loc Common_Save}" />
+                    </WrapPanel>
+
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,8" Margin="0,10,0,0"
+                            Visibility="{Binding UpstreamFeedback, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding UpstreamFeedback}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Bypass Rules Manager -->
+            <Grid Margin="0,8,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Rules_Title}" VerticalAlignment="Center" />
+                <WrapPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Style="{StaticResource Button.Subtle}" Command="{Binding EnableCategoryCommand}" CommandParameter="Steam" Content="{l:Loc Bypass_Preset_Steam}" Margin="0,0,6,0" />
+                    <Button Style="{StaticResource Button.Subtle}" Command="{Binding EnableCategoryCommand}" CommandParameter="Gaming" Content="{l:Loc Bypass_Preset_Gaming}" Margin="0,0,6,0" />
+                    <Button Style="{StaticResource Button.Subtle}" Command="{Binding ResetBuiltInRulesCommand}" Content="{l:Loc Bypass_ResetRules}" />
+                </WrapPanel>
+            </Grid>
+
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding NewRuleName, UpdateSourceTrigger=PropertyChanged}" Tag="{l:Loc Routing_Field_RuleName}" Margin="0,0,8,0"
+                                 AutomationProperties.Name="{l:Loc Routing_Field_RuleName}" />
+                        <TextBox Grid.Column="1" Text="{Binding NewRulePattern, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                 Margin="0,0,8,0" AutomationProperties.Name="{l:Loc Routing_Field_Pattern}" />
+                        <ComboBox Grid.Column="2" ItemsSource="{Binding MatchKinds}" SelectedItem="{Binding NewRuleMatchKind}" Margin="0,0,8,0" />
+                        <ComboBox Grid.Column="3" ItemsSource="{Binding BypassModes}" SelectedItem="{Binding NewRuleMode}" Margin="0,0,8,0" />
+                        <Button Grid.Column="4" Style="{StaticResource Button.Primary}" Command="{Binding AddCustomRuleCommand}" Content="{l:Loc Routing_AddRule}" />
+                    </Grid>
+
+                    <ListBox ItemsSource="{Binding Rules}" MaxHeight="320" Background="Transparent" BorderThickness="0"
+                             VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:BypassRuleItemViewModel}">
+                                <Grid Margin="0,3,0,3" Width="850">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="170" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="145" />
+                                        <ColumnDefinition Width="95" />
+                                        <ColumnDefinition Width="75" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Pattern}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <ComboBox Grid.Column="3" ItemsSource="{Binding DataContext.BypassModes, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              SelectedItem="{Binding Mode}" Margin="0,0,8,0" />
+                                    <TextBlock Grid.Column="4" Style="{StaticResource Text.Caption}" Text="{Binding Category}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="5" Content="{l:Loc Common_Remove}" Padding="8,4"
+                                            Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}"
+                                            Command="{Binding DataContext.DeleteRuleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
+            <!-- Recent Bypass Activity -->
+            <Grid Margin="0,8,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Activity_Title}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Command="{Binding ClearEventsCommand}" Content="{l:Loc Routing_Log_Clear}" />
+            </Grid>
+
+            <Border Style="{StaticResource SectionCard}" Margin="0">
+                <ListBox ItemsSource="{Binding RecentEvents}" Height="220" Background="Transparent" BorderThickness="0"
+                         VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:BypassConnectionEvent}">
+                            <Grid Margin="0,2,0,2" Width="850">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="75" />
+                                    <ColumnDefinition Width="155" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="130" />
+                                    <ColumnDefinition Width="75" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" FontWeight="SemiBold">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="BypassAction_">
+                                            <Binding Path="Action" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                                <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Text="{Binding Host}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="3" Style="{StaticResource Text.Caption}" Text="{Binding StrategyUsed}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="4" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Text="{Binding LatencyMs, StringFormat={}{0:0.#} ms, TargetNullValue=—}" HorizontalAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

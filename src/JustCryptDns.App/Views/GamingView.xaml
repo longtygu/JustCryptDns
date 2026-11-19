@@ -53,6 +53,27 @@
                 </Grid>
             </Border>
 
+            <!-- Gaming + DPI Bypass Synergy Banner -->
+            <Border Style="{StaticResource SectionCard}" Padding="16,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE705;" FontSize="18" Foreground="{DynamicResource Brush.Success}" Margin="0,0,12,0" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{l:Loc Gaming_BypassSynergy_Title}" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding BypassSynergySummary}" />
+                    </StackPanel>
+                    <Border Grid.Column="2" Style="{StaticResource Pill}" Background="{DynamicResource Brush.SuccessSubtle}"
+                            Visibility="{Binding IsBypassActive, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Brush.Success}" Text="{l:Loc Bypass_WinProxyActive}" />
+                    </Border>
+                </Grid>
+            </Border>
+
             <!-- Status / Error Banners -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"

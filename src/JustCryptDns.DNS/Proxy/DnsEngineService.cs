@@ -421,6 +421,145 @@ public sealed class DnsEngineService : IDnsEngine
         }
     }
 
+    public async Task<IReadOnlyList<IPAddress>> ResolveHostAsync(
+        string host,
+        bool includeIpv6 = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return [];
+        }
+
+        var normalized = host.Trim().TrimEnd('.');
+        if (IPAddress.TryParse(normalized, out var literal))
+        {
+            return [literal];
+        }
+
+        var results = new List<IPAddress>();
+        var timeout = TimeSpan.FromMilliseconds(Math.Clamp(_settings.Current.Dns.QueryTimeoutMs, 1000, 3000));
+
+        await ResolveRecordAddressesAsync(normalized, DnsRecordType.A, timeout, results, cancellationToken).ConfigureAwait(false);
+        if (includeIpv6)
+        {
+            await ResolveRecordAddressesAsync(normalized, DnsRecordType.AAAA, timeout, results, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (results.Count > 0)
+        {
+            return results;
+        }
+
+        try
+        {
+            var osAddresses = await Dns.GetHostAddressesAsync(normalized, cancellationToken).ConfigureAwait(false);
+            foreach (var addr in osAddresses)
+            {
+                if (!includeIpv6 && addr.AddressFamily != AddressFamily.InterNetwork)
+                {
+                    continue;
+                }
+
+                results.Add(addr);
+            }
+        }
+        catch (Exception ex) when (ex is SocketException or OperationCanceledException or ArgumentException)
+        {
+            _logger.LogDebug(ex, "OS DNS fallback failed for host {Host}.", normalized);
+        }
+
+        return results;
+    }
+
+    private async Task ResolveRecordAddressesAsync(
+        string host,
+        DnsRecordType recordType,
+        TimeSpan timeout,
+        List<IPAddress> destination,
+        CancellationToken cancellationToken)
+    {
+        byte[] queryWire;
+        try
+        {
+            queryWire = DnsPacket.CreateQuery(host, recordType);
+        }
+        catch (ArgumentException)
+        {
+            return;
+        }
+
+        byte[]? responseWire = null;
+        if (_cacheService is { IsEnabled: true }
+            && _cacheService.TryGetResponse(queryWire, out var cachedBytes))
+        {
+            responseWire = cachedBytes;
+        }
+        else
+        {
+            var resolver = _routingService is { IsRoutingEnabled: true }
+                ? ResolveEndpoint(_routingService.ResolveForDomain(host).ResolverId)
+                : ResolveEndpoint(_settings.Current.Dns.ActiveResolverId);
+
+            if (_upstreams.TryGetValue(resolver.Protocol, out var upstream))
+            {
+                try
+                {
+                    DnsQueryResult queryResult;
+                    if (_failoverService is { IsAutoFailoverEnabled: true })
+                    {
+                        queryResult = await _failoverService.QueryWithResilienceAsync(
+                            queryWire,
+                            resolver,
+                            async (candidate, ct) =>
+                            {
+                                if (!_upstreams.TryGetValue(candidate.Protocol, out var candUpstream))
+                                {
+                                    return new DnsQueryResult(false, [], 0, candidate.Id, candidate.Protocol, $"No upstream for {candidate.Protocol}.");
+                                }
+
+                                return await candUpstream.QueryAsync(queryWire, candidate, timeout, ct).ConfigureAwait(false);
+                            },
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        queryResult = await upstream.QueryAsync(queryWire, resolver, timeout, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    if (queryResult.Success && queryResult.ResponseBytes.Length >= DnsPacket.HeaderSize)
+                    {
+                        responseWire = queryResult.ResponseBytes;
+                        _cacheService?.StoreResponse(queryWire, responseWire);
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Encrypted DNS lookup failed for {Host} ({Type}).", host, recordType);
+                }
+            }
+        }
+
+        if (responseWire is null || !DnsPacket.TryParse(responseWire, out var packet) || packet is null)
+        {
+            return;
+        }
+
+        foreach (var answer in packet.Answers)
+        {
+            if (answer.Type == recordType
+                && IPAddress.TryParse(answer.DataSummary, out var ip)
+                && !destination.Contains(ip))
+            {
+                destination.Add(ip);
+            }
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)

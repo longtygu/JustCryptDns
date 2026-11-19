@@ -1,3 +1,4 @@
+using System.Net;
 using JustCryptDns.Core.Models;
 
 namespace JustCryptDns.Core.Interfaces;
@@ -42,4 +43,13 @@ public interface IDnsEngine : IAsyncDisposable
     /// resolution, routing, filtering, caching, and live monitoring.
     /// </summary>
     Task<(bool Success, double LatencyMs, string Summary)> TestLocalProxyAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resolves a hostname using JustCryptDns's active encrypted resolver (and TTL cache)
+    /// without relying on poisoned or unconfigured OS DNS.
+    /// </summary>
+    Task<IReadOnlyList<IPAddress>> ResolveHostAsync(
+        string host,
+        bool includeIpv6 = false,
+        CancellationToken cancellationToken = default);
 }
