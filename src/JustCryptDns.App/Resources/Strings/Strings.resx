@@ -1629,4 +1629,58 @@
   <data name="Dash_Bypass_Desc" xml:space="preserve">
     <value>Automatically unblocks Steam and all websites via Smart Auto-PAC while keeping game traffic direct.</value>
   </data>
+  <data name="Dash_Wave_Title" xml:space="preserve">
+    <value>Live Ping &amp; Network Speed</value>
+  </data>
+  <data name="Dash_Wave_Ping" xml:space="preserve">
+    <value>Ping</value>
+  </data>
+  <data name="Dash_Wave_Download" xml:space="preserve">
+    <value>Down</value>
+  </data>
+  <data name="Dash_Wave_Upload" xml:space="preserve">
+    <value>Up</value>
+  </data>
+  <data name="Dash_Wave_Live" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="Dash_Wave_Paused" xml:space="preserve">
+    <value>Paused (background)</value>
+  </data>
+  <data name="Dash_Wave_HoverHint" xml:space="preserve">
+    <value>Hover any speedometer gauge or this waveform chart for 3 seconds to view detailed explanations; animations auto-pause when minimized or in background.</value>
+  </data>
+  <data name="Dash_Explain_MeaningLabel" xml:space="preserve">
+    <value>Metrics meaning:</value>
+  </data>
+  <data name="Dash_Explain_Latency_Desc" xml:space="preserve">
+    <value>Speedometer gauge showing round-trip response time between your PC and the active encrypted DNS resolver.</value>
+  </data>
+  <data name="Dash_Explain_Latency_Metrics" xml:space="preserve">
+    <value>• Green (&lt; 50 ms): Fast, responsive for gaming &amp; browsing.\n• Amber (50–120 ms): Moderate latency.\n• Red zone (&gt; 120 ms): High delay — consider testing or switching to a closer resolver.</value>
+  </data>
+  <data name="Dash_Explain_Queries_Desc" xml:space="preserve">
+    <value>Speedometer gauge tracking the cumulative volume of DNS lookup requests processed by JustCryptDns in this session.</value>
+  </data>
+  <data name="Dash_Explain_Queries_Metrics" xml:space="preserve">
+    <value>• Needle &amp; arc rise dynamically with auto-scaling ceiling as browsing/app requests increase.\n• Confirms system DNS traffic is actively flowing through the local proxy.</value>
+  </data>
+  <data name="Dash_Explain_Blocked_Desc" xml:space="preserve">
+    <value>Speedometer gauge counting ad, tracker, telemetry, and malicious domain queries blocked by your active DNS filters.</value>
+  </data>
+  <data name="Dash_Explain_Blocked_Metrics" xml:space="preserve">
+    <value>• Higher reading shows active filtering is shielding browsers and apps without slowing clean traffic.\n• Manage lists anytime in Filtering.</value>
+  </data>
+  <data name="Dash_Explain_CacheHit_Desc" xml:space="preserve">
+    <value>Speedometer gauge showing the percentage of DNS lookups served instantaneously from the local RAM TTL cache (0–100%).</value>
+  </data>
+  <data name="Dash_Explain_CacheHit_Metrics" xml:space="preserve">
+    <value>• Green (&gt;= 60%): Excellent cache efficiency with sub-millisecond local responses.\n• 30–59%: Warming up.\n• &lt; 30%: Fresh or cold cache.</value>
+  </data>
+  <data name="Dash_Explain_Wave_Desc" xml:space="preserve">
+    <value>Horizontal real-time telemetry oscilloscope displaying internet latency (Ping) and active adapter throughput (Download / Upload).</value>
+  </data>
+  <data name="Dash_Explain_Wave_Metrics" xml:space="preserve">
+    <value>• Amber wave (left axis, ms): Real-time ICMP Ping — lower &amp; flatter means steadier ping for gaming.\n• Blue wave (right axis): Download throughput.\n• Green wave (right axis): Upload throughput.\n• Auto-pauses completely when minimized or hidden to tray to save CPU/RAM.</value>
+  </data>
 </root>

@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
              xmlns:ipc="clr-namespace:JustCryptDns.Core.Ipc;assembly=JustCryptDns.Core"
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
@@ -22,6 +23,22 @@
         <Style x:Key="MetricCard" TargetType="Border" BasedOn="{StaticResource Card}">
             <Setter Property="Margin" Value="{DynamicResource Card.GapGrid}" />
             <Setter Property="Padding" Value="{DynamicResource Card.PaddingSmall}" />
+        </Style>
+        <Style x:Key="ChartCard" TargetType="Border" BasedOn="{StaticResource MetricCard}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.ControlBorderHover}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="WaveCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+            <Setter Property="Padding" Value="{DynamicResource Card.PaddingSmall}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.ControlBorderHover}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
@@ -198,38 +215,223 @@
                 </Grid>
             </Border>
 
-            <!-- Engine metrics -->
+            <!-- Engine metrics (4 live automotive speedometer gauges) -->
             <UniformGrid x:Name="Metrics" Margin="{DynamicResource Card.GridCompensation}"
                          Columns="{Binding ActualWidth, RelativeSource={RelativeSource Self}, Converter={StaticResource WidthToColumns}}">
-                <Border Style="{StaticResource MetricCard}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Latency}" />
-                        <TextBlock Style="{StaticResource Text.Metric}" Text="{Binding LatencyDisplay}" Margin="0,6,0,2" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ActiveResolverName}" />
+                <Border Style="{StaticResource ChartCard}"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Metric_Latency}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Latency_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Latency_Metrics}">
+                    <StackPanel IsHitTestVisible="False">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Latency}" HorizontalAlignment="Center" />
+                        <controls:SpeedometerGaugeControl x:Name="LatencyGauge" Height="142" Margin="0,4,0,2"
+                                                          Value="{Binding LatencyMsValue}"
+                                                          Minimum="0"
+                                                          Maximum="{Binding LatencyMaxScale}"
+                                                          ValueText="{Binding LatencyDisplay}"
+                                                          MaxScaleLabel="{Binding LatencyScaleLabel}"
+                                                          ShowRedlineZone="True"
+                                                          PhaseOffset="0.0"
+                                                          IsActive="{Binding IsEngineRunning}"
+                                                          TrackBrush="{DynamicResource Brush.Divider}"
+                                                          TextBrush="{DynamicResource Brush.TextPrimary}"
+                                                          SecondaryTextBrush="{DynamicResource Brush.TextTertiary}"
+                                                          DangerBrush="{DynamicResource Brush.Danger}"
+                                                          FaceBrush="{DynamicResource Brush.ControlFill}"
+                                                          BorderBrush="{DynamicResource Brush.CardBorder}">
+                            <controls:SpeedometerGaugeControl.Style>
+                                <Style TargetType="controls:SpeedometerGaugeControl">
+                                    <Setter Property="AccentBrush" Value="{DynamicResource Brush.Accent}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding LatencySeverity}" Value="{x:Static controls:GaugeSeverity.Good}">
+                                            <Setter Property="AccentBrush" Value="{DynamicResource Brush.Success}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding LatencySeverity}" Value="{x:Static controls:GaugeSeverity.Warning}">
+                                            <Setter Property="AccentBrush" Value="{DynamicResource Brush.Warning}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding LatencySeverity}" Value="{x:Static controls:GaugeSeverity.Danger}">
+                                            <Setter Property="AccentBrush" Value="{DynamicResource Brush.Danger}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </controls:SpeedometerGaugeControl.Style>
+                        </controls:SpeedometerGaugeControl>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ActiveResolverName}" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource MetricCard}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Queries}" />
-                        <TextBlock Style="{StaticResource Text.Metric}" Text="{Binding TotalQueriesDisplay}" Margin="0,6,0,2" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ListenEndpoint}" />
+
+                <Border Style="{StaticResource ChartCard}"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Metric_Queries}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Queries_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Queries_Metrics}">
+                    <StackPanel IsHitTestVisible="False">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Queries}" HorizontalAlignment="Center" />
+                        <controls:SpeedometerGaugeControl x:Name="QueriesGauge" Height="142" Margin="0,4,0,2"
+                                                          Value="{Binding TotalQueriesValue}"
+                                                          Minimum="0"
+                                                          Maximum="{Binding TotalQueriesMaxScale}"
+                                                          ValueText="{Binding TotalQueriesDisplay}"
+                                                          MaxScaleLabel="{Binding TotalQueriesScaleLabel}"
+                                                          PhaseOffset="1.5"
+                                                          IsActive="{Binding IsEngineRunning}"
+                                                          AccentBrush="{DynamicResource Brush.Accent}"
+                                                          TrackBrush="{DynamicResource Brush.Divider}"
+                                                          TextBrush="{DynamicResource Brush.TextPrimary}"
+                                                          SecondaryTextBrush="{DynamicResource Brush.TextTertiary}"
+                                                          DangerBrush="{DynamicResource Brush.Danger}"
+                                                          FaceBrush="{DynamicResource Brush.ControlFill}"
+                                                          BorderBrush="{DynamicResource Brush.CardBorder}" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ListenEndpoint}" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource MetricCard}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Blocked}" />
-                        <TextBlock Style="{StaticResource Text.Metric}" Text="{Binding BlockedQueriesDisplay}" Margin="0,6,0,2" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Nav_Filtering}" />
+
+                <Border Style="{StaticResource ChartCard}"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Metric_Blocked}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Blocked_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Blocked_Metrics}">
+                    <StackPanel IsHitTestVisible="False">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Blocked}" HorizontalAlignment="Center" />
+                        <controls:SpeedometerGaugeControl x:Name="BlockedGauge" Height="142" Margin="0,4,0,2"
+                                                          Value="{Binding BlockedQueriesValue}"
+                                                          Minimum="0"
+                                                          Maximum="{Binding BlockedQueriesMaxScale}"
+                                                          ValueText="{Binding BlockedQueriesDisplay}"
+                                                          MaxScaleLabel="{Binding BlockedQueriesScaleLabel}"
+                                                          PhaseOffset="3.1"
+                                                          IsActive="{Binding IsEngineRunning}"
+                                                          AccentBrush="{DynamicResource Brush.Danger}"
+                                                          TrackBrush="{DynamicResource Brush.Divider}"
+                                                          TextBrush="{DynamicResource Brush.TextPrimary}"
+                                                          SecondaryTextBrush="{DynamicResource Brush.TextTertiary}"
+                                                          DangerBrush="{DynamicResource Brush.Danger}"
+                                                          FaceBrush="{DynamicResource Brush.ControlFill}"
+                                                          BorderBrush="{DynamicResource Brush.CardBorder}" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Nav_Filtering}" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource MetricCard}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_CacheHit}" />
-                        <TextBlock Style="{StaticResource Text.Metric}" Text="{Binding CacheHitDisplay}" Margin="0,6,0,2" />
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="TTL Cache" />
+
+                <Border Style="{StaticResource ChartCard}"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Metric_CacheHit}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_CacheHit_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_CacheHit_Metrics}">
+                    <StackPanel IsHitTestVisible="False">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_CacheHit}" HorizontalAlignment="Center" />
+                        <controls:SpeedometerGaugeControl x:Name="CacheHitGauge" Height="142" Margin="0,4,0,2"
+                                                          Value="{Binding CacheHitPercentValue}"
+                                                          Minimum="0"
+                                                          Maximum="100"
+                                                          ValueText="{Binding CacheHitDisplay}"
+                                                          MaxScaleLabel="100%"
+                                                          PhaseOffset="4.6"
+                                                          IsActive="{Binding IsEngineRunning}"
+                                                          TrackBrush="{DynamicResource Brush.Divider}"
+                                                          TextBrush="{DynamicResource Brush.TextPrimary}"
+                                                          SecondaryTextBrush="{DynamicResource Brush.TextTertiary}"
+                                                          DangerBrush="{DynamicResource Brush.Danger}"
+                                                          FaceBrush="{DynamicResource Brush.ControlFill}"
+                                                          BorderBrush="{DynamicResource Brush.CardBorder}">
+                            <controls:SpeedometerGaugeControl.Style>
+                                <Style TargetType="controls:SpeedometerGaugeControl">
+                                    <Setter Property="AccentBrush" Value="{DynamicResource Brush.Accent}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CacheHitSeverity}" Value="{x:Static controls:GaugeSeverity.Good}">
+                                            <Setter Property="AccentBrush" Value="{DynamicResource Brush.Success}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CacheHitSeverity}" Value="{x:Static controls:GaugeSeverity.Warning}">
+                                            <Setter Property="AccentBrush" Value="{DynamicResource Brush.Warning}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </controls:SpeedometerGaugeControl.Style>
+                        </controls:SpeedometerGaugeControl>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="TTL Cache" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
             </UniformGrid>
+
+            <!-- Live Ping & Network Speed Waveform Gauge -->
+            <Border Style="{StaticResource WaveCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Wave_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Wave_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Wave_Metrics}">
+                <StackPanel IsHitTestVisible="False">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE9D2;" FontSize="15" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,8,0" />
+                            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Dash_Wave_Title}" VerticalAlignment="Center" />
+                            <Border Margin="10,0,0,0">
+                                <Border.Style>
+                                    <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTelemetryPaused}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center"
+                                             Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
+                                    <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{l:Loc Dash_Wave_Live}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsTelemetryPaused}" Value="True">
+                                                        <Setter Property="Text" Value="{l:Loc Dash_Wave_Paused}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,2,14,2" VerticalAlignment="Center">
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource Brush.Warning}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Wave_Ping}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PingDisplay}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,2,14,2" VerticalAlignment="Center">
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource Brush.Accent}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Wave_Download}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding DownloadSpeedDisplay}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,2" VerticalAlignment="Center">
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource Brush.Success}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Wave_Upload}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding UploadSpeedDisplay}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </WrapPanel>
+                    </Grid>
+
+                    <controls:NetworkTelemetryWaveControl x:Name="TelemetryWave" Height="168" Margin="0,12,0,6"
+                                                      PingBrush="{DynamicResource Brush.Warning}"
+                                                      DownloadBrush="{DynamicResource Brush.Accent}"
+                                                      UploadBrush="{DynamicResource Brush.Success}"
+                                                      GridBrush="{DynamicResource Brush.Divider}"
+                                                      SurfaceBrush="{DynamicResource Brush.ControlFill}"
+                                                      BorderBrush="{DynamicResource Brush.CardBorder}"
+                                                      TextBrush="{DynamicResource Brush.TextPrimary}"
+                                                      SecondaryTextBrush="{DynamicResource Brush.TextTertiary}"
+                                                      IsPaused="{Binding IsTelemetryPaused}" />
+
+                    <TextBlock Style="{StaticResource Text.Caption}" FontSize="{DynamicResource Font.Size.Small}"
+                               Foreground="{DynamicResource Brush.TextTertiary}" Text="{l:Loc Dash_Wave_HoverHint}" />
+                </StackPanel>
+            </Border>
 
             <!-- DPI Bypass & Firewall Protection Card -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Card.Gap}">

@@ -1,12 +1,14 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using JustCryptDns.App.Controls;
 using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
 using JustCryptDns.DNS.Proxy;
+using JustCryptDns.Network.Monitoring;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.App.ViewModels;
@@ -31,8 +33,11 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly IDnsFilteringService? _filtering;
     private readonly ISettingsService? _settings;
     private readonly IBypassEngineService? _bypassEngine;
+    private readonly INetworkTelemetryService? _telemetry;
+    private readonly IResolverLibraryService? _resolverLibrary;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
+    private string _activeResolverId = string.Empty;
     private long _lastBypassUiTick;
     private BypassRuntimeStats? _pendingBypassStats;
     private int _bypassFlushScheduled;
@@ -52,6 +57,22 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _totalQueriesDisplay = "—";
     [ObservableProperty] private string _blockedQueriesDisplay = "—";
     [ObservableProperty] private string _cacheHitDisplay = "—";
+    [ObservableProperty] private double _latencyMsValue;
+    [ObservableProperty] private double _latencyMaxScale = 200;
+    [ObservableProperty] private string _latencyScaleLabel = "200ms";
+    [ObservableProperty] private GaugeSeverity _latencySeverity = GaugeSeverity.Neutral;
+    [ObservableProperty] private double _totalQueriesValue;
+    [ObservableProperty] private double _totalQueriesMaxScale = 100;
+    [ObservableProperty] private string _totalQueriesScaleLabel = "100";
+    [ObservableProperty] private double _blockedQueriesValue;
+    [ObservableProperty] private double _blockedQueriesMaxScale = 50;
+    [ObservableProperty] private string _blockedQueriesScaleLabel = "50";
+    [ObservableProperty] private double _cacheHitPercentValue;
+    [ObservableProperty] private GaugeSeverity _cacheHitSeverity = GaugeSeverity.Neutral;
+    [ObservableProperty] private string _pingDisplay = "—";
+    [ObservableProperty] private string _downloadSpeedDisplay = "0 Kbps";
+    [ObservableProperty] private string _uploadSpeedDisplay = "0 Kbps";
+    [ObservableProperty] private bool _isTelemetryPaused;
     [ObservableProperty] private bool _isFilteringActive;
     [ObservableProperty] private SystemTrafficStatus _trafficStatus = SystemTrafficStatus.Stopped;
     [ObservableProperty] private string? _trafficWarningBanner;
@@ -79,7 +100,9 @@ public sealed partial class DashboardViewModel : PageViewModel
         ILogger<DashboardViewModel> logger,
         IDnsFilteringService? filtering = null,
         ISettingsService? settings = null,
-        IBypassEngineService? bypassEngine = null)
+        IBypassEngineService? bypassEngine = null,
+        INetworkTelemetryService? telemetry = null,
+        IResolverLibraryService? resolverLibrary = null)
         : base("Nav_Dashboard", "Page_Dashboard_Subtitle")
     {
         _network = network;
@@ -89,6 +112,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         _filtering = filtering;
         _settings = settings;
         _bypassEngine = bypassEngine;
+        _telemetry = telemetry;
+        _resolverLibrary = resolverLibrary;
         _ui = SynchronizationContext.Current;
         IsFilteringActive = _filtering?.IsFilteringEnabled ?? false;
         ApplyEngineStats(dnsEngine.GetStats());
@@ -98,11 +123,34 @@ public sealed partial class DashboardViewModel : PageViewModel
         }
     }
 
+    public event EventHandler<NetworkTelemetrySample>? TelemetrySampleArrived;
+
     public bool IsEngineAvailable => true;
 
     public bool IsEngineRunning => EngineState is DnsEngineState.Running or DnsEngineState.Degraded;
 
     public bool IsBypassRunning => BypassState is BypassEngineState.Running or BypassEngineState.Degraded;
+
+    public IReadOnlyList<NetworkTelemetrySample> GetInitialTelemetrySamples() => _telemetry?.GetRecentSamples() ?? [];
+
+    public void SetLiveTelemetryActive(bool active)
+    {
+        IsTelemetryPaused = !active;
+        if (_telemetry is null)
+        {
+            return;
+        }
+
+        if (active)
+        {
+            UpdateTelemetryTargets();
+            _telemetry.Resume();
+        }
+        else
+        {
+            _telemetry.Pause();
+        }
+    }
 
     public override void OnNavigatedTo()
     {
@@ -113,6 +161,17 @@ public sealed partial class DashboardViewModel : PageViewModel
         {
             _bypassEngine.StateChanged += OnBypassStateChanged;
             ApplyBypassStats(_bypassEngine.GetStats());
+        }
+
+        if (_telemetry is not null)
+        {
+            _telemetry.SampleReceived -= OnTelemetrySampleReceived;
+            _telemetry.SampleReceived += OnTelemetrySampleReceived;
+            var recent = _telemetry.GetRecentSamples();
+            if (recent.Count > 0)
+            {
+                ApplyTelemetrySample(recent[^1]);
+            }
         }
 
         ApplyEngineStats(_dnsEngine.GetStats());
@@ -128,6 +187,12 @@ public sealed partial class DashboardViewModel : PageViewModel
             _bypassEngine.StateChanged -= OnBypassStateChanged;
         }
 
+        if (_telemetry is not null)
+        {
+            _telemetry.SampleReceived -= OnTelemetrySampleReceived;
+            _telemetry.Pause();
+        }
+
         _cts?.Cancel();
     }
 
@@ -140,6 +205,12 @@ public sealed partial class DashboardViewModel : PageViewModel
             if (_bypassEngine is not null)
             {
                 _bypassEngine.StateChanged -= OnBypassStateChanged;
+            }
+
+            if (_telemetry is not null)
+            {
+                _telemetry.SampleReceived -= OnTelemetrySampleReceived;
+                _telemetry.Pause();
             }
 
             _cts?.Cancel();
@@ -338,6 +409,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         Ipv6Status = EvaluateIPv6(snapshot.PrimaryAdapter);
         LastUpdated = snapshot.CapturedAt;
         HasSnapshot = true;
+        UpdateTelemetryTargets();
     }
 
     internal void ApplyEngineStats(DnsEngineRuntimeStats stats)
@@ -345,6 +417,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         EngineState = stats.State;
         ActiveProtocol = stats.ActiveProtocol;
         ActiveResolverName = stats.ActiveResolverName;
+        _activeResolverId = stats.ActiveResolverId;
         ListenEndpoint = stats.ListenEndpoint;
         LatencyDisplay = stats.LastLatencyMs is { } ms ? string.Create(CultureInfo.InvariantCulture, $"{ms:0.#} ms") : "—";
         TotalQueriesDisplay = stats.TotalQueries > 0 || IsEngineRunning
@@ -356,6 +429,25 @@ public sealed partial class DashboardViewModel : PageViewModel
         CacheHitDisplay = stats.TotalQueries > 0 || IsEngineRunning
             ? string.Create(CultureInfo.InvariantCulture, $"{stats.CacheHitRatioPercent:0.#}%")
             : "—";
+
+        LatencyMsValue = stats.LastLatencyMs ?? 0;
+        LatencyMaxScale = stats.LastLatencyMs is > 200 ? GaugeMath.ComputeAutoScaleMax(stats.LastLatencyMs.Value, 200) : 200;
+        LatencyScaleLabel = string.Create(CultureInfo.InvariantCulture, $"{LatencyMaxScale:0}ms");
+        LatencySeverity = GaugeMath.EvaluateLatencySeverity(stats.LastLatencyMs);
+
+        TotalQueriesValue = stats.TotalQueries;
+        TotalQueriesMaxScale = GaugeMath.ComputeAutoScaleMax(stats.TotalQueries, 100);
+        TotalQueriesScaleLabel = GaugeMath.FormatCompactScaleLabel(TotalQueriesMaxScale);
+
+        BlockedQueriesValue = stats.BlockedQueries;
+        BlockedQueriesMaxScale = GaugeMath.ComputeAutoScaleMax(stats.BlockedQueries, 50);
+        BlockedQueriesScaleLabel = GaugeMath.FormatCompactScaleLabel(BlockedQueriesMaxScale);
+
+        CacheHitPercentValue = stats.TotalQueries > 0 || IsEngineRunning
+            ? Math.Clamp(stats.CacheHitRatioPercent, 0.0, 100.0)
+            : 0.0;
+        CacheHitSeverity = GaugeMath.EvaluateCacheHitSeverity(stats.CacheHitRatioPercent, stats.TotalQueries);
+
         TrafficStatus = stats.TrafficStatus;
         SuggestedLoopbackIp = stats.SuggestedLoopbackIp;
         ConflictingServiceName = stats.Port53ServiceName;
@@ -369,6 +461,7 @@ public sealed partial class DashboardViewModel : PageViewModel
             _ => null,
         };
         EngineError = stats.LastError;
+        UpdateTelemetryTargets();
     }
 
     internal static IpFamilyStatus EvaluateIPv4(NetworkAdapterInfo? adapter)
@@ -472,5 +565,43 @@ public sealed partial class DashboardViewModel : PageViewModel
         {
             ApplyBypassStats(stats);
         }
+    }
+
+    internal void ApplyTelemetrySample(NetworkTelemetrySample sample)
+    {
+        PingDisplay = sample.PingMs is { } ms
+            ? string.Create(CultureInfo.InvariantCulture, $"{ms:0.#} ms")
+            : "—";
+        DownloadSpeedDisplay = NetworkTelemetryService.FormatThroughput(sample.DownloadBytesPerSecond);
+        UploadSpeedDisplay = NetworkTelemetryService.FormatThroughput(sample.UploadBytesPerSecond);
+        TelemetrySampleArrived?.Invoke(this, sample);
+    }
+
+    private void OnTelemetrySampleReceived(object? sender, NetworkTelemetrySample sample)
+    {
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(() => ApplyTelemetrySample(sample));
+        }
+        else
+        {
+            ApplyTelemetrySample(sample);
+        }
+    }
+
+    private void UpdateTelemetryTargets()
+    {
+        if (_telemetry is null)
+        {
+            return;
+        }
+
+        string? preferredPingHost = null;
+        if (!string.IsNullOrWhiteSpace(_activeResolverId) && _resolverLibrary is not null)
+        {
+            preferredPingHost = _resolverLibrary.GetByIdOrDefault(_activeResolverId).PrimaryIp;
+        }
+
+        _telemetry.ConfigureTargets(PrimaryAdapter?.Id, preferredPingHost);
     }
 }

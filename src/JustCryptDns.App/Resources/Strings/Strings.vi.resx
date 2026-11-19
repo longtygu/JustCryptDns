@@ -1629,4 +1629,58 @@
   <data name="Dash_Bypass_Desc" xml:space="preserve">
     <value>Tự động mở khóa Steam và mọi trang web qua Auto-PAC thông minh trong khi giữ lưu lượng game đi thẳng.</value>
   </data>
+  <data name="Dash_Wave_Title" xml:space="preserve">
+    <value>Biểu đồ sóng Ping &amp; Tốc độ mạng</value>
+  </data>
+  <data name="Dash_Wave_Ping" xml:space="preserve">
+    <value>Ping</value>
+  </data>
+  <data name="Dash_Wave_Download" xml:space="preserve">
+    <value>Tải xuống</value>
+  </data>
+  <data name="Dash_Wave_Upload" xml:space="preserve">
+    <value>Tải lên</value>
+  </data>
+  <data name="Dash_Wave_Live" xml:space="preserve">
+    <value>Trực tiếp</value>
+  </data>
+  <data name="Dash_Wave_Paused" xml:space="preserve">
+    <value>Tạm dừng (nền)</value>
+  </data>
+  <data name="Dash_Wave_HoverHint" xml:space="preserve">
+    <value>Di chuột vào biểu đồ đồng hồ hoặc biểu đồ sóng trên 3 giây để xem giải thích chi tiết; hiệu ứng tự tạm dừng khi thu nhỏ hoặc chạy nền.</value>
+  </data>
+  <data name="Dash_Explain_MeaningLabel" xml:space="preserve">
+    <value>Ý nghĩa thông số:</value>
+  </data>
+  <data name="Dash_Explain_Latency_Desc" xml:space="preserve">
+    <value>Biểu đồ đồng hồ đo độ trễ phản hồi khứ hồi (RTT) từ máy tính tới máy chủ DNS mã hóa đang hoạt động.</value>
+  </data>
+  <data name="Dash_Explain_Latency_Metrics" xml:space="preserve">
+    <value>• Xanh (&lt; 50 ms): Phản hồi rất nhanh, tối ưu chơi game &amp; duyệt web.\n• Vàng (50–120 ms): Độ trễ trung bình.\n• Vùng đỏ (&gt; 120 ms): Độ trễ cao — nên kiểm tra hoặc đổi resolver gần hơn.</value>
+  </data>
+  <data name="Dash_Explain_Queries_Desc" xml:space="preserve">
+    <value>Biểu đồ đồng hồ theo dõi tổng số truy vấn phân giải tên miền DNS đã được JustCryptDns xử lý trong phiên chạy này.</value>
+  </data>
+  <data name="Dash_Explain_Queries_Metrics" xml:space="preserve">
+    <value>• Kim và vạch sáng tự co giãn thang đo khi lưu lượng truy vấn tăng.\n• Cho biết lưu lượng DNS hệ thống đang thực sự đi qua proxy cục bộ.</value>
+  </data>
+  <data name="Dash_Explain_Blocked_Desc" xml:space="preserve">
+    <value>Biểu đồ đồng hồ đếm số lượng tên miền quảng cáo, theo dõi hoặc độc hại đã bị bộ lọc DNS chặn lại.</value>
+  </data>
+  <data name="Dash_Explain_Blocked_Metrics" xml:space="preserve">
+    <value>• Chỉ số tăng khi bộ lọc đang bảo vệ trình duyệt và ứng dụng.\n• Có thể bật/tắt hoặc thêm danh sách chặn tại mục Lọc DNS.</value>
+  </data>
+  <data name="Dash_Explain_CacheHit_Desc" xml:space="preserve">
+    <value>Biểu đồ đồng hồ hiển thị tỷ lệ phần trăm (%) truy vấn DNS được trả kết quả tức thì từ bộ nhớ đệm RAM TTL cục bộ (0–100%).</value>
+  </data>
+  <data name="Dash_Explain_CacheHit_Metrics" xml:space="preserve">
+    <value>• Xanh (&gt;= 60%): Hiệu suất đệm rất cao, phản hồi gần như tức thì.\n• 30–59%: Bộ nhớ đệm đang làm nóng dần.\n• &lt; 30%: Mới khởi động hoặc nhiều tên miền mới.</value>
+  </data>
+  <data name="Dash_Explain_Wave_Desc" xml:space="preserve">
+    <value>Biểu đồ sóng chạy ngang thời gian thực theo dõi độ trễ đường truyền (Ping) và băng thông tải xuống / tải lên của card mạng.</value>
+  </data>
+  <data name="Dash_Explain_Wave_Metrics" xml:space="preserve">
+    <value>• Sóng vàng (trục trái, ms): Ping thời gian thực — càng thấp và phẳng thì mạng càng ổn định khi chơi game.\n• Sóng xanh dương (trục phải): Tốc độ tải xuống (Download).\n• Sóng xanh lá (trục phải): Tốc độ tải lên (Upload).\n• Tự động tạm dừng hoàn toàn khi thu nhỏ hoặc ẩn xuống khay hệ thống để tiết kiệm CPU/RAM.</value>
+  </data>
 </root>

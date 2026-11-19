@@ -538,3 +538,21 @@ Bypass_Msg_Promoted|Pinned learned rule for '{0}'.|Đã ghim quy tắc vĩnh vi�
 Bypass_Msg_LearnedCleared|Cleared auto-learned host cache.|Đã xóa bộ nhớ tên miền đã tự học.
 Bypass_Activity_Exclude|Direct|Đi thẳng
 Dash_Bypass_Desc|Automatically unblocks Steam and all websites via Smart Auto-PAC while keeping game traffic direct.|Tự động mở khóa Steam và mọi trang web qua Auto-PAC thông minh trong khi giữ lưu lượng game đi thẳng.
+Dash_Wave_Title|Live Ping & Network Speed|Biểu đồ sóng Ping & Tốc độ mạng
+Dash_Wave_Ping|Ping|Ping
+Dash_Wave_Download|Down|Tải xuống
+Dash_Wave_Upload|Up|Tải lên
+Dash_Wave_Live|Live|Trực tiếp
+Dash_Wave_Paused|Paused (background)|Tạm dừng (nền)
+Dash_Wave_HoverHint|Hover any speedometer gauge or this waveform chart for 3 seconds to view detailed explanations; animations auto-pause when minimized or in background.|Di chuột vào biểu đồ đồng hồ hoặc biểu đồ sóng trên 3 giây để xem giải thích chi tiết; hiệu ứng tự tạm dừng khi thu nhỏ hoặc chạy nền.
+Dash_Explain_MeaningLabel|Metrics meaning:|Ý nghĩa thông số:
+Dash_Explain_Latency_Desc|Speedometer gauge showing round-trip response time between your PC and the active encrypted DNS resolver.|Biểu đồ đồng hồ đo độ trễ phản hồi khứ hồi (RTT) từ máy tính tới máy chủ DNS mã hóa đang hoạt động.
+Dash_Explain_Latency_Metrics|• Green (< 50 ms): Fast, responsive for gaming & browsing.\n• Amber (50–120 ms): Moderate latency.\n• Red zone (> 120 ms): High delay — consider testing or switching to a closer resolver.|• Xanh (< 50 ms): Phản hồi rất nhanh, tối ưu chơi game & duyệt web.\n• Vàng (50–120 ms): Độ trễ trung bình.\n• Vùng đỏ (> 120 ms): Độ trễ cao — nên kiểm tra hoặc đổi resolver gần hơn.
+Dash_Explain_Queries_Desc|Speedometer gauge tracking the cumulative volume of DNS lookup requests processed by JustCryptDns in this session.|Biểu đồ đồng hồ theo dõi tổng số truy vấn phân giải tên miền DNS đã được JustCryptDns xử lý trong phiên chạy này.
+Dash_Explain_Queries_Metrics|• Needle & arc rise dynamically with auto-scaling ceiling as browsing/app requests increase.\n• Confirms system DNS traffic is actively flowing through the local proxy.|• Kim và vạch sáng tự co giãn thang đo khi lưu lượng truy vấn tăng.\n• Cho biết lưu lượng DNS hệ thống đang thực sự đi qua proxy cục bộ.
+Dash_Explain_Blocked_Desc|Speedometer gauge counting ad, tracker, telemetry, and malicious domain queries blocked by your active DNS filters.|Biểu đồ đồng hồ đếm số lượng tên miền quảng cáo, theo dõi hoặc độc hại đã bị bộ lọc DNS chặn lại.
+Dash_Explain_Blocked_Metrics|• Higher reading shows active filtering is shielding browsers and apps without slowing clean traffic.\n• Manage lists anytime in Filtering.|• Chỉ số tăng khi bộ lọc đang bảo vệ trình duyệt và ứng dụng.\n• Có thể bật/tắt hoặc thêm danh sách chặn tại mục Lọc DNS.
+Dash_Explain_CacheHit_Desc|Speedometer gauge showing the percentage of DNS lookups served instantaneously from the local RAM TTL cache (0–100%).|Biểu đồ đồng hồ hiển thị tỷ lệ phần trăm (%) truy vấn DNS được trả kết quả tức thì từ bộ nhớ đệm RAM TTL cục bộ (0–100%).
+Dash_Explain_CacheHit_Metrics|• Green (>= 60%): Excellent cache efficiency with sub-millisecond local responses.\n• 30–59%: Warming up.\n• < 30%: Fresh or cold cache.|• Xanh (>= 60%): Hiệu suất đệm rất cao, phản hồi gần như tức thì.\n• 30–59%: Bộ nhớ đệm đang làm nóng dần.\n• < 30%: Mới khởi động hoặc nhiều tên miền mới.
+Dash_Explain_Wave_Desc|Horizontal real-time telemetry oscilloscope displaying internet latency (Ping) and active adapter throughput (Download / Upload).|Biểu đồ sóng chạy ngang thời gian thực theo dõi độ trễ đường truyền (Ping) và băng thông tải xuống / tải lên của card mạng.
+Dash_Explain_Wave_Metrics|• Amber wave (left axis, ms): Real-time ICMP Ping — lower & flatter means steadier ping for gaming.\n• Blue wave (right axis): Download throughput.\n• Green wave (right axis): Upload throughput.\n• Auto-pauses completely when minimized or hidden to tray to save CPU/RAM.|• Sóng vàng (trục trái, ms): Ping thời gian thực — càng thấp và phẳng thì mạng càng ổn định khi chơi game.\n• Sóng xanh dương (trục phải): Tốc độ tải xuống (Download).\n• Sóng xanh lá (trục phải): Tốc độ tải lên (Upload).\n• Tự động tạm dừng hoàn toàn khi thu nhỏ hoặc ẩn xuống khay hệ thống để tiết kiệm CPU/RAM.
