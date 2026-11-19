@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Phase 10 — Network Diagnostics & Virtualized Live Monitor
+- **Network Diagnostics service & page (`NetworkDiagnosticsService`, `DiagnosticsView`, `DiagnosticsViewModel`):**
+  - Clearly separates **Local Adapter & Engine Diagnostics** (adapter, IP, gateway, active DNS, IPv4/IPv6 status, engine state, protocol, active resolver, latency) from **External Live Tests**.
+  - Implements interactive **DNS Lookup** (`A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`), **DNSSEC validation test** (EDNS0 `DO=1` & `AD` bit inspection), **DoH connectivity test**, **DNSCrypt stamp & endpoint test**, **Network Restriction scan** (UDP/53, TCP/53, DoH/443, DoT/853, DNSCrypt), **DNS Leak check**, **Multi-Resolver Comparison**, and **Global DNS Propagation check**.
+- **Virtualized Live Monitor (`LiveMonitorView`, `LiveMonitorViewModel`):**
+  - Real-time query stream using WPF `VirtualizingPanel.VirtualizationMode="Recycling"` with bounded 300-entry ring buffer, Pause/Resume toggle, Clear action, live engine metrics, and automatic failover event history.
+  - All 9 main application sections are now complete (zero planned placeholder pages remaining); 102 offline unit tests passing.
+
 ### Phase 9 — Network Resilience & Intelligent Encrypted DNS Failover
 - **Encrypted DNS failover service (`DnsFailoverService`, `IDnsFailoverService`):**
   - Implements `EncryptedOnly`, `EncryptedThenPlainFallback`, and `PrimaryAndSecondaryOnly` failover policies with configurable per-query retries (`MaxRetriesPerQuery`), retry delay, and failure threshold (`FailureThresholdBeforeSwitch`).

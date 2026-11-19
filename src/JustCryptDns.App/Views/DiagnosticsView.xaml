@@ -1,0 +1,193 @@
+<UserControl x:Class="JustCryptDns.App.Views.DiagnosticsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
+             xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
+             xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1250"
+             d:DataContext="{d:DesignInstance Type=vm:DiagnosticsViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="SectionCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+        </Style>
+        <Style x:Key="Divider" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Divider}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Margin" Value="0,14,0,14" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel Margin="32,4,32,32" MaxWidth="940">
+            <!-- Header -->
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Diagnostics}" />
+                    <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Diagnostics_Subtitle}" Margin="0,4,0,0" />
+                </StackPanel>
+                <Button Grid.Column="1" Command="{Binding RefreshLocalSnapshotCommand}" Content="{l:Loc Common_Refresh}" VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Error Banner -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+            </Border>
+
+            <!-- Local Diagnostics Section -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Diag_LocalSection}" Margin="0,4,0,8" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Network_LocalNote}" Margin="0,0,0,14" />
+                    <UniformGrid Rows="2" Columns="4">
+                        <StackPanel Margin="0,0,12,12">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Network_Adapter}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding AdapterName}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,12">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Network_LocalIp}" />
+                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding LocalIp}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,12">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Network_Gateway}" />
+                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Gateway}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Network_Dns}" />
+                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding ActiveDnsServers}" Margin="0,4,0,0" />
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc DnsMgr_EngineTitle}" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Margin="0,4,0,0">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="EngineState_">
+                                        <Binding Path="EngineState" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Resolver}" />
+                            <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ActiveResolverName}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Protocol}" />
+                            <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ActiveProtocol}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="IPv4 / IPv6 / Latency" />
+                            <TextBlock Style="{StaticResource Text.Body}" Margin="0,4,0,0">
+                                <Run Text="{Binding Ipv4StatusText, Mode=OneWay}" />
+                                <Run Text=" / " />
+                                <Run Text="{Binding Ipv6StatusText, Mode=OneWay}" />
+                                <Run Text=" · " />
+                                <Run Text="{Binding LastLatencyText, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- External Connectivity & Security Tests -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Diag_ExternalSection}" Margin="0,10,0,8" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Diag_ExternalNote}" Margin="0,0,0,12" />
+                    <WrapPanel Orientation="Horizontal">
+                        <Button Command="{Binding RunDnssecTestCommand}" Content="{l:Loc Diag_Btn_Dnssec}" Margin="0,0,8,8" />
+                        <Button Command="{Binding RunDohTestCommand}" Content="{l:Loc Diag_Btn_Doh}" Margin="0,0,8,8" />
+                        <Button Command="{Binding RunDnsCryptTestCommand}" Content="{l:Loc Diag_Btn_DnsCrypt}" Margin="0,0,8,8" />
+                        <Button Command="{Binding RunLeakTestCommand}" Content="{l:Loc Diag_Btn_Leak}" Margin="0,0,8,8" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding RunRestrictionScanCommand}" Content="{l:Loc Diag_Btn_Restrictions}" Margin="0,0,8,8" />
+                    </WrapPanel>
+
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,8,0,0"
+                            Visibility="{Binding ExternalTestResult, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ExternalTestResult}" />
+                    </Border>
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,8,0,0"
+                            Visibility="{Binding RestrictionSummary, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding RestrictionSummary}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- DNS Lookup, Comparison & Propagation Tool -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Diag_LookupSection}" Margin="0,10,0,8" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding LookupDomain, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Mono}"
+                                 Margin="0,0,10,0" AutomationProperties.Name="{l:Loc Diag_LookupSection}" />
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding RecordTypes}" SelectedItem="{Binding SelectedRecordType}"
+                                  MinWidth="95" Margin="0,0,10,0" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button Style="{StaticResource Button.Primary}" Command="{Binding RunLookupCommand}" Content="{l:Loc Diag_Btn_Lookup}" Margin="0,0,8,0" />
+                            <Button Command="{Binding CompareResolversCommand}" Content="{l:Loc Diag_Btn_Compare}" Margin="0,0,8,0" />
+                            <Button Command="{Binding CheckPropagationCommand}" Content="{l:Loc Diag_Btn_Propagation}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,12,0,0"
+                            Visibility="{Binding LookupSummary, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding LookupSummary}" />
+                    </Border>
+
+                    <!-- Lookup Answer Records -->
+                    <ItemsControl ItemsSource="{Binding LookupRecords}" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:DnsLookupRecordItem}">
+                                <Grid Margin="0,4,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold" Text="{Binding RecordType}" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Ttl, StringFormat=TTL {0}s}" />
+                                    <TextBlock Grid.Column="3" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Value}" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Comparison / Propagation Results -->
+                    <ItemsControl ItemsSource="{Binding ComparisonResults}" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:ResolverComparisonEntry}">
+                                <Grid Margin="0,4,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220" />
+                                        <ColumnDefinition Width="95" />
+                                        <ColumnDefinition Width="85" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding ResolverName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding LatencyMs, StringFormat={}{0:0.0} ms}" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding ResponseCode}" />
+                                    <TextBlock Grid.Column="3" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding PrimaryAnswerSummary}" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1212,4 +1212,52 @@
   <data name="Resilience_FailoverDesc" xml:space="preserve">
     <value>Automatically retries and falls back across your configured Primary, Secondary and encrypted resolvers on timeout or endpoint failure.</value>
   </data>
+  <data name="Diag_LocalSection" xml:space="preserve">
+    <value>Local adapter &amp; DNS engine diagnostics</value>
+  </data>
+  <data name="Diag_ExternalSection" xml:space="preserve">
+    <value>External DNS &amp; network transport tests</value>
+  </data>
+  <data name="Diag_ExternalNote" xml:space="preserve">
+    <value>Actions below perform actual external network queries and clearly distinguish external test results from local adapter state.</value>
+  </data>
+  <data name="Diag_Btn_Dnssec" xml:space="preserve">
+    <value>Test DNSSEC</value>
+  </data>
+  <data name="Diag_Btn_Doh" xml:space="preserve">
+    <value>Test DoH</value>
+  </data>
+  <data name="Diag_Btn_DnsCrypt" xml:space="preserve">
+    <value>Test DNSCrypt</value>
+  </data>
+  <data name="Diag_Btn_Leak" xml:space="preserve">
+    <value>DNS leak check</value>
+  </data>
+  <data name="Diag_Btn_Restrictions" xml:space="preserve">
+    <value>Scan UDP/TCP 53 &amp; encrypted transports</value>
+  </data>
+  <data name="Diag_LookupSection" xml:space="preserve">
+    <value>DNS lookup, resolver comparison &amp; global propagation</value>
+  </data>
+  <data name="Diag_Btn_Lookup" xml:space="preserve">
+    <value>Lookup</value>
+  </data>
+  <data name="Diag_Btn_Compare" xml:space="preserve">
+    <value>Compare resolvers</value>
+  </data>
+  <data name="Diag_Btn_Propagation" xml:space="preserve">
+    <value>Check propagation</value>
+  </data>
+  <data name="Diag_Lookup_Summary" xml:space="preserve">
+    <value>External lookup for {0} ({1}): {2} in {3} ms via {4} ({5} record(s)).</value>
+  </data>
+  <data name="Monitor_PauseStream" xml:space="preserve">
+    <value>Pause stream</value>
+  </data>
+  <data name="Monitor_LiveStreamTitle" xml:space="preserve">
+    <value>Virtualized live DNS query log</value>
+  </data>
+  <data name="Monitor_FailoverHistoryTitle" xml:space="preserve">
+    <value>Automatic failover &amp; recovery events</value>
+  </data>
 </root>

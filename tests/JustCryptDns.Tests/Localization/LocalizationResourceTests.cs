@@ -99,14 +99,6 @@ public sealed partial class LocalizationResourceTests
         expected.AddRange(Enum.GetNames<BlocklistCategory>().Select(n => "BlockCat_" + n));
         expected.AddRange(LanguageCodes.All.Select(c => "Lang_" + c));
 
-        foreach (var page in new[] { "Diagnostics", "Monitor" })
-        {
-            var vm = new PlannedFeatureViewModel(page, 4, 4);
-            expected.Add(vm.TitleKey);
-            expected.Add(vm.SubtitleKey);
-            expected.AddRange(vm.FeatureKeys);
-        }
-
         foreach (var key in expected)
         {
             Assert.True(keys.Contains(key), $"Missing key {key}");

@@ -1,0 +1,380 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using JustCryptDns.Core.Configuration;
+using JustCryptDns.Core.Interfaces;
+using JustCryptDns.Core.Ipc;
+using JustCryptDns.Core.Models;
+using JustCryptDns.DNS.DNSOverHTTPS;
+using JustCryptDns.DNS.DNSOverTLS;
+using JustCryptDns.DNS.Resolver;
+using JustCryptDns.DNS.Wire;
+
+namespace JustCryptDns.Network.Diagnostics;
+
+public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDisposable
+{
+    public const int MaxMonitorEntries = 300;
+
+    private readonly ISettingsService _settings;
+    private readonly IResolverLibraryService _resolverLibrary;
+    private readonly INetworkInfoService _networkInfo;
+    private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
+    private readonly DohDnsUpstream _defaultDoh;
+    private readonly LinkedList<LiveQueryMonitorEntry> _monitorEntries = new();
+    private readonly object _monitorLock = new();
+    private bool _disposed;
+
+    public NetworkDiagnosticsService(
+        ISettingsService settings,
+        IResolverLibraryService resolverLibrary,
+        INetworkInfoService networkInfo,
+        IEnumerable<IDnsUpstreamClient>? customUpstreams = null)
+    {
+        _settings = settings;
+        _resolverLibrary = resolverLibrary;
+        _networkInfo = networkInfo;
+
+        _defaultDoh = new DohDnsUpstream();
+        var defaultClients = new IDnsUpstreamClient[]
+        {
+            _defaultDoh,
+            new DotDnsUpstream(),
+            new UdpTcpDnsUpstream(),
+        };
+
+        var list = customUpstreams?.ToList();
+        IEnumerable<IDnsUpstreamClient> active = list is { Count: > 0 } ? list : defaultClients;
+        _upstreams = active.ToDictionary(u => u.Protocol);
+    }
+
+    public event EventHandler<LiveQueryMonitorEntry>? QueryObserved;
+
+    public bool IsMonitorPaused { get; set; }
+
+    public IReadOnlyList<LiveQueryMonitorEntry> GetMonitorEntries()
+    {
+        lock (_monitorLock)
+        {
+            return _monitorEntries.ToList();
+        }
+    }
+
+    public void RecordMonitorEntry(LiveQueryMonitorEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        if (IsMonitorPaused)
+        {
+            return;
+        }
+
+        lock (_monitorLock)
+        {
+            _monitorEntries.AddFirst(entry);
+            while (_monitorEntries.Count > MaxMonitorEntries)
+            {
+                _monitorEntries.RemoveLast();
+            }
+        }
+
+        QueryObserved?.Invoke(this, entry);
+    }
+
+    public void ClearMonitorEntries()
+    {
+        lock (_monitorLock)
+        {
+            _monitorEntries.Clear();
+        }
+    }
+
+    public async Task<DnsLookupReport> LookupAsync(
+        string domain,
+        string recordType,
+        string? resolverId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var normDomain = RoutingMatcher.NormalizeDomain(domain);
+        if (string.IsNullOrEmpty(normDomain))
+        {
+            normDomain = "example.com";
+        }
+
+        if (!Enum.TryParse<DnsRecordType>(recordType, ignoreCase: true, out var qType))
+        {
+            qType = DnsRecordType.A;
+        }
+
+        var resolver = string.IsNullOrWhiteSpace(resolverId)
+            ? _resolverLibrary.GetPrimaryResolver()
+            : _resolverLibrary.GetByIdOrDefault(resolverId);
+
+        if (!_upstreams.TryGetValue(resolver.Protocol, out var upstream))
+        {
+            return new DnsLookupReport
+            {
+                Domain = normDomain,
+                RecordType = qType.ToString(),
+                ResolverName = resolver.Name,
+                Protocol = resolver.Protocol,
+                Success = false,
+                ResponseCode = "UNAVAILABLE",
+                LatencyMs = 0,
+                AuthenticDataBit = false,
+                Records = [],
+                ErrorMessage = $"Direct lookup client not available for {resolver.Protocol}.",
+            };
+        }
+
+        var query = DnsPacket.CreateQuery(normDomain, qType, dnssecOk: true);
+        var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
+        var result = await upstream.QueryAsync(query, resolver, timeout, cancellationToken).ConfigureAwait(false);
+
+        if (!result.Success || !DnsPacket.TryParse(result.ResponseBytes, out var parsed) || parsed is null)
+        {
+            return new DnsLookupReport
+            {
+                Domain = normDomain,
+                RecordType = qType.ToString(),
+                ResolverName = resolver.Name,
+                Protocol = resolver.Protocol,
+                Success = false,
+                ResponseCode = "ERROR",
+                LatencyMs = Math.Round(result.LatencyMs, 1),
+                AuthenticDataBit = false,
+                Records = [],
+                ErrorMessage = result.Error ?? "Malformed DNS response.",
+            };
+        }
+
+        var items = parsed.Answers
+            .Select(a => new DnsLookupRecordItem(a.Name, a.Type.ToString(), a.Ttl, a.DataSummary))
+            .ToList();
+
+        RecordMonitorEntry(new LiveQueryMonitorEntry
+        {
+            Timestamp = DateTimeOffset.Now,
+            Domain = normDomain,
+            RecordType = qType.ToString(),
+            Outcome = "Diagnostic",
+            ResolverName = resolver.Name,
+            Protocol = resolver.Protocol,
+            LatencyMs = Math.Round(result.LatencyMs, 1),
+        });
+
+        return new DnsLookupReport
+        {
+            Domain = normDomain,
+            RecordType = qType.ToString(),
+            ResolverName = resolver.Name,
+            Protocol = resolver.Protocol,
+            Success = true,
+            ResponseCode = parsed.Header.ResponseCode.ToString(),
+            LatencyMs = Math.Round(result.LatencyMs, 1),
+            AuthenticDataBit = parsed.Header.IsAuthenticData,
+            Records = items,
+        };
+    }
+
+    public async Task<DnssecTestReport> TestDnssecAsync(
+        string? resolverId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var resolver = string.IsNullOrWhiteSpace(resolverId)
+            ? _resolverLibrary.GetPrimaryResolver()
+            : _resolverLibrary.GetByIdOrDefault(resolverId);
+
+        var signedLookup = await LookupAsync("cloudflare.com", "A", resolver.Id, cancellationToken).ConfigureAwait(false);
+        var adVerified = signedLookup.Success && (signedLookup.AuthenticDataBit || resolver.SupportsDnssec);
+
+        var summary = adVerified
+            ? $"External test passed: '{resolver.Name}' resolved DNSSEC-signed domain 'cloudflare.com' ({signedLookup.LatencyMs:0.#} ms, AD={signedLookup.AuthenticDataBit})."
+            : $"External test failed or unverified on '{resolver.Name}': {signedLookup.ErrorMessage ?? signedLookup.ResponseCode}.";
+
+        return new DnssecTestReport
+        {
+            ResolverName = resolver.Name,
+            SupportsDnssecValidation = resolver.SupportsDnssec,
+            SignedDomainVerified = adVerified,
+            LatencyMs = signedLookup.LatencyMs,
+            Summary = summary,
+        };
+    }
+
+    public async Task<(bool Success, double LatencyMs, string Summary)> TestDohConnectivityAsync(
+        string? resolverId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var resolver = string.IsNullOrWhiteSpace(resolverId)
+            ? _resolverLibrary.GetAll().FirstOrDefault(r => r.Protocol == DnsProtocol.DnsOverHttps) ?? _resolverLibrary.GetPrimaryResolver()
+            : _resolverLibrary.GetByIdOrDefault(resolverId);
+
+        var report = await LookupAsync("example.com", "A", resolver.Id, cancellationToken).ConfigureAwait(false);
+        var summary = report.Success
+            ? $"External DoH connectivity verified with {resolver.Name} ({resolver.Endpoint}) in {report.LatencyMs:0.#} ms."
+            : $"External DoH connectivity failed for {resolver.Name}: {report.ErrorMessage ?? report.ResponseCode}.";
+        return (report.Success, report.LatencyMs, summary);
+    }
+
+    public async Task<(bool Success, double LatencyMs, string Summary)> TestDnsCryptConnectivityAsync(
+        string? resolverId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var resolver = string.IsNullOrWhiteSpace(resolverId)
+            ? _resolverLibrary.GetAll().FirstOrDefault(r => r.Protocol == DnsProtocol.DnsCrypt) ?? BuiltInResolvers.GetByIdOrDefault("quad9-dnscrypt")
+            : _resolverLibrary.GetByIdOrDefault(resolverId);
+
+        if (!ResolverValidator.TryValidateDnsCryptStamp(resolver.Endpoint, out var stampError))
+        {
+            return (false, 0, $"DNSCrypt stamp validation failed: {stampError}");
+        }
+
+        if (_upstreams.TryGetValue(DnsProtocol.DnsCrypt, out var cryptUpstream))
+        {
+            var query = DnsPacket.CreateQuery("example.com", DnsRecordType.A);
+            var res = await cryptUpstream.QueryAsync(query, resolver, TimeSpan.FromMilliseconds(2500), cancellationToken).ConfigureAwait(false);
+            var msg = res.Success
+                ? $"DNSCrypt query verified via {resolver.Name} in {res.LatencyMs:0.#} ms."
+                : $"DNSCrypt query failed on {resolver.Name}: {res.Error}.";
+            return (res.Success, Math.Round(res.LatencyMs, 1), msg);
+        }
+
+        if (!IPAddress.TryParse(resolver.PrimaryIp, out var ip))
+        {
+            return (false, 0, $"Invalid DNSCrypt bootstrap IP '{resolver.PrimaryIp}'.");
+        }
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromMilliseconds(2500));
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            using var tcp = new TcpClient(ip.AddressFamily);
+            await tcp.ConnectAsync(ip, resolver.Port, cts.Token).ConfigureAwait(false);
+            sw.Stop();
+            var ms = Math.Round(sw.Elapsed.TotalMilliseconds, 1);
+            return (true, ms, $"External DNSCrypt endpoint {resolver.Name} ({ip}:{resolver.Port}) is reachable ({ms:0.#} ms) and stamp is valid.");
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), $"External DNSCrypt endpoint {resolver.Name} unreachable: {ex.Message}");
+        }
+    }
+
+    public async Task<IReadOnlyList<ResolverComparisonEntry>> CompareResolversAsync(
+        string domain,
+        string recordType = "A",
+        CancellationToken cancellationToken = default)
+    {
+        var candidates = _resolverLibrary.GetEnabled()
+            .Where(r => _upstreams.ContainsKey(r.Protocol))
+            .Take(8)
+            .ToList();
+
+        return await QueryMultipleResolversAsync(candidates, domain, recordType, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<ResolverComparisonEntry>> CheckPropagationAsync(
+        string domain,
+        string recordType = "A",
+        CancellationToken cancellationToken = default)
+    {
+        string[] globalIds =
+        [
+            "cloudflare-doh",
+            "google-doh",
+            "quad9-doh",
+            "opendns-doh",
+            "adguard-doh",
+            "controld-unfiltered-doh",
+            "mullvad-doh",
+            "dns0-zero-doh",
+        ];
+
+        var candidates = globalIds
+            .Select(_resolverLibrary.GetByIdOrDefault)
+            .DistinctBy(r => r.Id, StringComparer.OrdinalIgnoreCase)
+            .Where(r => _upstreams.ContainsKey(r.Protocol))
+            .ToList();
+
+        return await QueryMultipleResolversAsync(candidates, domain, recordType, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<DnsLeakTestReport> RunDnsLeakTestAsync(CancellationToken cancellationToken = default)
+    {
+        var snapshot = _networkInfo.GetSnapshot();
+        var dns = _settings.Current.Dns;
+        var listenEndpoint = $"{dns.ListenAddress}:{dns.ListenPort}";
+        var primaryResolver = _resolverLibrary.GetByIdOrDefault(dns.ActiveResolverId);
+
+        var adapterDns = snapshot.PrimaryAdapter?.DnsServers.Select(ip => ip.ToString()).ToList() ?? [];
+        var allLoopback = adapterDns.Count > 0 && adapterDns.All(ip => IPAddress.TryParse(ip, out var parsed) && IPAddress.IsLoopback(parsed));
+
+        var isLeak = !allLoopback || !primaryResolver.IsEncrypted;
+
+        string summary;
+        if (!allLoopback)
+        {
+            summary = $"Potential DNS leak detected: Windows adapter DNS ({string.Join(", ", adapterDns)}) includes non-loopback servers that may bypass the local proxy ({listenEndpoint}).";
+        }
+        else if (!primaryResolver.IsEncrypted)
+        {
+            summary = $"Unencrypted upstream: Windows adapter routes to local proxy ({listenEndpoint}), but active resolver '{primaryResolver.Name}' uses plain UDP/TCP.";
+        }
+        else
+        {
+            summary = $"No local DNS leak detected: Windows adapter points exclusively to local proxy ({string.Join(", ", adapterDns)}), and queries are encrypted via {primaryResolver.Name} ({primaryResolver.Protocol}).";
+        }
+
+        return Task.FromResult(new DnsLeakTestReport
+        {
+            IsLeakDetected = isLeak,
+            IsAdapterUsingLocalProxy = allLoopback,
+            AdapterDnsServers = adapterDns,
+            ActiveEncryptedResolver = primaryResolver.Name,
+            ActiveProtocol = primaryResolver.Protocol,
+            Summary = summary,
+        });
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _defaultDoh.Dispose();
+    }
+
+    private async Task<IReadOnlyList<ResolverComparisonEntry>> QueryMultipleResolversAsync(
+        IReadOnlyList<DnsResolverEndpoint> resolvers,
+        string domain,
+        string recordType,
+        CancellationToken cancellationToken)
+    {
+        var tasks = resolvers.Select(async r =>
+        {
+            var report = await LookupAsync(domain, recordType, r.Id, cancellationToken).ConfigureAwait(false);
+            var primaryAnswer = report.Records.Count > 0
+                ? string.Join(", ", report.Records.Select(x => x.Value).Take(2))
+                : (report.ErrorMessage ?? report.ResponseCode);
+            return new ResolverComparisonEntry(
+                r.Name,
+                r.Provider,
+                r.Protocol,
+                report.Success,
+                report.LatencyMs,
+                report.ResponseCode,
+                primaryAnswer);
+        });
+
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        return results
+            .OrderByDescending(x => x.Success)
+            .ThenBy(x => x.LatencyMs)
+            .ToList();
+    }
+}

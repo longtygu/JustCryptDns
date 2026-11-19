@@ -2,17 +2,9 @@
 
 Advanced DNS security, smart routing and gaming DNS optimization suite for Windows 10 22H2 / Windows 11 (x64).
 
-> **Status: active development (Phase 9 of 12).** The core DNS engine (DoH, DoT, DNSCrypt via `dnscrypt-proxy`, UDP/TCP),
-> complete Resolver Library (9 predefined providers across DoH, DoT, DNSCrypt & UDP/TCP, custom resolver CRUD, `sdns://` stamp & endpoint validation, primary/secondary assignment, resolver groups, profile import/export, live health & reliability checks),
-> Smart DNS Routing (domain-based Exact, Domain Suffix & Wildcard matching, prioritized rules, Gaming/Privacy/Security/Custom profiles, fallback resolver, interactive rule tester & live routing logs),
-> DNS Filtering & TTL Cache (Advertising, Tracking, Malware, Phishing, Telemetry & Custom blocklists, hosts-file import, allowlist, temporary exceptions, essential Windows service guard, decision inspector, and TTL-aware positive/negative DNS response cache),
-> Gaming Low Latency Engine (multi-domain repeated resolver benchmarking, Lowest Latency / Balanced / Maximum Reliability selection profiles, Steam / Riot / Epic / EA / Ubisoft / Battle.net / General Gaming / Custom profiles, and Gaming Mode with session pinning),
-> Network Resilience & Encrypted Failover (Primary/Secondary & encrypted-first failover policies, configurable retry policy, automatic failover event log, and UDP/53, TCP/53, DoH, DoT, DNSCrypt & IPv4/IPv6 restriction diagnostics),
-> local DNS proxy (`127.0.0.1` with port conflict & DNS loop detection), 6-step Windows network adapter DNS safety integration
-> (backup, SHA-256 verification, connectivity probe, automatic rollback, emergency restore, crash recovery),
-> background service (`JustCryptDns.Service`), Named Pipe IPC, system tray integration, Windows startup registration,
-> window transparency (Mica / Acrylic / DWM Blur), appearance customization, and localization work.
-> Pages for modules scheduled in Phase 10+ show an explicit *"Planned · Phase N"* notice and never display fabricated data.
+> **Status: active development (Phase 10 of 12).** All 9 main application sections are now live and functional:
+> Dashboard, DNS Manager, Resolver Library, Smart Routing, Gaming Optimization, DNS Filtering & Cache, Network Diagnostics, Live Monitor, and Settings + Appearance.
+> No section displays fabricated data or simulated DNS responses.
 
 ## Features implemented so far
 
@@ -33,12 +25,12 @@ Advanced DNS security, smart routing and gaming DNS optimization suite for Windo
 | DNS Filtering & TTL Cache: Advertising/Tracking/Malware/Phishing/Telemetry/Custom blocklists, hosts import, allowlist, temporary exceptions, essential Windows domain guard, decision inspector & TTL-aware positive/negative cache | ✅ |
 | Gaming Low Latency Engine: repeated multi-domain benchmark (avg, min, max, P95, jitter, success/timeout rate, reliability score), 3 optimization profiles, 8 built-in + custom gaming profiles, and Gaming Mode with session pinning | ✅ |
 | Network Resilience & Failover: Primary/Secondary & encrypted failover policies, configurable retries, failure classification (UDP/53, TCP/53, DoH, DoT, DNSCrypt, IPv4/IPv6) & failover event history | ✅ |
+| Network Diagnostics & Virtualized Live Monitor: A/AAAA/CNAME/MX/TXT/NS lookup, DNSSEC/DoH/DNSCrypt/leak/propagation/restriction tests, clearly separated local vs. external results, and recycling virtualized live query & failover monitor | ✅ |
 | English / Vietnamese UI, switchable without restart | ✅ |
 | Versioned JSON settings (schema v9) with atomic save, backup, corruption recovery and migration | ✅ |
 | Rolling, size-capped logs (Serilog) | ✅ |
-| Dashboard & DNS Manager: live DNS engine controls, real latency, blocked query & cache hit counters, local adapter status | ✅ |
 | Single-instance guard (second launch activates the first window) | ✅ |
-| Network Diagnostics & Live Monitor | Phase 10+ |
+| Extreme Resource Optimization (Monitoring Modes & Perf Diagnostics) and Release Packaging (Inno Setup + Portable ZIP) | Phase 11–12 |
 
 See the full roadmap in [docs/ROADMAP.md](docs/ROADMAP.md).
 

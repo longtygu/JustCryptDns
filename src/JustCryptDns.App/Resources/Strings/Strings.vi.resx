@@ -1212,4 +1212,52 @@
   <data name="Resilience_FailoverDesc" xml:space="preserve">
     <value>Tự động thử lại và chuyển đổi dự phòng qua resolver Chính, Phụ và các resolver mã hóa khi quá hạn hoặc lỗi kết nối.</value>
   </data>
+  <data name="Diag_LocalSection" xml:space="preserve">
+    <value>Chẩn đoán bộ điều hợp cục bộ &amp; DNS engine</value>
+  </data>
+  <data name="Diag_ExternalSection" xml:space="preserve">
+    <value>Kiểm tra DNS bên ngoài &amp; giao thức truyền tải</value>
+  </data>
+  <data name="Diag_ExternalNote" xml:space="preserve">
+    <value>Các nút bên dưới thực hiện truy vấn mạng thực tế ra bên ngoài và tách biệt rõ với trạng thái bộ điều hợp cục bộ.</value>
+  </data>
+  <data name="Diag_Btn_Dnssec" xml:space="preserve">
+    <value>Kiểm tra DNSSEC</value>
+  </data>
+  <data name="Diag_Btn_Doh" xml:space="preserve">
+    <value>Kiểm tra DoH</value>
+  </data>
+  <data name="Diag_Btn_DnsCrypt" xml:space="preserve">
+    <value>Kiểm tra DNSCrypt</value>
+  </data>
+  <data name="Diag_Btn_Leak" xml:space="preserve">
+    <value>Kiểm tra rò rỉ DNS</value>
+  </data>
+  <data name="Diag_Btn_Restrictions" xml:space="preserve">
+    <value>Quét UDP/TCP 53 &amp; giao thức mã hóa</value>
+  </data>
+  <data name="Diag_LookupSection" xml:space="preserve">
+    <value>Tra cứu DNS, so sánh resolver &amp; kiểm tra lan truyền toàn cầu</value>
+  </data>
+  <data name="Diag_Btn_Lookup" xml:space="preserve">
+    <value>Tra cứu</value>
+  </data>
+  <data name="Diag_Btn_Compare" xml:space="preserve">
+    <value>So sánh resolver</value>
+  </data>
+  <data name="Diag_Btn_Propagation" xml:space="preserve">
+    <value>Kiểm tra lan truyền</value>
+  </data>
+  <data name="Diag_Lookup_Summary" xml:space="preserve">
+    <value>Tra cứu bên ngoài cho {0} ({1}): {2} trong {3} ms qua {4} ({5} bản ghi).</value>
+  </data>
+  <data name="Monitor_PauseStream" xml:space="preserve">
+    <value>Tạm dừng luồng</value>
+  </data>
+  <data name="Monitor_LiveStreamTitle" xml:space="preserve">
+    <value>Nhật ký truy vấn DNS trực tiếp (ảo hóa)</value>
+  </data>
+  <data name="Monitor_FailoverHistoryTitle" xml:space="preserve">
+    <value>Sự kiện chuyển đổi dự phòng &amp; phục hồi tự động</value>
+  </data>
 </root>

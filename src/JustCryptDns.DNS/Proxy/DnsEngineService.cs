@@ -29,6 +29,7 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly IDnsFilteringService? _filteringService;
     private readonly IDnsCacheService? _cacheService;
     private readonly IDnsFailoverService? _failoverService;
+    private readonly INetworkDiagnosticsService? _diagnosticsService;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
@@ -56,7 +57,8 @@ public sealed class DnsEngineService : IDnsEngine
         IDnsRoutingService? routingService = null,
         IDnsFilteringService? filteringService = null,
         IDnsCacheService? cacheService = null,
-        IDnsFailoverService? failoverService = null)
+        IDnsFailoverService? failoverService = null,
+        INetworkDiagnosticsService? diagnosticsService = null)
     {
         _settings = settings;
         _dnsCryptManager = dnsCryptManager;
@@ -67,6 +69,7 @@ public sealed class DnsEngineService : IDnsEngine
         _filteringService = filteringService;
         _cacheService = cacheService;
         _failoverService = failoverService;
+        _diagnosticsService = diagnosticsService;
 
         _defaultDoh = new DohDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
@@ -329,13 +332,26 @@ public sealed class DnsEngineService : IDnsEngine
         var hasParsed = DnsPacket.TryParse(queryWire.Span, out var parsed)
             && parsed is { PrimaryQuestionName.Length: > 0 };
 
+        var qDomain = hasParsed ? parsed!.PrimaryQuestionName! : "unknown";
+        var queryType = hasParsed ? parsed!.PrimaryQuestionType.ToString() : "A";
+
         // 1. DNS Filtering (Blocklists & Allowlist)
         if (hasParsed && _filteringService is not null)
         {
-            var filterDecision = _filteringService.EvaluateDomain(parsed!.PrimaryQuestionName!, recordStats: true);
+            var filterDecision = _filteringService.EvaluateDomain(qDomain, recordStats: true);
             if (filterDecision.IsBlocked)
             {
                 Interlocked.Increment(ref _totalQueries);
+                _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+                {
+                    Timestamp = DateTimeOffset.Now,
+                    Domain = qDomain,
+                    RecordType = queryType,
+                    Outcome = "Blocked",
+                    ResolverName = filterDecision.MatchedRuleOrListName ?? "Filter",
+                    Protocol = _activeResolver.Protocol,
+                    LatencyMs = 0.0,
+                });
                 RaiseStateChanged();
                 return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.NxDomain);
             }
@@ -347,6 +363,16 @@ public sealed class DnsEngineService : IDnsEngine
         {
             Interlocked.Increment(ref _totalQueries);
             Interlocked.Increment(ref _successfulQueries);
+            _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+            {
+                Timestamp = DateTimeOffset.Now,
+                Domain = qDomain,
+                RecordType = queryType,
+                Outcome = "Cached",
+                ResolverName = "TTL Cache",
+                Protocol = _activeResolver.Protocol,
+                LatencyMs = 0.1,
+            });
             RaiseStateChanged();
             return cachedBytes;
         }
@@ -354,12 +380,10 @@ public sealed class DnsEngineService : IDnsEngine
         // 3. Smart DNS Routing
         var resolver = _activeResolver;
         RoutingDecision? decision = null;
-        var queryType = "A";
 
         if (hasParsed && _routingService is { IsRoutingEnabled: true })
         {
-            queryType = parsed!.PrimaryQuestionType.ToString();
-            decision = _routingService.ResolveForDomain(parsed.PrimaryQuestionName!);
+            decision = _routingService.ResolveForDomain(qDomain);
             resolver = ResolveEndpoint(decision.ResolverId);
         }
 
@@ -397,6 +421,17 @@ public sealed class DnsEngineService : IDnsEngine
         {
             _routingService.RecordRoutingLog(decision, queryType, result.Success ? result.LatencyMs : null);
         }
+
+        _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+        {
+            Timestamp = DateTimeOffset.Now,
+            Domain = qDomain,
+            RecordType = queryType,
+            Outcome = result.Success ? (decision is { IsFallback: false } ? "Routed" : "Allowed") : "Failed",
+            ResolverName = resolver.Name,
+            Protocol = resolver.Protocol,
+            LatencyMs = result.Success ? Math.Round(result.LatencyMs, 1) : null,
+        });
 
         if (result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize)
         {

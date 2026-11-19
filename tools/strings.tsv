@@ -399,3 +399,19 @@ Gaming_Bench_Recommended|Recommended: {0} (avg {1} ms, P95 {2} ms, reliability {
 Gaming_Bench_Done|Benchmark complete.|Hoàn tất đo hiệu năng.
 Resilience_FailoverTitle|Intelligent encrypted DNS failover|Chuyển đổi dự phòng DNS mã hóa thông minh
 Resilience_FailoverDesc|Automatically retries and falls back across your configured Primary, Secondary and encrypted resolvers on timeout or endpoint failure.|Tự động thử lại và chuyển đổi dự phòng qua resolver Chính, Phụ và các resolver mã hóa khi quá hạn hoặc lỗi kết nối.
+Diag_LocalSection|Local adapter & DNS engine diagnostics|Chẩn đoán bộ điều hợp cục bộ & DNS engine
+Diag_ExternalSection|External DNS & network transport tests|Kiểm tra DNS bên ngoài & giao thức truyền tải
+Diag_ExternalNote|Actions below perform actual external network queries and clearly distinguish external test results from local adapter state.|Các nút bên dưới thực hiện truy vấn mạng thực tế ra bên ngoài và tách biệt rõ với trạng thái bộ điều hợp cục bộ.
+Diag_Btn_Dnssec|Test DNSSEC|Kiểm tra DNSSEC
+Diag_Btn_Doh|Test DoH|Kiểm tra DoH
+Diag_Btn_DnsCrypt|Test DNSCrypt|Kiểm tra DNSCrypt
+Diag_Btn_Leak|DNS leak check|Kiểm tra rò rỉ DNS
+Diag_Btn_Restrictions|Scan UDP/TCP 53 & encrypted transports|Quét UDP/TCP 53 & giao thức mã hóa
+Diag_LookupSection|DNS lookup, resolver comparison & global propagation|Tra cứu DNS, so sánh resolver & kiểm tra lan truyền toàn cầu
+Diag_Btn_Lookup|Lookup|Tra cứu
+Diag_Btn_Compare|Compare resolvers|So sánh resolver
+Diag_Btn_Propagation|Check propagation|Kiểm tra lan truyền
+Diag_Lookup_Summary|External lookup for {0} ({1}): {2} in {3} ms via {4} ({5} record(s)).|Tra cứu bên ngoài cho {0} ({1}): {2} trong {3} ms qua {4} ({5} bản ghi).
+Monitor_PauseStream|Pause stream|Tạm dừng luồng
+Monitor_LiveStreamTitle|Virtualized live DNS query log|Nhật ký truy vấn DNS trực tiếp (ảo hóa)
+Monitor_FailoverHistoryTitle|Automatic failover & recovery events|Sự kiện chuyển đổi dự phòng & phục hồi tự động

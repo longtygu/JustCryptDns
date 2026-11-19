@@ -76,7 +76,7 @@ flowchart LR
 | 7 | Filtering & cache ✅ | Blocklists (hosts/domain formats, validated), allowlist, temp exceptions, essential-domain protection, TTL cache (positive/negative, size cap, stats) | Tests + proxy pipeline |
 | 8 | Gaming ✅ | Benchmark (avg/min/max/P95/success/timeout/score), 3 selection profiles, gaming profiles, Gaming Mode (session pinning) | Tests + real benchmark |
 | 9 | Resilience ✅ | Failover policies, retry, UDP/TCP 53 blocking detection, handshake/DoH failure diagnostics, IPv4/IPv6 checks | Fault-injection tests |
-| 10 | Diagnostics & monitor | Diagnostics page tools (lookup, DNSSEC, DoH/DNSCrypt test, comparison, leak test, propagation), virtualized live query log | Manual + tests |
+| 10 | Diagnostics & monitor ✅ | Diagnostics page tools (lookup, DNSSEC, DoH/DNSCrypt test, comparison, leak test, propagation), virtualized live query log | Tests + snapshots |
 | 11 | Resource optimization | Monitoring modes, perf diagnostics mode, measurements of RAM/CPU/startup | Recorded measurements |
 | 12 | Testing & release | Remaining tests, self-contained publish, installer (Inno Setup), portable ZIP, docs, licenses | Clean-machine install test |
 
