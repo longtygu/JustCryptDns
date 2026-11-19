@@ -1,10 +1,13 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using JustCryptDns.App.Localization;
 using JustCryptDns.App.Services;
 using JustCryptDns.App.ViewModels;
 using JustCryptDns.Core.Interfaces;
+using JustCryptDns.Infrastructure.Windows;
 
 namespace JustCryptDns.App.Views;
 
@@ -24,6 +27,14 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         StateChanged += (_, _) => UpdateMaximizedState();
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible)
+            {
+                HideNativeCaptionButtons();
+            }
+        };
+        PreviewKeyDown += OnWindowPreviewKeyDown;
         Closing += OnWindowClosing;
         viewModel.HideToTrayRequested += (_, _) => HideToTray();
         viewModel.ExitRequested += (_, _) => Close();
@@ -34,6 +45,7 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
         _appearance.AttachWindow(this);
+        HideNativeCaptionButtons();
         UpdateMaximizedState();
     }
 
@@ -60,6 +72,27 @@ public partial class MainWindow : Window
         var key = maximized ? "Window_Restore" : "Window_Maximize";
         MaximizeButton.ToolTip = LocalizationManager.Instance[key];
         System.Windows.Automation.AutomationProperties.SetName(MaximizeButton, LocalizationManager.Instance[key]);
+        HideNativeCaptionButtons();
+    }
+
+    private void HideNativeCaptionButtons()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            DwmInterop.TryHideNativeCaptionButtons(hwnd);
+        }
+    }
+
+    private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.System
+            && e.SystemKey == Key.F4
+            && (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+        {
+            e.Handled = true;
+            Close();
+        }
     }
 
     private void OnMinimize(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);

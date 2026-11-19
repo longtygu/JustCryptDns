@@ -28,6 +28,14 @@ public static partial class DwmInterop
     private const int DwmwaWindowCornerPreference = 33;
     private const int DwmwaSystemBackdropType = 38;
 
+    private const int GwlStyle = -16;
+    private const long WsSysMenu = 0x00080000L;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+    private const uint SwpNoZOrder = 0x0004;
+    private const uint SwpNoActivate = 0x0010;
+    private const uint SwpFrameChanged = 0x0020;
+
     private const int WcaAccentPolicy = 19;
 
     private enum AccentState
@@ -126,6 +134,35 @@ public static partial class DwmInterop
         }
     }
 
+    internal static IntPtr StripSystemMenuFlag(IntPtr style) => new(style.ToInt64() & ~WsSysMenu);
+
+    /// <summary>
+    /// Removes <c>WS_SYSMENU</c> so DWM never paints native caption icons behind translucent custom buttons,
+    /// while keeping minimize, maximize, aero snap, and resize frame behaviors intact.
+    /// </summary>
+    public static bool TryHideNativeCaptionButtons(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var current = GetWindowLongPtrW(hwnd, GwlStyle);
+        if (current == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var updated = StripSystemMenuFlag(current);
+        if (updated != current)
+        {
+            _ = SetWindowLongPtrW(hwnd, GwlStyle, updated);
+            _ = SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
+        }
+
+        return true;
+    }
+
     public static bool IsCompositionEnabled()
     {
         try
@@ -147,4 +184,14 @@ public static partial class DwmInterop
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr GetWindowLongPtrW(IntPtr hwnd, int nIndex);
+
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr SetWindowLongPtrW(IntPtr hwnd, int nIndex, IntPtr dwNewLong);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool SetWindowPos(IntPtr hwnd, IntPtr hwndInsertAfter, int x, int y, int cx, int cy, uint flags);
 }

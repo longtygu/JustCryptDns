@@ -93,6 +93,18 @@ public sealed class AppearanceTests
     }
 
     [Fact]
+    public void DwmInterop_StripSystemMenuFlag_RemovesOnlyWsSysMenu()
+    {
+        const long standardWindowStyle = 0x00CF0000L; // WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX
+        const long expectedWithoutSysMenu = 0x00C70000L;
+
+        var stripped = DwmInterop.StripSystemMenuFlag(new IntPtr(standardWindowStyle));
+
+        Assert.Equal(expectedWithoutSysMenu, stripped.ToInt64());
+        Assert.False(DwmInterop.TryHideNativeCaptionButtons(IntPtr.Zero));
+    }
+
+    [Fact]
     public void ComputeAccent_ChoosesReadableForegroundForAllPresets()
     {
         foreach (var hex in AppearanceViewModel.AccentPresets.Concat(["#FFFFFF", "#000000", "#EAB308"]))

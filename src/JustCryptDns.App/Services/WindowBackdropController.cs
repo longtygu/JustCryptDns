@@ -59,6 +59,7 @@ public sealed class WindowBackdropController
             WindowCornerStyle.Square => CornerPreference.DoNotRound,
             _ => CornerPreference.Default,
         });
+        DwmInterop.TryHideNativeCaptionButtons(hwnd);
 
         if (_initialized && kind == _applied)
         {
@@ -78,6 +79,7 @@ public sealed class WindowBackdropController
 
         var ok = true;
         SetGlass(kind != BackdropKind.None);
+        DwmInterop.TryHideNativeCaptionButtons(hwnd);
         switch (kind)
         {
             case BackdropKind.Mica:
@@ -95,6 +97,7 @@ public sealed class WindowBackdropController
         {
             _logger.LogWarning("Backdrop {Kind} could not be applied; falling back to an opaque window.", kind);
             SetGlass(false);
+            DwmInterop.TryHideNativeCaptionButtons(hwnd);
             _applied = BackdropKind.None;
             _initialized = true;
             return false;
