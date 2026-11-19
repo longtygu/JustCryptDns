@@ -2,11 +2,12 @@
 
 Advanced DNS security, smart routing and gaming DNS optimization suite for Windows 10 22H2 / Windows 11 (x64).
 
-> **Status: active development (Phase 10 of 12).** All 9 main application sections are now live and functional:
-> Dashboard, DNS Manager, Resolver Library, Smart Routing, Gaming Optimization, DNS Filtering & Cache, Network Diagnostics, Live Monitor, and Settings + Appearance.
-> No section displays fabricated data or simulated DNS responses.
+> **Status: v1.0.0 Release Ready (12 of 12 phases complete).** All 9 main application sections, the core DNS engine,
+> Resolver Library, Smart DNS Routing, DNS Filtering & TTL Cache, Gaming Low Latency Engine, Network Resilience & Failover,
+> Network Diagnostics, Virtualized Live Monitor, Appearance & Window Transparency, Background Windows Service, System Tray,
+> Resource Optimization, and Release Packaging (self-contained `win-x64` portable ZIP + Inno Setup installer) are implemented and verified.
 
-## Features implemented so far
+## Features
 
 | Area | Status |
 |---|---|
@@ -26,22 +27,31 @@ Advanced DNS security, smart routing and gaming DNS optimization suite for Windo
 | Gaming Low Latency Engine: repeated multi-domain benchmark (avg, min, max, P95, jitter, success/timeout rate, reliability score), 3 optimization profiles, 8 built-in + custom gaming profiles, and Gaming Mode with session pinning | ✅ |
 | Network Resilience & Failover: Primary/Secondary & encrypted failover policies, configurable retries, failure classification (UDP/53, TCP/53, DoH, DoT, DNSCrypt, IPv4/IPv6) & failover event history | ✅ |
 | Network Diagnostics & Virtualized Live Monitor: A/AAAA/CNAME/MX/TXT/NS lookup, DNSSEC/DoH/DNSCrypt/leak/propagation/restriction tests, clearly separated local vs. external results, and recycling virtualized live query & failover monitor | ✅ |
+| Extreme Resource Optimization: Power Saving / Balanced / Performance monitoring modes, Developer Performance Diagnostics, automatic tray working-set trimming | ✅ |
 | English / Vietnamese UI, switchable without restart | ✅ |
-| Versioned JSON settings (schema v9) with atomic save, backup, corruption recovery and migration | ✅ |
+| Versioned JSON settings (schema v10) with atomic save, backup, corruption recovery and migration | ✅ |
 | Rolling, size-capped logs (Serilog) | ✅ |
 | Single-instance guard (second launch activates the first window) | ✅ |
-| Extreme Resource Optimization (Monitoring Modes & Perf Diagnostics) and Release Packaging (Inno Setup + Portable ZIP) | Phase 11–12 |
+| Self-contained `win-x64` Release build, portable ZIP + SHA-256 checksums, Inno Setup installer (`installer/JustCryptDns.iss`), User Guide & Troubleshooting Guide | ✅ |
 
-See the full roadmap in [docs/ROADMAP.md](docs/ROADMAP.md).
+See documentation:
+- [User Guide](docs/USER_GUIDE.md)
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
+- [Performance & Resource Measurements](docs/PERFORMANCE.md)
+- [Architecture & Roadmap](docs/ROADMAP.md)
+- [Third-Party Notices](THIRD-PARTY-NOTICES.md)
 
-## Building
+## Building & Release Packaging
 
-Requirements: .NET SDK 8.0 or newer (the projects target `net8.0` / `net8.0-windows`), Windows 10/11 x64.
+Requirements: .NET SDK 8.0 or newer (the projects target `net8.0` / `net8.0-windows`), Windows 10 22H2 / Windows 11 x64.
 
 ```powershell
-dotnet build JustCryptDns.sln
-dotnet test  JustCryptDns.sln
+dotnet build JustCryptDns.sln -c Release
+dotnet test  JustCryptDns.sln -c Release
 dotnet run --project src/JustCryptDns.App
+
+# Build self-contained win-x64 release, portable ZIP, SHA-256 checksums, and Inno Setup installer:
+.\tools\Build-Release.ps1
 ```
 
 ## Solution layout

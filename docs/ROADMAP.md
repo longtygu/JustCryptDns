@@ -78,7 +78,7 @@ flowchart LR
 | 9 | Resilience ✅ | Failover policies, retry, UDP/TCP 53 blocking detection, handshake/DoH failure diagnostics, IPv4/IPv6 checks | Fault-injection tests |
 | 10 | Diagnostics & monitor ✅ | Diagnostics page tools (lookup, DNSSEC, DoH/DNSCrypt test, comparison, leak test, propagation), virtualized live query log | Tests + snapshots |
 | 11 | Resource optimization ✅ | Monitoring modes, perf diagnostics mode, automatic tray working-set trimming, Release measurements (`docs/PERFORMANCE.md`) | Recorded measurements |
-| 12 | Testing & release | Remaining tests, self-contained publish, installer (Inno Setup), portable ZIP, docs, licenses | Clean-machine install test |
+| 12 | Testing & release ✅ | 104 automated tests, self-contained `win-x64` ReadyToRun publish, Inno Setup installer (`installer/JustCryptDns.iss`), portable ZIP + SHA-256 (`tools/Build-Release.ps1`), User Guide, Troubleshooting, Third-Party Notices | Full Release build & package verification |
 
 ## 6. Honesty rules applied throughout
 

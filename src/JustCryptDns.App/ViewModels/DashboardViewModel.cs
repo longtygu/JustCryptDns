@@ -26,6 +26,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly IDnsEngine _dnsEngine;
     private readonly INavigationService _navigation;
     private readonly ILogger<DashboardViewModel> _logger;
+    private readonly IDnsFilteringService? _filtering;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
 
@@ -44,20 +45,24 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _totalQueriesDisplay = "—";
     [ObservableProperty] private string _blockedQueriesDisplay = "—";
     [ObservableProperty] private string _cacheHitDisplay = "—";
+    [ObservableProperty] private bool _isFilteringActive;
     [ObservableProperty] private string? _engineError;
 
     public DashboardViewModel(
         INetworkInfoService network,
         IDnsEngine dnsEngine,
         INavigationService navigation,
-        ILogger<DashboardViewModel> logger)
+        ILogger<DashboardViewModel> logger,
+        IDnsFilteringService? filtering = null)
         : base("Nav_Dashboard", "Page_Dashboard_Subtitle")
     {
         _network = network;
         _dnsEngine = dnsEngine;
         _navigation = navigation;
         _logger = logger;
+        _filtering = filtering;
         _ui = SynchronizationContext.Current;
+        IsFilteringActive = _filtering?.IsFilteringEnabled ?? false;
         ApplyEngineStats(dnsEngine.GetStats());
     }
 

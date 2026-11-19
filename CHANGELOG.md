@@ -2,7 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-19
+
+### Phase 12 — Release Packaging, Installer & Documentation
+- **Self-contained `win-x64` Release packaging (`tools/Build-Release.ps1`):** automates Release build, full automated test execution (104/104 passing), ReadyToRun self-contained publishing of `JustCryptDns.exe` and `JustCryptDns.Service.exe`, portable ZIP archive creation, and SHA-256 checksum generation (`SHA256SUMS.txt`).
+- **Windows Installer (`installer/JustCryptDns.iss`):** Inno Setup 6+ x64 installer with `JustCryptDnsService` Windows Service registration (`LocalSystem`, delayed auto-start, automatic crash recovery), Start Menu/Desktop shortcuts, and clean uninstallation.
+- **Complete documentation:** added `THIRD-PARTY-NOTICES.md`, `docs/USER_GUIDE.md`, `docs/TROUBLESHOOTING.md`, and `docs/PERFORMANCE.md`.
 
 ### Phase 11 — Extreme Resource Optimization & Performance Diagnostics
 - **Monitoring Modes (`MonitoringMode`: `PowerSaving`, `Balanced`, `Performance`):** dynamically scales the live query monitor ring-buffer depth (`100` / `300` / `500` entries) and background UI overhead from **Settings**.

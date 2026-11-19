@@ -123,7 +123,20 @@
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Filtering}" />
-                            <TextBlock Style="{StaticResource ValueText}" Foreground="{DynamicResource Brush.TextSecondary}" Text="{l:Loc Common_NotAvailable}" />
+                            <TextBlock>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
+                                        <Setter Property="Text" Value="{l:Loc Animations_Off}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFilteringActive}" Value="True">
+                                                <Setter Property="Text" Value="{l:Loc Filtering_Stat_Active}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                     </UniformGrid>
                 </Grid>
