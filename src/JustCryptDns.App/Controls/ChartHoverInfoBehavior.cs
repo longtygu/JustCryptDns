@@ -102,6 +102,8 @@ public static class ChartHoverInfoBehavior
 
     private sealed class HoverController
     {
+        private static HoverController? _activeController;
+
         private readonly FrameworkElement _element;
         private readonly DispatcherTimer _timer;
         private ToolTip? _toolTip;
@@ -251,6 +253,11 @@ public static class ChartHoverInfoBehavior
                 panel.Children.Add(meaningBlock);
             }
 
+            if (_activeController is not null && !ReferenceEquals(_activeController, this))
+            {
+                _activeController.DismissPopup();
+            }
+
             _toolTip ??= new ToolTip
             {
                 Placement = PlacementMode.Bottom,
@@ -261,6 +268,7 @@ public static class ChartHoverInfoBehavior
             _toolTip.Content = panel;
 
             HookWindow(host);
+            _activeController = this;
             _toolTip.IsOpen = true;
         }
 
@@ -325,6 +333,11 @@ public static class ChartHoverInfoBehavior
             if (_toolTip is not null)
             {
                 _toolTip.IsOpen = false;
+            }
+
+            if (ReferenceEquals(_activeController, this))
+            {
+                _activeController = null;
             }
         }
     }

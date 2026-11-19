@@ -326,4 +326,103 @@ public sealed class DashboardTelemetryPhase15Tests
         Assert.True(vm.IsTelemetryPaused);
         Assert.True(telemetry.PauseCalls >= 1);
     }
+
+    [Fact]
+    public void GaugeMath_IgnitionSweep_ClimbsToPeakAndReturnsToTarget()
+    {
+        var (atZero, doneZero) = GaugeMath.ComputeIgnitionSweepValue(0.0, startNormalized: 0.1, targetNormalized: 0.35);
+        Assert.Equal(0.1, atZero, 3);
+        Assert.False(doneZero);
+
+        var (atPeak, donePeak) = GaugeMath.ComputeIgnitionSweepValue(0.48, startNormalized: 0.1, targetNormalized: 0.35);
+        Assert.InRange(atPeak, 0.99, 1.0);
+        Assert.False(donePeak);
+
+        var (midReturn, doneMid) = GaugeMath.ComputeIgnitionSweepValue(0.85, startNormalized: 0.1, targetNormalized: 0.35);
+        Assert.InRange(midReturn, 0.35, 1.0);
+        Assert.False(doneMid);
+
+        var (atEnd, doneEnd) = GaugeMath.ComputeIgnitionSweepValue(GaugeMath.IgnitionSweepDurationSeconds, startNormalized: 0.1, targetNormalized: 0.35);
+        Assert.Equal(0.35, atEnd, 4);
+        Assert.True(doneEnd);
+    }
+
+    [Fact]
+    public void StatusPulseMath_EvaluatesAllStylesAndBounds()
+    {
+        for (var i = 0; i < 6; i++)
+        {
+            var off = StatusPulseMath.Evaluate(StatusPulseStyle.Off, i * 0.31);
+            Assert.Equal(0.0, off.Intensity);
+            Assert.Equal(0.0, off.HaloOpacity);
+            Assert.Equal(1.0, off.HaloScale);
+            Assert.Equal(1.0, off.SurfaceOpacity);
+        }
+
+        foreach (var style in new[] { StatusPulseStyle.Breathing, StatusPulseStyle.GlowHalo, StatusPulseStyle.Heartbeat, StatusPulseStyle.Beacon })
+        {
+            var intensities = new HashSet<double>();
+            for (var i = 0; i < 8; i++)
+            {
+                var frame = StatusPulseMath.Evaluate(style, i * 0.23);
+                Assert.InRange(frame.Intensity, 0.0, 1.0);
+                Assert.InRange(frame.HaloOpacity, 0.0, 1.0);
+                Assert.True(frame.HaloScale >= 1.0);
+                Assert.InRange(frame.SurfaceOpacity, 0.0, 1.0);
+                intensities.Add(Math.Round(frame.Intensity, 4));
+            }
+
+            Assert.True(intensities.Count > 1, $"Expected animated intensity variation for {style}");
+        }
+
+        var nanSafe = StatusPulseMath.Evaluate(StatusPulseStyle.Breathing, double.NaN);
+        Assert.InRange(nanSafe.HaloOpacity, 0.0, 1.0);
+    }
+
+    [Fact]
+    public void DashboardViewModel_ProtectionStatusLocKey_ReflectsDnsAndBypassStates()
+    {
+        using var vm = new DashboardViewModel(
+            new StubNetworkInfoService(),
+            new StubDnsEngine(),
+            new StubNavigationService(),
+            NullLogger<DashboardViewModel>.Instance);
+
+        vm.ApplyEngineStats(new DnsEngineRuntimeStats
+        {
+            State = DnsEngineState.Stopped,
+            ActiveResolverId = "cloudflare-doh",
+            ActiveResolverName = "Cloudflare (DoH)",
+            ActiveProtocol = DnsProtocol.DnsOverHttps,
+            ListenEndpoint = "127.0.0.1:53",
+        });
+        vm.ApplyBypassStats(new BypassRuntimeStats { State = BypassEngineState.Stopped });
+        Assert.Equal("Dash_Status_Stopped", vm.ProtectionStatusLocKey);
+
+        vm.ApplyEngineStats(new DnsEngineRuntimeStats
+        {
+            State = DnsEngineState.Running,
+            ActiveResolverId = "cloudflare-doh",
+            ActiveResolverName = "Cloudflare (DoH)",
+            ActiveProtocol = DnsProtocol.DnsOverHttps,
+            ListenEndpoint = "127.0.0.1:53",
+        });
+        Assert.Equal("Dash_Status_RunningBypassOff", vm.ProtectionStatusLocKey);
+
+        vm.ApplyBypassStats(new BypassRuntimeStats { State = BypassEngineState.Running });
+        Assert.Equal("Dash_Status_RunningBypassOn", vm.ProtectionStatusLocKey);
+
+        vm.ApplyEngineStats(new DnsEngineRuntimeStats
+        {
+            State = DnsEngineState.Degraded,
+            ActiveResolverId = "cloudflare-doh",
+            ActiveResolverName = "Cloudflare (DoH)",
+            ActiveProtocol = DnsProtocol.DnsOverHttps,
+            ListenEndpoint = "127.0.0.1:53",
+        });
+        Assert.Equal("Dash_Status_DegradedBypassOn", vm.ProtectionStatusLocKey);
+
+        vm.ApplyBypassStats(new BypassRuntimeStats { State = BypassEngineState.Stopped });
+        Assert.Equal("Dash_Status_DegradedBypassOff", vm.ProtectionStatusLocKey);
+    }
 }

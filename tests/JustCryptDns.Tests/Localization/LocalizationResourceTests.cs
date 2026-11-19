@@ -35,6 +35,8 @@ public sealed partial class LocalizationResourceTests
 
         Assert.Empty(en.Keys.Except(vi.Keys));
         Assert.Empty(vi.Keys.Except(en.Keys));
+        Assert.Equal("From Longtygu with luv <3", en["App_Tagline"]);
+        Assert.Equal("From Longtygu with luv <3", vi["App_Tagline"]);
     }
 
     [Fact]
@@ -88,6 +90,7 @@ public sealed partial class LocalizationResourceTests
         expected.AddRange(Enum.GetNames<AdapterKind>().Select(n => "AdapterKind_" + n));
         expected.AddRange(Enum.GetNames<IpFamilyStatus>().Select(n => "IpStatus_" + n));
         expected.AddRange(Enum.GetNames<AppTheme>().Select(n => "Theme_" + n));
+        expected.AddRange(Enum.GetNames<StatusPulseStyle>().Select(n => "StatusPulse_" + n));
         expected.AddRange(Enum.GetNames<JustCryptDns.App.Services.BackdropKind>().Select(n => "BackdropKind_" + n));
         expected.AddRange(Enum.GetNames<JustCryptDns.App.Services.BackdropStatus>().Select(n => "BackdropStatus_" + n));
         expected.AddRange(Enum.GetNames<JustCryptDns.App.Services.TransparencyLevel>().Select(n => "TransparencyLevel_" + n));

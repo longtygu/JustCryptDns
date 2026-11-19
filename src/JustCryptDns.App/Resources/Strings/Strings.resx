@@ -16,7 +16,7 @@
     <value>JustCryptDns</value>
   </data>
   <data name="App_Tagline" xml:space="preserve">
-    <value>DNS security &amp; optimization</value>
+    <value>From Longtygu with luv &lt;3</value>
   </data>
   <data name="Nav_Dashboard" xml:space="preserve">
     <value>Dashboard</value>
@@ -1682,5 +1682,194 @@
   </data>
   <data name="Dash_Explain_Wave_Metrics" xml:space="preserve">
     <value>• Amber wave (left axis, ms): Real-time ICMP Ping — lower &amp; flatter means steadier ping for gaming.\n• Blue wave (right axis): Download throughput.\n• Green wave (right axis): Upload throughput.\n• Auto-pauses completely when minimized or hidden to tray to save CPU/RAM.</value>
+  </data>
+  <data name="Dash_Status_Stopped" xml:space="preserve">
+    <value>DNS engine is currently off</value>
+  </data>
+  <data name="Dash_Status_RunningBypassOn" xml:space="preserve">
+    <value>DNS engine is running (firewall &amp; DPI bypass active)</value>
+  </data>
+  <data name="Dash_Status_RunningBypassOff" xml:space="preserve">
+    <value>DNS engine is running (DPI bypass inactive)</value>
+  </data>
+  <data name="Dash_Status_DegradedBypassOn" xml:space="preserve">
+    <value>DNS engine degraded (DPI bypass active)</value>
+  </data>
+  <data name="Dash_Status_DegradedBypassOff" xml:space="preserve">
+    <value>DNS engine degraded (DPI bypass inactive)</value>
+  </data>
+  <data name="Appearance_StatusPulse" xml:space="preserve">
+    <value>Status indicator pulse effect</value>
+  </data>
+  <data name="Appearance_StatusPulse_Desc" xml:space="preserve">
+    <value>Customize the red/green pulsing animation on the Dashboard protection shield and DNS toggle button (pauses automatically when minimized).</value>
+  </data>
+  <data name="StatusPulse_Off" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="StatusPulse_Breathing" xml:space="preserve">
+    <value>Breathing</value>
+  </data>
+  <data name="StatusPulse_GlowHalo" xml:space="preserve">
+    <value>Glow halo</value>
+  </data>
+  <data name="StatusPulse_Heartbeat" xml:space="preserve">
+    <value>Heartbeat</value>
+  </data>
+  <data name="StatusPulse_Beacon" xml:space="preserve">
+    <value>Beacon</value>
+  </data>
+  <data name="Dash_Explain_TrafficWarn_Title" xml:space="preserve">
+    <value>System DNS traffic routing alert</value>
+  </data>
+  <data name="Dash_Explain_TrafficWarn_Desc" xml:space="preserve">
+    <value>Alerts when port 53 is held by another local service or your Windows adapter is not yet pointed to JustCryptDns.</value>
+  </data>
+  <data name="Dash_Explain_TrafficWarn_Metrics" xml:space="preserve">
+    <value>• Use an alternate loopback IP on port 53 or stop the conflicting service so all apps send DNS queries through JustCryptDns.</value>
+  </data>
+  <data name="Dash_Explain_Shield_Desc" xml:space="preserve">
+    <value>Animated protection indicator reflecting live DNS encryption state.</value>
+  </data>
+  <data name="Dash_Explain_Shield_Metrics" xml:space="preserve">
+    <value>• Red pulse: DNS engine is currently turned off.\n• Green pulse: DNS engine is running and encrypting queries.\n• Style can be customized or turned off in Appearance settings.</value>
+  </data>
+  <data name="Dash_Explain_ProtectionStatus_Desc" xml:space="preserve">
+    <value>Displays overall operational status of both encrypted DNS resolution and Smart DPI bypass protection.</value>
+  </data>
+  <data name="Dash_Explain_ProtectionStatus_Metrics" xml:space="preserve">
+    <value>• Red / Off: Local encrypted DNS proxy is stopped.\n• Green + DPI active: DNS and All-Website Smart DPI bypass are running together.\n• If DPI bypass is off, only encrypted DNS is active.</value>
+  </data>
+  <data name="Dash_Explain_ToggleDns_Title" xml:space="preserve">
+    <value>Start / Stop DNS engine</value>
+  </data>
+  <data name="Dash_Explain_ToggleDns_Desc" xml:space="preserve">
+    <value>Starts or stops the local encrypted DNS proxy and linked Auto-Start DPI bypass engine.</value>
+  </data>
+  <data name="Dash_Explain_ToggleDns_Metrics" xml:space="preserve">
+    <value>• Red pulsing button: Engine is stopped — click to start protection.\n• Green pulsing button: Engine is active — click to stop safely.\n• Starting also triggers a tachometer needle sweep across the 4 gauges.</value>
+  </data>
+  <data name="Dash_Explain_Protocol_Desc" xml:space="preserve">
+    <value>Encrypted transport protocol currently used to send DNS queries to the upstream resolver.</value>
+  </data>
+  <data name="Dash_Explain_Protocol_Metrics" xml:space="preserve">
+    <value>• DoH (DNS-over-HTTPS) / DoT / DNSCrypt prevent ISP snooping and DNS poisoning.\n• Switch anytime in Resolver Library.</value>
+  </data>
+  <data name="Dash_Explain_Resolver_Desc" xml:space="preserve">
+    <value>Active upstream encrypted DNS server answering uncached domain lookups.</value>
+  </data>
+  <data name="Dash_Explain_Resolver_Metrics" xml:space="preserve">
+    <value>• Choosing a nearby, low-latency resolver minimizes webpage lookup time and improves game server routing.</value>
+  </data>
+  <data name="Dash_Explain_LocalProxy_Desc" xml:space="preserve">
+    <value>Local loopback IP and port where JustCryptDns listens for Windows system DNS requests.</value>
+  </data>
+  <data name="Dash_Explain_LocalProxy_Metrics" xml:space="preserve">
+    <value>• Windows expects system DNS servers on port 53 (standard 127.0.0.1:53 or an alternate loopback IP when port 53 is shared).</value>
+  </data>
+  <data name="Dash_Explain_Filtering_Desc" xml:space="preserve">
+    <value>Indicates whether domain-level ad, tracker, and malware blocklists are actively enforced.</value>
+  </data>
+  <data name="Dash_Explain_Filtering_Metrics" xml:space="preserve">
+    <value>• Active: Known ad/tracker domains are blocked cleanly at DNS level before connecting.\n• Off: All allowed/clean resolution without filtering.</value>
+  </data>
+  <data name="Dash_Explain_BypassStatus_Desc" xml:space="preserve">
+    <value>Pure-C# DPI bypass and Smart Auto-PAC engine that unblocks restricted websites while keeping game packets direct.</value>
+  </data>
+  <data name="Dash_Explain_BypassStatus_Metrics" xml:space="preserve">
+    <value>• Splits TLS ClientHello packets to bypass ISP SNI inspection with zero kernel drivers and zero VPN overhead on game UDP traffic.</value>
+  </data>
+  <data name="Dash_Explain_ConfigureBypass_Desc" xml:space="preserve">
+    <value>Opens the DPI Bypass &amp; Tunnel page to manage rules, direct exclusions, self-healing cache, and multi-site tests.</value>
+  </data>
+  <data name="Dash_Explain_ConfigureBypass_Metrics" xml:space="preserve">
+    <value>• Lets you switch between All-Websites Smart mode and Rule-List Only mode or exempt specific banking/intranet domains.</value>
+  </data>
+  <data name="Dash_Explain_ToggleBypass_Title" xml:space="preserve">
+    <value>Toggle DPI Bypass &amp; Auto-PAC</value>
+  </data>
+  <data name="Dash_Explain_ToggleBypass_Desc" xml:space="preserve">
+    <value>Enables or disables the local Smart Bypass proxy and Windows Auto-PAC configuration independently.</value>
+  </data>
+  <data name="Dash_Explain_ToggleBypass_Metrics" xml:space="preserve">
+    <value>• Running: Websites are automatically protected against DPI throttling/blocking.\n• Stopped: Original Windows proxy settings are cleanly restored.</value>
+  </data>
+  <data name="Dash_Explain_BypassEndpoint_Desc" xml:space="preserve">
+    <value>Local smart HTTP/CONNECT proxy address referenced by the generated Auto-PAC script.</value>
+  </data>
+  <data name="Dash_Explain_BypassEndpoint_Metrics" xml:space="preserve">
+    <value>• Runs on loopback only; traffic not routed by PAC (such as game UDP ports and LAN IPs) bypasses this endpoint completely.</value>
+  </data>
+  <data name="Dash_Explain_CoverageMode_Desc" xml:space="preserve">
+    <value>Determines which websites are inspected for DPI bypass via Smart Auto-PAC.</value>
+  </data>
+  <data name="Dash_Explain_CoverageMode_Metrics" xml:space="preserve">
+    <value>• All Websites (Smart Auto-PAC): Protects every internet site automatically with 4-stage self-healing.\n• Rule List Only: Applies only to manually matched domains.</value>
+  </data>
+  <data name="Dash_Explain_DpiBypassed_Desc" xml:space="preserve">
+    <value>Count of HTTPS/TLS connections successfully unblocked via ClientHello fragmentation in this session.</value>
+  </data>
+  <data name="Dash_Explain_DpiBypassed_Metrics" xml:space="preserve">
+    <value>• Confirms active DPI circumvention is working cleanly for Steam and other websites.</value>
+  </data>
+  <data name="Dash_Explain_Tunneled_Desc" xml:space="preserve">
+    <value>Count of connections routed through an optional Tier-2 Upstream SOCKS5/HTTP tunnel.</value>
+  </data>
+  <data name="Dash_Explain_Tunneled_Metrics" xml:space="preserve">
+    <value>• Remains 0 when pure DPI fragmentation already succeeds directly, preserving maximum speed.</value>
+  </data>
+  <data name="Dash_Explain_NetworkStatus_Desc" xml:space="preserve">
+    <value>Read-only summary of Windows active network adapter state and gateway reachability.</value>
+  </data>
+  <data name="Dash_Explain_NetworkStatus_Metrics" xml:space="preserve">
+    <value>• Gateway Available confirms your PC has an active route to the router/internet without running external probes.</value>
+  </data>
+  <data name="Dash_Explain_RefreshNetwork_Desc" xml:space="preserve">
+    <value>Immediately re-queries Windows network interface properties, IP addresses, and current DNS servers.</value>
+  </data>
+  <data name="Dash_Explain_RefreshNetwork_Metrics" xml:space="preserve">
+    <value>• Useful after switching Wi-Fi/Ethernet, connecting a VPN, or changing Windows DNS adapter settings.</value>
+  </data>
+  <data name="Dash_Explain_NetAdapter_Desc" xml:space="preserve">
+    <value>Primary physical network adapter currently carrying internet traffic according to Windows routing.</value>
+  </data>
+  <data name="Dash_Explain_NetAdapter_Metrics" xml:space="preserve">
+    <value>• Shows both the Windows connection name (Ethernet/Wi-Fi) and hardware controller model.</value>
+  </data>
+  <data name="Dash_Explain_NetType_Desc" xml:space="preserve">
+    <value>Interface medium category and negotiated physical link speed reported by Windows.</value>
+  </data>
+  <data name="Dash_Explain_NetType_Metrics" xml:space="preserve">
+    <value>• Indicates whether traffic travels via wired Ethernet or Wi-Fi and the physical link capacity (e.g. 100 Mbps, 1 Gbps).</value>
+  </data>
+  <data name="Dash_Explain_NetIp_Desc" xml:space="preserve">
+    <value>Local IPv4 address assigned to your PC inside the home or office LAN.</value>
+  </data>
+  <data name="Dash_Explain_NetIp_Metrics" xml:space="preserve">
+    <value>• Normal LAN addresses usually start with 192.168.x.x, 10.x.x.x, or 172.16-31.x.x (169.254.x.x indicates no DHCP lease).</value>
+  </data>
+  <data name="Dash_Explain_NetGateway_Desc" xml:space="preserve">
+    <value>Default router / modem gateway IP handling outbound internet packets from this adapter.</value>
+  </data>
+  <data name="Dash_Explain_NetGateway_Metrics" xml:space="preserve">
+    <value>• Missing gateway means local-only connectivity with no internet route.</value>
+  </data>
+  <data name="Dash_Explain_NetDns_Desc" xml:space="preserve">
+    <value>DNS server IP addresses currently configured on Windows for the active adapter.</value>
+  </data>
+  <data name="Dash_Explain_NetDns_Metrics" xml:space="preserve">
+    <value>• When JustCryptDns protects the system, this points to your local loopback proxy (e.g. 127.0.0.1 or 127.0.0.2).</value>
+  </data>
+  <data name="Dash_Explain_NetIpv4_Desc" xml:space="preserve">
+    <value>Availability status of IPv4 addressing on the primary adapter.</value>
+  </data>
+  <data name="Dash_Explain_NetIpv4_Metrics" xml:space="preserve">
+    <value>• Configured: Valid LAN/internet IPv4 ready.\n• Link-local / None: Check cable, Wi-Fi, or router DHCP.</value>
+  </data>
+  <data name="Dash_Explain_NetIpv6_Desc" xml:space="preserve">
+    <value>Availability status of IPv6 addressing (Global or Link-Local fe80::) on the primary adapter.</value>
+  </data>
+  <data name="Dash_Explain_NetIpv6_Metrics" xml:space="preserve">
+    <value>• Even when Global IPv6 is disabled to ensure loopback IPv4 DNS compatibility, local fe80:: addresses may still appear cleanly.</value>
   </data>
 </root>

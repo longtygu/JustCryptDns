@@ -411,6 +411,37 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Style="{StaticResource RowIcon}" Text="&#xE945;" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Appearance_StatusPulse}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Appearance_StatusPulse_Desc}" />
+                        </StackPanel>
+                        <Border Grid.Row="1" Grid.Column="1" Margin="0,12,0,0" Style="{StaticResource SegmentHost}">
+                            <WrapPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="StatusPulse" Content="{l:Loc StatusPulse_Off}"
+                                             IsChecked="{Binding StatusPulseStyle, Converter={StaticResource EnumEquals}, ConverterParameter=Off}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="StatusPulse" Content="{l:Loc StatusPulse_Breathing}"
+                                             IsChecked="{Binding StatusPulseStyle, Converter={StaticResource EnumEquals}, ConverterParameter=Breathing}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="StatusPulse" Content="{l:Loc StatusPulse_GlowHalo}"
+                                             IsChecked="{Binding StatusPulseStyle, Converter={StaticResource EnumEquals}, ConverterParameter=GlowHalo}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="StatusPulse" Content="{l:Loc StatusPulse_Heartbeat}"
+                                             IsChecked="{Binding StatusPulseStyle, Converter={StaticResource EnumEquals}, ConverterParameter=Heartbeat}" />
+                                <RadioButton Style="{StaticResource Radio.Segment}" GroupName="StatusPulse" Content="{l:Loc StatusPulse_Beacon}"
+                                             IsChecked="{Binding StatusPulseStyle, Converter={StaticResource EnumEquals}, ConverterParameter=Beacon}" />
+                            </WrapPanel>
+                        </Border>
+                    </Grid>
                 </StackPanel>
             </Border>
 

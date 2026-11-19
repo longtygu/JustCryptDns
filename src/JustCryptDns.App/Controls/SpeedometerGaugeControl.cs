@@ -90,7 +90,7 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
         nameof(IsActive),
         typeof(bool),
         typeof(SpeedometerGaugeControl),
-        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender, OnIsActiveChanged));
 
     public static readonly DependencyProperty ShowRedlineZoneProperty = DependencyProperty.Register(
         nameof(ShowRedlineZone),
@@ -110,6 +110,9 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
     private double _displayedNormalized;
     private double _animTime;
     private double _pulseBoost;
+    private bool _isSweeping;
+    private double _sweepElapsed;
+    private double _sweepStartNormalized;
 
     public SpeedometerGaugeControl()
     {
@@ -208,6 +211,20 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
         set => SetValue(PhaseOffsetProperty, value);
     }
 
+    public void TriggerIgnitionSweep()
+    {
+        if (_isSweeping && _sweepElapsed < 0.05)
+        {
+            return;
+        }
+
+        _isSweeping = true;
+        _sweepElapsed = 0.0;
+        _sweepStartNormalized = _displayedNormalized;
+        _pulseBoost = 0.0;
+        InvalidateVisual();
+    }
+
     public void StepFrame(double dtSeconds)
     {
         _animTime += dtSeconds;
@@ -217,7 +234,21 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
         }
 
         var target = GaugeMath.ComputeNormalized(Value, Minimum, Maximum);
-        _displayedNormalized = GaugeMath.StepNeedle(_displayedNormalized, target, dtSeconds);
+        if (_isSweeping)
+        {
+            _sweepElapsed += dtSeconds;
+            var (sweepVal, completed) = GaugeMath.ComputeIgnitionSweepValue(_sweepElapsed, _sweepStartNormalized, target);
+            _displayedNormalized = sweepVal;
+            if (completed)
+            {
+                _isSweeping = false;
+            }
+        }
+        else
+        {
+            _displayedNormalized = GaugeMath.StepNeedle(_displayedNormalized, target, dtSeconds);
+        }
+
         InvalidateVisual();
     }
 
@@ -242,10 +273,12 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
         var borderColor = ExtractColor(BorderBrush, Color.FromRgb(0x32, 0x38, 0x44));
         var secTextColor = ExtractColor(SecondaryTextBrush, Color.FromRgb(0x88, 0x90, 0x9E));
 
-        var visualNormalized = Math.Clamp(
-            _displayedNormalized + GaugeMath.ComputeLiveIdleJitter(_animTime, _displayedNormalized, IsActive, PhaseOffset, _pulseBoost),
-            0.0,
-            1.0);
+        var visualNormalized = _isSweeping
+            ? Math.Clamp(_displayedNormalized, 0.0, 1.0)
+            : Math.Clamp(
+                _displayedNormalized + GaugeMath.ComputeLiveIdleJitter(_animTime, _displayedNormalized, IsActive, PhaseOffset, _pulseBoost),
+                0.0,
+                1.0);
 
         DrawDialFace(drawingContext, cx, cy, radius, faceColor, borderColor, accentColor);
         DrawTrackAndRedline(drawingContext, cx, cy, radius, arcThickness, trackColor, dangerColor);
@@ -480,9 +513,26 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
 
     private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is SpeedometerGaugeControl gauge && gauge.IsActive && !Equals(e.OldValue, e.NewValue))
+        if (d is SpeedometerGaugeControl gauge && gauge.IsActive && !gauge._isSweeping && !Equals(e.OldValue, e.NewValue))
         {
             gauge._pulseBoost = 0.024;
+        }
+    }
+
+    private static void OnIsActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not SpeedometerGaugeControl gauge)
+        {
+            return;
+        }
+
+        if (e.OldValue is false && e.NewValue is true && gauge.IsLoaded)
+        {
+            gauge.TriggerIgnitionSweep();
+        }
+        else if (e.NewValue is false)
+        {
+            gauge._isSweeping = false;
         }
     }
 

@@ -1,6 +1,6 @@
 key|en|vi
 App_Name|JustCryptDns|JustCryptDns
-App_Tagline|DNS security & optimization|Bảo mật & tối ưu DNS
+App_Tagline|From Longtygu with luv <3|From Longtygu with luv <3
 Nav_Dashboard|Dashboard|Tổng quan
 Nav_DnsManager|DNS Manager|Quản lý DNS
 Nav_Resolvers|Resolver Library|Thư viện Resolver
@@ -556,3 +556,66 @@ Dash_Explain_CacheHit_Desc|Speedometer gauge showing the percentage of DNS looku
 Dash_Explain_CacheHit_Metrics|• Green (>= 60%): Excellent cache efficiency with sub-millisecond local responses.\n• 30–59%: Warming up.\n• < 30%: Fresh or cold cache.|• Xanh (>= 60%): Hiệu suất đệm rất cao, phản hồi gần như tức thì.\n• 30–59%: Bộ nhớ đệm đang làm nóng dần.\n• < 30%: Mới khởi động hoặc nhiều tên miền mới.
 Dash_Explain_Wave_Desc|Horizontal real-time telemetry oscilloscope displaying internet latency (Ping) and active adapter throughput (Download / Upload).|Biểu đồ sóng chạy ngang thời gian thực theo dõi độ trễ đường truyền (Ping) và băng thông tải xuống / tải lên của card mạng.
 Dash_Explain_Wave_Metrics|• Amber wave (left axis, ms): Real-time ICMP Ping — lower & flatter means steadier ping for gaming.\n• Blue wave (right axis): Download throughput.\n• Green wave (right axis): Upload throughput.\n• Auto-pauses completely when minimized or hidden to tray to save CPU/RAM.|• Sóng vàng (trục trái, ms): Ping thời gian thực — càng thấp và phẳng thì mạng càng ổn định khi chơi game.\n• Sóng xanh dương (trục phải): Tốc độ tải xuống (Download).\n• Sóng xanh lá (trục phải): Tốc độ tải lên (Upload).\n• Tự động tạm dừng hoàn toàn khi thu nhỏ hoặc ẩn xuống khay hệ thống để tiết kiệm CPU/RAM.
+Dash_Status_Stopped|DNS engine is currently off|DNS engine hiện đang tắt
+Dash_Status_RunningBypassOn|DNS engine is running (firewall & DPI bypass active)|DNS engine đang chạy (vượt tường lửa · vượt DPI đang hoạt động)
+Dash_Status_RunningBypassOff|DNS engine is running (DPI bypass inactive)|DNS engine đang chạy (vượt DPI không hoạt động)
+Dash_Status_DegradedBypassOn|DNS engine degraded (DPI bypass active)|DNS engine suy giảm (vượt DPI đang hoạt động)
+Dash_Status_DegradedBypassOff|DNS engine degraded (DPI bypass inactive)|DNS engine suy giảm (vượt DPI không hoạt động)
+Appearance_StatusPulse|Status indicator pulse effect|Hiệu ứng nhấp nháy trạng thái
+Appearance_StatusPulse_Desc|Customize the red/green pulsing animation on the Dashboard protection shield and DNS toggle button (pauses automatically when minimized).|Tùy chỉnh kiểu nhấp nháy đỏ/xanh cho biểu tượng chiếc khiên và nút bật DNS ở trang Tổng quan (tự tạm dừng khi thu nhỏ).
+StatusPulse_Off|Off|Tắt
+StatusPulse_Breathing|Breathing|Nhịp thở
+StatusPulse_GlowHalo|Glow halo|Vòng sáng
+StatusPulse_Heartbeat|Heartbeat|Nhịp tim
+StatusPulse_Beacon|Beacon|Đèn báo
+Dash_Explain_TrafficWarn_Title|System DNS traffic routing alert|Cảnh báo định tuyến lưu lượng DNS
+Dash_Explain_TrafficWarn_Desc|Alerts when port 53 is held by another local service or your Windows adapter is not yet pointed to JustCryptDns.|Cảnh báo khi cổng 53 đang bị dịch vụ khác chiếm dụng hoặc card mạng Windows chưa trỏ về proxy DNS cục bộ.
+Dash_Explain_TrafficWarn_Metrics|• Use an alternate loopback IP on port 53 or stop the conflicting service so all apps send DNS queries through JustCryptDns.|• Chọn IP loopback dự phòng trên cổng 53 hoặc dừng dịch vụ xung đột để toàn bộ ứng dụng đi qua JustCryptDns.
+Dash_Explain_Shield_Desc|Animated protection indicator reflecting live DNS encryption state.|Biểu tượng khiên hiển thị trực quan trạng thái hoạt động của DNS engine.
+Dash_Explain_Shield_Metrics|• Red pulse: DNS engine is currently turned off.\n• Green pulse: DNS engine is running and encrypting queries.\n• Style can be customized or turned off in Appearance settings.|• Nhấp nháy đỏ: DNS engine hiện đang tắt.\n• Nhấp nháy xanh: DNS engine đang bật và bảo vệ kết nối.\n• Có thể đổi kiểu hoặc tắt nhấp nháy trong Cài đặt giao diện.
+Dash_Explain_ProtectionStatus_Desc|Displays overall operational status of both encrypted DNS resolution and Smart DPI bypass protection.|Hiển thị trạng thái tổng thể của bộ giải mã DNS mã hóa và cơ chế vượt tường lửa / vượt DPI.
+Dash_Explain_ProtectionStatus_Metrics|• Red / Off: Local encrypted DNS proxy is stopped.\n• Green + DPI active: DNS and All-Website Smart DPI bypass are running together.\n• If DPI bypass is off, only encrypted DNS is active.|• Đang tắt: Proxy DNS cục bộ chưa hoạt động.\n• Vượt DPI đang hoạt động: Cả DNS mã hóa và vượt tường lửa Auto-PAC đều đang bật.\n• Vượt DPI không hoạt động: Chỉ chạy DNS, chế độ vượt DPI đang tắt.
+Dash_Explain_ToggleDns_Title|Start / Stop DNS engine|Bật / Tắt DNS engine
+Dash_Explain_ToggleDns_Desc|Starts or stops the local encrypted DNS proxy and linked Auto-Start DPI bypass engine.|Khởi động hoặc dừng proxy DNS mã hóa cục bộ cùng engine vượt DPI liên kết.
+Dash_Explain_ToggleDns_Metrics|• Red pulsing button: Engine is stopped — click to start protection.\n• Green pulsing button: Engine is active — click to stop safely.\n• Starting also triggers a tachometer needle sweep across the 4 gauges.|• Nút đỏ nhấp nháy: Engine đang tắt — nhấn để bật.\n• Nút xanh nhấp nháy: Engine đang chạy — nhấn để dừng.\n• Khi bật sẽ kích hoạt hiệu ứng 4 đồng hồ kéo kịch kim như khởi động xe.
+Dash_Explain_Protocol_Desc|Encrypted transport protocol currently used to send DNS queries to the upstream resolver.|Giao thức truyền tải mã hóa đang dùng để gửi truy vấn DNS ra máy chủ upstream.
+Dash_Explain_Protocol_Metrics|• DoH (DNS-over-HTTPS) / DoT / DNSCrypt prevent ISP snooping and DNS poisoning.\n• Switch anytime in Resolver Library.|• DoH, DoT hoặc DNSCrypt giúp chống nghe lén và giả mạo DNS từ nhà mạng.\n• Có thể thay đổi trong Thư viện Resolver.
+Dash_Explain_Resolver_Desc|Active upstream encrypted DNS server answering uncached domain lookups.|Máy chủ DNS upstream đang thực hiện phân giải các tên miền chưa có trong bộ nhớ đệm.
+Dash_Explain_Resolver_Metrics|• Choosing a nearby, low-latency resolver minimizes webpage lookup time and improves game server routing.|• Chọn resolver gần và phản hồi thấp giúp mở web nhanh hơn và tối ưu đường truyền game.
+Dash_Explain_LocalProxy_Desc|Local loopback IP and port where JustCryptDns listens for Windows system DNS requests.|Địa chỉ loopback cục bộ và cổng lắng nghe truy vấn DNS từ hệ điều hành Windows.
+Dash_Explain_LocalProxy_Metrics|• Windows expects system DNS servers on port 53 (standard 127.0.0.1:53 or an alternate loopback IP when port 53 is shared).|• Windows mặc định gửi DNS hệ thống về cổng 53 (127.0.0.1:53 hoặc loopback dự phòng nếu cổng 53 bận).
+Dash_Explain_Filtering_Desc|Indicates whether domain-level ad, tracker, and malware blocklists are actively enforced.|Cho biết bộ lọc chặn quảng cáo, theo dõi và tên miền độc hại theo DNS có đang bật hay không.
+Dash_Explain_Filtering_Metrics|• Active: Known ad/tracker domains are blocked cleanly at DNS level before connecting.\n• Off: All allowed/clean resolution without filtering.|• Đang bảo vệ: Tự động chặn tên miền quảng cáo/độc hại ngay tại tầng DNS.\n• Tắt: Chỉ phân giải tên miền, không áp dụng danh sách chặn.
+Dash_Explain_BypassStatus_Desc|Pure-C# DPI bypass and Smart Auto-PAC engine that unblocks restricted websites while keeping game packets direct.|Engine vượt DPI thuần C# kết hợp Auto-PAC thông minh giúp truy cập website bị chặn mà vẫn giữ ping game gốc.
+Dash_Explain_BypassStatus_Metrics|• Splits TLS ClientHello packets to bypass ISP SNI inspection with zero kernel drivers and zero VPN overhead on game UDP traffic.|• Tách gói TLS ClientHello để vượt kiểm duyệt SNI mà không cần driver kernel, không làm tăng ping khi chơi game.
+Dash_Explain_ConfigureBypass_Desc|Opens the DPI Bypass & Tunnel page to manage rules, direct exclusions, self-healing cache, and multi-site tests.|Mở trang cấu hình Vượt DPI & Tunnel để quản lý ngoại lệ đi thẳng, cache tự học và kiểm tra nhiều trang web.
+Dash_Explain_ConfigureBypass_Metrics|• Lets you switch between All-Websites Smart mode and Rule-List Only mode or exempt specific banking/intranet domains.|• Cho phép chuyển đổi phạm vi mọi website hoặc chỉ theo danh sách, hoặc loại trừ các trang ngân hàng/nội bộ.
+Dash_Explain_ToggleBypass_Title|Toggle DPI Bypass & Auto-PAC|Bật / Tắt Vượt DPI & Split-Tunnel
+Dash_Explain_ToggleBypass_Desc|Enables or disables the local Smart Bypass proxy and Windows Auto-PAC configuration independently.|Bật hoặc tắt độc lập proxy vượt DPI cục bộ và cấu hình Auto-PAC trên Windows.
+Dash_Explain_ToggleBypass_Metrics|• Running: Websites are automatically protected against DPI throttling/blocking.\n• Stopped: Original Windows proxy settings are cleanly restored.|• Đang chạy: Các trang web tự động được vượt DPI.\n• Đã dừng: Khôi phục nguyên trạng cài đặt proxy Windows.
+Dash_Explain_BypassEndpoint_Desc|Local smart HTTP/CONNECT proxy address referenced by the generated Auto-PAC script.|Địa chỉ proxy thông minh cục bộ được kịch bản Auto-PAC sử dụng để tiếp nhận lưu lượng web cần vượt DPI.
+Dash_Explain_BypassEndpoint_Metrics|• Runs on loopback only; traffic not routed by PAC (such as game UDP ports and LAN IPs) bypasses this endpoint completely.|• Chỉ lắng nghe trên máy cục bộ; lưu lượng không qua PAC (game UDP, mạng LAN) sẽ bỏ qua hoàn toàn cổng này.
+Dash_Explain_CoverageMode_Desc|Determines which websites are inspected for DPI bypass via Smart Auto-PAC.|Xác định phạm vi trang web được áp dụng cơ chế vượt DPI qua Auto-PAC.
+Dash_Explain_CoverageMode_Metrics|• All Websites (Smart Auto-PAC): Protects every internet site automatically with 4-stage self-healing.\n• Rule List Only: Applies only to manually matched domains.|• Mọi trang web (Auto-PAC): Tự động bảo vệ toàn bộ internet với tự phục hồi 4 tầng.\n• Chỉ theo quy tắc: Chỉ áp dụng với danh sách tên miền chỉ định.
+Dash_Explain_DpiBypassed_Desc|Count of HTTPS/TLS connections successfully unblocked via ClientHello fragmentation in this session.|Số lượt kết nối web đã được mở khóa thành công bằng kỹ thuật phân mảnh gói TLS ClientHello trong phiên này.
+Dash_Explain_DpiBypassed_Metrics|• Confirms active DPI circumvention is working cleanly for Steam and other websites.|• Xác nhận cơ chế vượt kiểm duyệt DPI đang hoạt động hiệu quả trên các trang web.
+Dash_Explain_Tunneled_Desc|Count of connections routed through an optional Tier-2 Upstream SOCKS5/HTTP tunnel.|Số lượt kết nối được chuyển tiếp qua kênh Upstream Tunnel (SOCKS5/HTTP) tầng 2 dự phòng.
+Dash_Explain_Tunneled_Metrics|• Remains 0 when pure DPI fragmentation already succeeds directly, preserving maximum speed.|• Bằng 0 khi phân mảnh DPI trực tiếp đã thông suốt, giúp giữ băng thông tối đa.
+Dash_Explain_NetworkStatus_Desc|Read-only summary of Windows active network adapter state and gateway reachability.|Tổng quan thông số card mạng đang hoạt động và trạng thái kết nối cổng mặc định do Windows cung cấp.
+Dash_Explain_NetworkStatus_Metrics|• Gateway Available confirms your PC has an active route to the router/internet without running external probes.|• Sẵn sàng cổng cho thấy máy tính đang có tuyến mạng hợp lệ ra router/internet.
+Dash_Explain_RefreshNetwork_Desc|Immediately re-queries Windows network interface properties, IP addresses, and current DNS servers.|Đọc lại ngay thông tin card mạng, địa chỉ IP và máy chủ DNS hiện tại từ Windows.
+Dash_Explain_RefreshNetwork_Metrics|• Useful after switching Wi-Fi/Ethernet, connecting a VPN, or changing Windows DNS adapter settings.|• Hữu ích sau khi đổi Wi-Fi/dây mạng, bật tắt VPN hoặc vừa thay đổi DNS hệ thống.
+Dash_Explain_NetAdapter_Desc|Primary physical network adapter currently carrying internet traffic according to Windows routing.|Card mạng chính đang đảm nhiệm lưu lượng internet theo bảng định tuyến Windows.
+Dash_Explain_NetAdapter_Metrics|• Shows both the Windows connection name (Ethernet/Wi-Fi) and hardware controller model.|• Hiển thị tên kết nối mạng và tên phần cứng điều khiển mạng thực tế.
+Dash_Explain_NetType_Desc|Interface medium category and negotiated physical link speed reported by Windows.|Loại kết nối vật lý và tốc độ liên kết tối đa hiện tại giữa máy tính và modem/router.
+Dash_Explain_NetType_Metrics|• Indicates whether traffic travels via wired Ethernet or Wi-Fi and the physical link capacity (e.g. 100 Mbps, 1 Gbps).|• Cho biết kết nối qua cáp Ethernet hay Wi-Fi cùng băng thông liên kết vật lý.
+Dash_Explain_NetIp_Desc|Local IPv4 address assigned to your PC inside the home or office LAN.|Địa chỉ IPv4 nội bộ được router cấp cho máy tính trong mạng LAN.
+Dash_Explain_NetIp_Metrics|• Normal LAN addresses usually start with 192.168.x.x, 10.x.x.x, or 172.16-31.x.x (169.254.x.x indicates no DHCP lease).|• IP LAN bình thường thường là 192.168.x.x hoặc 10.x.x.x (169.254.x.x nghĩa là chưa nhận được DHCP).
+Dash_Explain_NetGateway_Desc|Default router / modem gateway IP handling outbound internet packets from this adapter.|Địa chỉ IP của router / modem mặc định tiếp nhận mọi gói tin đi ra internet.
+Dash_Explain_NetGateway_Metrics|• Missing gateway means local-only connectivity with no internet route.|• Nếu trống nghĩa là máy tính chỉ kết nối nội bộ, chưa có đường ra internet.
+Dash_Explain_NetDns_Desc|DNS server IP addresses currently configured on Windows for the active adapter.|Danh sách IP máy chủ DNS hiện đang được gán trên card mạng Windows.
+Dash_Explain_NetDns_Metrics|• When JustCryptDns protects the system, this points to your local loopback proxy (e.g. 127.0.0.1 or 127.0.0.2).|• Khi được bảo vệ bởi JustCryptDns, mục này sẽ trỏ về proxy loopback cục bộ (ví dụ 127.0.0.1 hoặc 127.0.0.2).
+Dash_Explain_NetIpv4_Desc|Availability status of IPv4 addressing on the primary adapter.|Trạng thái khả dụng của giao thức địa chỉ IPv4 trên card mạng chính.
+Dash_Explain_NetIpv4_Metrics|• Configured: Valid LAN/internet IPv4 ready.\n• Link-local / None: Check cable, Wi-Fi, or router DHCP.|• Đã cấu hình: IPv4 hợp lệ sẵn sàng.\n• Kết nối nội bộ / Không có: Cần kiểm tra dây mạng, Wi-Fi hoặc DHCP router.
+Dash_Explain_NetIpv6_Desc|Availability status of IPv6 addressing (Global or Link-Local fe80::) on the primary adapter.|Trạng thái địa chỉ IPv6 (Global hay chỉ Link-Local fe80::) trên card mạng chính.
+Dash_Explain_NetIpv6_Metrics|• Even when Global IPv6 is disabled to ensure loopback IPv4 DNS compatibility, local fe80:: addresses may still appear cleanly.|• Ngay cả khi tắt IPv6 ngoài mạng để đảm bảo tương thích DNS loopback IPv4, địa chỉ nội bộ fe80:: vẫn có thể hiển thị bình thường.

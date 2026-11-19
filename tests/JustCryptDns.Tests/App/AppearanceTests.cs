@@ -152,11 +152,30 @@ public sealed class AppearanceTests
         Assert.False(vm.IsAccentInputInvalid);
         Assert.Equal("#22C55E", settings.Current.Appearance.AccentColor);
 
+        // Change StatusPulseStyle
+        vm.StatusPulseStyle = StatusPulseStyle.Heartbeat;
+        Assert.Equal(StatusPulseStyle.Heartbeat, settings.Current.Appearance.StatusPulseStyle);
+
         // Reset restores defaults
         vm.ResetCommand.Execute(null);
         Assert.Equal(AppTheme.Dark, settings.Current.Appearance.Theme);
         Assert.Equal(0, settings.Current.Appearance.Transparency);
         Assert.Equal(AppearanceSettings.DefaultAccentColor, settings.Current.Appearance.AccentColor);
+        Assert.Equal(StatusPulseStyle.Breathing, settings.Current.Appearance.StatusPulseStyle);
+    }
+
+    [Fact]
+    public void SettingsMigrator_MigratesV12ToCurrentVersionWithDefaultPulseStyle()
+    {
+        var doc = System.Text.Json.Nodes.JsonNode.Parse("""{ "schemaVersion": 12, "appearance": { "theme": "Dark" } }""")!.AsObject();
+        var migrator = new SettingsMigrator();
+
+        var migrated = migrator.Migrate(doc);
+
+        Assert.True(migrated);
+        Assert.Equal(AppSettings.CurrentSchemaVersion, SettingsMigrator.ReadVersion(doc));
+        var deserialized = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(doc.ToJsonString(), SettingsJson.Options)!.Normalize();
+        Assert.Equal(StatusPulseStyle.Breathing, deserialized.Appearance.StatusPulseStyle);
     }
 
     private sealed class MemoryStore : ISettingsStore

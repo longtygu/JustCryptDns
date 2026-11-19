@@ -73,6 +73,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _downloadSpeedDisplay = "0 Kbps";
     [ObservableProperty] private string _uploadSpeedDisplay = "0 Kbps";
     [ObservableProperty] private bool _isTelemetryPaused;
+    [ObservableProperty] private StatusPulseStyle _statusPulseStyle = StatusPulseStyle.Breathing;
     [ObservableProperty] private bool _isFilteringActive;
     [ObservableProperty] private SystemTrafficStatus _trafficStatus = SystemTrafficStatus.Stopped;
     [ObservableProperty] private string? _trafficWarningBanner;
@@ -83,6 +84,7 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBypassRunning))]
+    [NotifyPropertyChangedFor(nameof(ProtectionStatusLocKey))]
     private BypassEngineState _bypassState = BypassEngineState.Stopped;
 
     [ObservableProperty] private string _bypassEndpoint = "127.0.0.1:10808";
@@ -115,6 +117,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         _telemetry = telemetry;
         _resolverLibrary = resolverLibrary;
         _ui = SynchronizationContext.Current;
+        StatusPulseStyle = _settings?.Current.Appearance.StatusPulseStyle ?? StatusPulseStyle.Breathing;
         IsFilteringActive = _filtering?.IsFilteringEnabled ?? false;
         ApplyEngineStats(dnsEngine.GetStats());
         if (_bypassEngine is not null)
@@ -130,6 +133,16 @@ public sealed partial class DashboardViewModel : PageViewModel
     public bool IsEngineRunning => EngineState is DnsEngineState.Running or DnsEngineState.Degraded;
 
     public bool IsBypassRunning => BypassState is BypassEngineState.Running or BypassEngineState.Degraded;
+
+    public string ProtectionStatusLocKey => EngineState switch
+    {
+        DnsEngineState.Stopped => "Dash_Status_Stopped",
+        DnsEngineState.Running => IsBypassRunning ? "Dash_Status_RunningBypassOn" : "Dash_Status_RunningBypassOff",
+        DnsEngineState.Degraded => IsBypassRunning ? "Dash_Status_DegradedBypassOn" : "Dash_Status_DegradedBypassOff",
+        DnsEngineState.Starting => "EngineState_Starting",
+        DnsEngineState.Stopping => "EngineState_Stopping",
+        _ => "EngineState_NotImplemented",
+    };
 
     public IReadOnlyList<NetworkTelemetrySample> GetInitialTelemetrySamples() => _telemetry?.GetRecentSamples() ?? [];
 
@@ -163,6 +176,13 @@ public sealed partial class DashboardViewModel : PageViewModel
             ApplyBypassStats(_bypassEngine.GetStats());
         }
 
+        if (_settings is not null)
+        {
+            _settings.Changed -= OnSettingsChanged;
+            _settings.Changed += OnSettingsChanged;
+            StatusPulseStyle = _settings.Current.Appearance.StatusPulseStyle;
+        }
+
         if (_telemetry is not null)
         {
             _telemetry.SampleReceived -= OnTelemetrySampleReceived;
@@ -187,6 +207,11 @@ public sealed partial class DashboardViewModel : PageViewModel
             _bypassEngine.StateChanged -= OnBypassStateChanged;
         }
 
+        if (_settings is not null)
+        {
+            _settings.Changed -= OnSettingsChanged;
+        }
+
         if (_telemetry is not null)
         {
             _telemetry.SampleReceived -= OnTelemetrySampleReceived;
@@ -207,6 +232,11 @@ public sealed partial class DashboardViewModel : PageViewModel
                 _bypassEngine.StateChanged -= OnBypassStateChanged;
             }
 
+            if (_settings is not null)
+            {
+                _settings.Changed -= OnSettingsChanged;
+            }
+
             if (_telemetry is not null)
             {
                 _telemetry.SampleReceived -= OnTelemetrySampleReceived;
@@ -221,7 +251,11 @@ public sealed partial class DashboardViewModel : PageViewModel
         base.Dispose(disposing);
     }
 
-    partial void OnEngineStateChanged(DnsEngineState value) => OnPropertyChanged(nameof(IsEngineRunning));
+    partial void OnEngineStateChanged(DnsEngineState value)
+    {
+        OnPropertyChanged(nameof(IsEngineRunning));
+        OnPropertyChanged(nameof(ProtectionStatusLocKey));
+    }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task ToggleEngineAsync()
@@ -603,5 +637,18 @@ public sealed partial class DashboardViewModel : PageViewModel
         }
 
         _telemetry.ConfigureTargets(PrimaryAdapter?.Id, preferredPingHost);
+    }
+
+    private void OnSettingsChanged(object? sender, AppSettings settings)
+    {
+        void Sync() => StatusPulseStyle = settings.Appearance.StatusPulseStyle;
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Sync);
+        }
+        else
+        {
+            Sync();
+        }
     }
 }

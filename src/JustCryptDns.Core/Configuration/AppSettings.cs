@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v11: Phases 1–13. v12: Universal All-Website Smart DPI Bypass coverage and 4-stage self-healing.</summary>
-    public const int CurrentSchemaVersion = 12;
+    /// <summary>v1–v12: Phases 1–14. v13: StatusPulseStyle for Dashboard DNS shield &amp; toggle button.</summary>
+    public const int CurrentSchemaVersion = 13;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -187,6 +187,16 @@ public enum AnimationLevel
     Normal,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<StatusPulseStyle>))]
+public enum StatusPulseStyle
+{
+    Off,
+    Breathing,
+    GlowHalo,
+    Heartbeat,
+    Beacon,
+}
+
 public sealed class AppearanceSettings
 {
     public const string DefaultAccentColor = "#4F8CFF";
@@ -231,6 +241,8 @@ public sealed class AppearanceSettings
 
     public AnimationLevel Animations { get; set; } = AnimationLevel.Normal;
 
+    public StatusPulseStyle StatusPulseStyle { get; set; } = StatusPulseStyle.Breathing;
+
     internal void Normalize()
     {
         if (!Enum.IsDefined(Theme))
@@ -261,6 +273,7 @@ public sealed class AppearanceSettings
         CornerStyle = Enum.IsDefined(CornerStyle) ? CornerStyle : WindowCornerStyle.Default;
         TextSize = Enum.IsDefined(TextSize) ? TextSize : TextSize.Default;
         Animations = Enum.IsDefined(Animations) ? Animations : AnimationLevel.Normal;
+        StatusPulseStyle = Enum.IsDefined(StatusPulseStyle) ? StatusPulseStyle : StatusPulseStyle.Breathing;
     }
 }
 

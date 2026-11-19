@@ -15,6 +15,8 @@ public enum GaugeSeverity
 /// </summary>
 public static class GaugeMath
 {
+    public const double IgnitionSweepDurationSeconds = 1.15;
+
     private static readonly double[] QueryCeilings =
     [
         50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000,
@@ -167,5 +169,45 @@ public static class GaugeMath
             >= 30.0 => GaugeSeverity.Neutral,
             _ => GaugeSeverity.Warning,
         };
+    }
+
+    public static (double Normalized, bool Completed) ComputeIgnitionSweepValue(
+        double elapsedSeconds,
+        double startNormalized,
+        double targetNormalized)
+    {
+        var start = Math.Clamp(startNormalized, 0.0, 1.0);
+        var target = Math.Clamp(targetNormalized, 0.0, 1.0);
+        if (!double.IsFinite(elapsedSeconds) || elapsedSeconds <= 0.0)
+        {
+            return (start, false);
+        }
+
+        if (elapsedSeconds >= IgnitionSweepDurationSeconds)
+        {
+            return (target, true);
+        }
+
+        const double climbEnd = 0.42;
+        const double peakEnd = 0.56;
+
+        if (elapsedSeconds < climbEnd)
+        {
+            var t = elapsedSeconds / climbEnd;
+            var eased = 1.0 - Math.Pow(1.0 - t, 3.0);
+            return (start + ((1.0 - start) * eased), false);
+        }
+
+        if (elapsedSeconds < peakEnd)
+        {
+            var shimmer = Math.Clamp(0.996 + (0.004 * Math.Sin(elapsedSeconds * 40.0)), 0.0, 1.0);
+            return (shimmer, false);
+        }
+
+        var u = (elapsedSeconds - peakEnd) / (IgnitionSweepDurationSeconds - peakEnd);
+        var returnEase = u < 0.5
+            ? 4.0 * u * u * u
+            : 1.0 - (Math.Pow((-2.0 * u) + 2.0, 3.0) / 2.0);
+        return (1.0 + ((target - 1.0) * returnEase), false);
     }
 }

@@ -40,6 +40,55 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="Button.EngineStatusAction" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+            <Setter Property="Foreground" Value="#FFFFFFFF" />
+            <Setter Property="Background" Value="#FFD94248" />
+            <Setter Property="BorderBrush" Value="#FFD94248" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Control}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#FFE8545A" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#FFE8545A" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#FFC23339" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                <Setter Property="Background" Value="#FF169E60" />
+                                <Setter Property="BorderBrush" Value="#FF169E60" />
+                            </DataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsEngineRunning}" Value="True" />
+                                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter TargetName="Root" Property="Background" Value="#FF1DB871" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="#FF1DB871" />
+                            </MultiDataTrigger>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsEngineRunning}" Value="True" />
+                                    <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource Self}}" Value="True" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter TargetName="Root" Property="Background" Value="#FF12824E" />
+                            </MultiDataTrigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.55" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
@@ -50,7 +99,11 @@
             <!-- System Traffic Warning Banner (Non-53 port or Adapter DNS not pointing to local proxy) -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
                     Padding="18,14" Margin="{DynamicResource Card.Gap}"
-                    Visibility="{Binding TrafficWarningBanner, Converter={StaticResource NullToVisibility}}">
+                    Visibility="{Binding TrafficWarningBanner, Converter={StaticResource NullToVisibility}}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Explain_TrafficWarn_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_TrafficWarn_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_TrafficWarn_Metrics}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -116,39 +169,65 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Border Width="56" Height="56" CornerRadius="28" VerticalAlignment="Top">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Background" Value="{DynamicResource Brush.NeutralSubtle}" />
-                                <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Neutral}" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Running}">
-                                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
-                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Degraded}">
-                                        <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
-                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEA18;" FontSize="24"
-                                   Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
-                    </Border>
+                    <Grid x:Name="ShieldContainer" Width="60" Height="60" VerticalAlignment="Top" Background="Transparent"
+                          controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Protection_Title}"
+                          controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Shield_Desc}"
+                          controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Shield_Metrics}"
+                          controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                        <Ellipse x:Name="ShieldHaloRing" Width="56" Height="56" StrokeThickness="2.2" Opacity="0"
+                                 IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="ShieldHaloScale" ScaleX="1" ScaleY="1" />
+                            </Ellipse.RenderTransform>
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Stroke" Value="{DynamicResource Brush.Danger}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                            <Setter Property="Stroke" Value="{DynamicResource Brush.Success}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
 
-                    <StackPanel Grid.Column="1" Margin="18,0,24,0" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Protection_Title}" />
+                        <Border x:Name="ShieldBadge" Width="56" Height="56" CornerRadius="28" IsHitTestVisible="False">
+                            <Border.Effect>
+                                <DropShadowEffect x:Name="ShieldGlowEffect" ShadowDepth="0" BlurRadius="16" Opacity="0" />
+                            </Border.Effect>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEA18;" FontSize="24"
+                                       Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Grid.Column="1" Margin="18,0,24,0" VerticalAlignment="Center" Background="Transparent"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Protection_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_ProtectionStatus_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_ProtectionStatus_Metrics}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Protection_Title}" IsHitTestVisible="False" />
                         <TextBlock FontSize="{DynamicResource Font.Size.Hero}" FontWeight="SemiBold" Margin="0,2,0,4"
-                                   FontFamily="{StaticResource Font.Display}">
+                                   FontFamily="{StaticResource Font.Display}" TextWrapping="Wrap" IsHitTestVisible="False">
                             <TextBlock.Text>
-                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="EngineState_">
-                                    <Binding Path="EngineState" />
+                                <MultiBinding Converter="{StaticResource LocKey}">
+                                    <Binding Path="ProtectionStatusLocKey" />
                                     <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
                                 </MultiBinding>
                             </TextBlock.Text>
                         </TextBlock>
-                        <TextBlock MaxWidth="560" HorizontalAlignment="Left">
+                        <TextBlock MaxWidth="560" HorizontalAlignment="Left" IsHitTestVisible="False">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
                                     <Setter Property="Text" Value="{l:Loc Dash_Protection_StoppedDetail}" />
@@ -162,41 +241,93 @@
                         </TextBlock>
                     </StackPanel>
 
-                    <Button Grid.Column="2" Style="{StaticResource Button.Primary}" VerticalAlignment="Center" Padding="20,10"
-                            Command="{Binding ToggleEngineCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE768;" FontSize="13" Margin="0,0,8,0" />
-                            <TextBlock>
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="{l:Loc Dash_StartEngine}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
-                                                <Setter Property="Text" Value="{l:Loc DnsMgr_StopEngine}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
-                    </Button>
+                    <Grid Grid.Column="2" VerticalAlignment="Center">
+                        <Border x:Name="EngineButtonHalo" Margin="-3" CornerRadius="9" BorderThickness="2" Opacity="0"
+                                IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="EngineButtonHaloScale" ScaleX="1" ScaleY="1" />
+                            </Border.RenderTransform>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
+                        <Button x:Name="ToggleEngineButton" Style="{StaticResource Button.EngineStatusAction}" Padding="20,10"
+                                Command="{Binding ToggleEngineCommand}"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Explain_ToggleDns_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_ToggleDns_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_ToggleDns_Metrics}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <Button.Effect>
+                                <DropShadowEffect x:Name="EngineButtonGlow" ShadowDepth="0" BlurRadius="14" Opacity="0" />
+                            </Button.Effect>
+                            <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                                <TextBlock FontSize="13" Margin="0,0,8,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Icon}">
+                                            <Setter Property="Text" Value="&#xE768;" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                                    <Setter Property="Text" Value="&#xE71A;" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{l:Loc Dash_StartEngine}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEngineRunning}" Value="True">
+                                                    <Setter Property="Text" Value="{l:Loc DnsMgr_StopEngine}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
 
                     <UniformGrid Grid.Row="1" Grid.ColumnSpan="3" Rows="1" Margin="0,22,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Protocol}" />
-                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding ActiveProtocol}" />
+                        <StackPanel Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Protocol}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Protocol_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Protocol_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Protocol}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding ActiveProtocol}" IsHitTestVisible="False" />
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Resolver}" />
-                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding ActiveResolverName}" />
+                        <StackPanel Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Resolver}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Resolver_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Resolver_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Resolver}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding ActiveResolverName}" IsHitTestVisible="False" />
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc DnsMgr_LocalProxy}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding ListenEndpoint}" />
+                        <StackPanel Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc DnsMgr_LocalProxy}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_LocalProxy_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_LocalProxy_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc DnsMgr_LocalProxy}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding ListenEndpoint}" IsHitTestVisible="False" />
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Filtering}" />
-                            <TextBlock>
+                        <StackPanel Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Filtering}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Filtering_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Filtering_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Filtering}" IsHitTestVisible="False" />
+                            <TextBlock IsHitTestVisible="False">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
                                         <Setter Property="Text" Value="{l:Loc Animations_Off}" />
@@ -467,9 +598,13 @@
                                    Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
                     </Border>
 
-                    <StackPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Bypass_Title}" />
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Margin="0,2,0,2">
+                    <StackPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center" Background="Transparent"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Bypass_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_BypassStatus_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_BypassStatus_Metrics}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Bypass_Title}" IsHitTestVisible="False" />
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Margin="0,2,0,2" IsHitTestVisible="False">
                             <TextBlock.Text>
                                 <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="BypassState_">
                                     <Binding Path="BypassState" />
@@ -477,13 +612,21 @@
                                 </MultiBinding>
                             </TextBlock.Text>
                         </TextBlock>
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Bypass_Desc}" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Bypass_Desc}" IsHitTestVisible="False" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Command="{Binding OpenBypassCommand}" Content="{l:Loc Dash_Bypass_Configure}" Margin="0,0,8,0" />
-                        <Button Style="{StaticResource Button.Primary}" Command="{Binding ToggleBypassCommand}">
-                            <TextBlock>
+                        <Button Command="{Binding OpenBypassCommand}" Content="{l:Loc Dash_Bypass_Configure}" Margin="0,0,8,0"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Bypass_Configure}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_ConfigureBypass_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_ConfigureBypass_Metrics}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding ToggleBypassCommand}"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Explain_ToggleBypass_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_ToggleBypass_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_ToggleBypass_Metrics}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock IsHitTestVisible="False">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Text" Value="{l:Loc Bypass_StartEngine}" />
@@ -499,13 +642,21 @@
                     </StackPanel>
 
                     <UniformGrid Grid.Row="1" Grid.ColumnSpan="3" Rows="1" Margin="0,16,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_ProxyEndpoint}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding BypassEndpoint}" />
+                        <StackPanel Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Bypass_ProxyEndpoint}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_BypassEndpoint_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_BypassEndpoint_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_ProxyEndpoint}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding BypassEndpoint}" IsHitTestVisible="False" />
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_CoverageMode}" />
-                            <TextBlock Style="{StaticResource ValueText}">
+                        <StackPanel Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Bypass_CoverageMode}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_CoverageMode_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_CoverageMode_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_CoverageMode}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" IsHitTestVisible="False">
                                 <TextBlock.Text>
                                     <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="CoverageMode_">
                                         <Binding Path="BypassCoverageMode" />
@@ -514,13 +665,21 @@
                                 </TextBlock.Text>
                             </TextBlock>
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_Metric_DpiBypassed}" />
-                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding BypassDpiCountDisplay}" />
+                        <StackPanel Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Bypass_Metric_DpiBypassed}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_DpiBypassed_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_DpiBypassed_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Bypass_Metric_DpiBypassed}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding BypassDpiCountDisplay}" IsHitTestVisible="False" />
                         </StackPanel>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Bypass_Tunneled}" />
-                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding BypassTunnelCountDisplay}" />
+                        <StackPanel Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Bypass_Tunneled}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Tunneled_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Tunneled_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Bypass_Tunneled}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding BypassTunnelCountDisplay}" IsHitTestVisible="False" />
                         </StackPanel>
                     </UniformGrid>
                 </Grid>
@@ -529,46 +688,56 @@
             <!-- Network: real local adapter data. -->
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <Grid Margin="0,0,0,4">
+                    <Grid Margin="0,0,0,20">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Dash_Network_Title}" VerticalAlignment="Center" />
 
-                        <Border Grid.Column="1" Margin="12,0,0,0" Visibility="{Binding HasSnapshot, Converter={StaticResource BoolToVisibility}}">
-                            <Border.Style>
-                                <Style TargetType="Border" BasedOn="{StaticResource Pill}">
-                                    <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
-                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Connectivity}" Value="{x:Static models:LocalConnectivity.LocalOnly}">
-                                            <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
-                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Connectivity}" Value="{x:Static models:LocalConnectivity.GatewayAvailable}">
-                                            <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
-                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center"
-                                         Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
-                                <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold">
-                                    <TextBlock.Text>
-                                        <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="Connectivity_">
-                                            <Binding Path="Connectivity" />
-                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
-                                        </MultiBinding>
-                                    </TextBlock.Text>
-                                </TextBlock>
+                        <StackPanel Background="Transparent" Margin="0,0,16,0"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Title}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetworkStatus_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetworkStatus_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" IsHitTestVisible="False">
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Dash_Network_Title}" VerticalAlignment="Center" />
+
+                                <Border Margin="12,0,0,0" Visibility="{Binding HasSnapshot, Converter={StaticResource BoolToVisibility}}">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Connectivity}" Value="{x:Static models:LocalConnectivity.LocalOnly}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Connectivity}" Value="{x:Static models:LocalConnectivity.GatewayAvailable}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center"
+                                                 Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
+                                        <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="Connectivity_">
+                                                    <Binding Path="Connectivity" />
+                                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
-                        </Border>
+                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextTertiary}"
+                                       Text="{l:Loc Dash_Network_LocalNote}" IsHitTestVisible="False" />
+                        </StackPanel>
 
-                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
                             <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,10,0">
                                 <TextBlock.Text>
                                     <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Dash_Network_Updated">
@@ -578,13 +747,15 @@
                                 </TextBlock.Text>
                             </TextBlock>
                             <Button Style="{StaticResource Button.Subtle}" Command="{Binding RefreshCommand}" Padding="10,6"
-                                    ToolTip="{l:Loc Common_Refresh}" AutomationProperties.Name="{l:Loc Common_Refresh}">
-                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72C;" FontSize="14" />
+                                    AutomationProperties.Name="{l:Loc Common_Refresh}"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Common_Refresh}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_RefreshNetwork_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_RefreshNetwork_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72C;" FontSize="14" IsHitTestVisible="False" />
                             </Button>
                         </StackPanel>
                     </Grid>
-                    <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextTertiary}"
-                               Text="{l:Loc Dash_Network_LocalNote}" Margin="0,0,0,20" />
 
                     <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc Dash_Network_NoActive}"
                                Foreground="{DynamicResource Brush.TextSecondary}">
@@ -608,14 +779,22 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <StackPanel Style="{StaticResource Cell}" Grid.ColumnSpan="2">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Adapter}" />
-                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding PrimaryAdapter.Name}" FontWeight="SemiBold" />
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PrimaryAdapter.Description}" />
+                        <StackPanel Style="{StaticResource Cell}" Grid.ColumnSpan="2" Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Adapter}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetAdapter_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetAdapter_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Adapter}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding PrimaryAdapter.Name}" FontWeight="SemiBold" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PrimaryAdapter.Description}" IsHitTestVisible="False" />
                         </StackPanel>
-                        <StackPanel Style="{StaticResource Cell}" Grid.Column="2">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Type}" />
-                            <TextBlock Style="{StaticResource ValueText}">
+                        <StackPanel Style="{StaticResource Cell}" Grid.Column="2" Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Type}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetType_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetType_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Type}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" IsHitTestVisible="False">
                                 <TextBlock.Text>
                                     <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="AdapterKind_">
                                         <Binding Path="PrimaryAdapter.Kind" />
@@ -623,25 +802,41 @@
                                     </MultiBinding>
                                 </TextBlock.Text>
                             </TextBlock>
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PrimaryAdapter.SpeedBitsPerSecond, Converter={StaticResource LinkSpeed}}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PrimaryAdapter.SpeedBitsPerSecond, Converter={StaticResource LinkSpeed}}" IsHitTestVisible="False" />
                         </StackPanel>
 
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_LocalIp}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.IPv4Addresses, Converter={StaticResource AddressList}}" />
+                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_LocalIp}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIp_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIp_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_LocalIp}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.IPv4Addresses, Converter={StaticResource AddressList}}" IsHitTestVisible="False" />
                         </StackPanel>
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Grid.Column="1">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Gateway}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.Gateways, Converter={StaticResource AddressList}}" />
+                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Grid.Column="1" Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Gateway}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetGateway_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetGateway_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Gateway}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.Gateways, Converter={StaticResource AddressList}}" IsHitTestVisible="False" />
                         </StackPanel>
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Grid.Column="2">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Dns}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.DnsServers, Converter={StaticResource AddressList}}" />
+                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Grid.Column="2" Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Dns}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetDns_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetDns_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Dns}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.DnsServers, Converter={StaticResource AddressList}}" IsHitTestVisible="False" />
                         </StackPanel>
 
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="2">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_IPv4}" />
-                            <TextBlock Style="{StaticResource ValueText}">
+                        <StackPanel Style="{StaticResource Cell}" Grid.Row="2" Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_IPv4}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIpv4_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIpv4_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_IPv4}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" IsHitTestVisible="False">
                                 <TextBlock.Text>
                                     <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="IpStatus_">
                                         <Binding Path="Ipv4Status" />
@@ -650,9 +845,13 @@
                                 </TextBlock.Text>
                             </TextBlock>
                         </StackPanel>
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="2" Grid.Column="1">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_IPv6}" />
-                            <TextBlock Style="{StaticResource ValueText}">
+                        <StackPanel Style="{StaticResource Cell}" Grid.Row="2" Grid.Column="1" Background="Transparent"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_IPv6}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIpv6_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIpv6_Metrics}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_IPv6}" IsHitTestVisible="False" />
+                            <TextBlock Style="{StaticResource ValueText}" IsHitTestVisible="False">
                                 <TextBlock.Text>
                                     <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="IpStatus_">
                                         <Binding Path="Ipv6Status" />

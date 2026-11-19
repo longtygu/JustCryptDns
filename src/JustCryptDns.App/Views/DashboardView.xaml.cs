@@ -1,8 +1,12 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
+using JustCryptDns.App.Controls;
 using JustCryptDns.App.ViewModels;
+using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Models;
 using Microsoft.Win32;
 
@@ -12,6 +16,8 @@ public partial class DashboardView : UserControl
 {
     private readonly DispatcherTimer _frameTimer;
     private long _lastFrameTimestamp;
+    private double _pulseTime;
+    private bool _wasEngineRunning;
     private Window? _hostWindow;
     private DashboardViewModel? _attachedVm;
     private bool _isSessionLocked;
@@ -50,6 +56,7 @@ public partial class DashboardView : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         StopFrameTimer();
+        ApplyStatusPulseFrame(reset: true);
         DetachWindow();
 
         if (_isSessionHooked)
@@ -117,8 +124,15 @@ public partial class DashboardView : UserControl
             return;
         }
 
+        _wasEngineRunning = _attachedVm.IsEngineRunning;
+        _attachedVm.PropertyChanged += OnViewModelPropertyChanged;
         _attachedVm.TelemetrySampleArrived += OnTelemetrySampleArrived;
         TelemetryWave.SetSamples(_attachedVm.GetInitialTelemetrySamples());
+
+        if (IsLoaded)
+        {
+            ApplyStatusPulseFrame(reset: false);
+        }
     }
 
     private void DetachViewModel()
@@ -128,8 +142,32 @@ public partial class DashboardView : UserControl
             return;
         }
 
+        _attachedVm.PropertyChanged -= OnViewModelPropertyChanged;
         _attachedVm.TelemetrySampleArrived -= OnTelemetrySampleArrived;
         _attachedVm = null;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_attachedVm is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(e.PropertyName)
+            || e.PropertyName is nameof(DashboardViewModel.IsEngineRunning)
+                or nameof(DashboardViewModel.EngineState)
+                or nameof(DashboardViewModel.StatusPulseStyle))
+        {
+            var nowRunning = _attachedVm.IsEngineRunning;
+            if (nowRunning && !_wasEngineRunning && IsLoaded)
+            {
+                TriggerAllGaugesIgnitionSweep();
+            }
+
+            _wasEngineRunning = nowRunning;
+            ApplyStatusPulseFrame(reset: !_frameTimer.IsEnabled);
+        }
     }
 
     private void OnHostStateChanged(object? sender, EventArgs e) => UpdateMotionState();
@@ -165,10 +203,13 @@ public partial class DashboardView : UserControl
                 _lastFrameTimestamp = Stopwatch.GetTimestamp();
                 _frameTimer.Start();
             }
+
+            ApplyStatusPulseFrame(reset: false);
         }
         else
         {
             StopFrameTimer();
+            ApplyStatusPulseFrame(reset: true);
         }
     }
 
@@ -180,16 +221,55 @@ public partial class DashboardView : UserControl
         }
     }
 
+    private void TriggerAllGaugesIgnitionSweep()
+    {
+        LatencyGauge.TriggerIgnitionSweep();
+        QueriesGauge.TriggerIgnitionSweep();
+        BlockedGauge.TriggerIgnitionSweep();
+        CacheHitGauge.TriggerIgnitionSweep();
+    }
+
+    private void ApplyStatusPulseFrame(bool reset)
+    {
+        var style = _attachedVm?.StatusPulseStyle ?? StatusPulseStyle.Breathing;
+        var running = _attachedVm?.IsEngineRunning ?? false;
+
+        var activeColor = TryFindResource(running ? "Brush.Success" : "Brush.Danger") is SolidColorBrush scb
+            ? scb.Color
+            : (running ? Color.FromRgb(0x3D, 0xD6, 0x8C) : Color.FromRgb(0xFF, 0x6B, 0x6B));
+
+        var disabled = reset || style == StatusPulseStyle.Off;
+        var frame = disabled
+            ? StatusPulseMath.Evaluate(StatusPulseStyle.Off, 0.0)
+            : StatusPulseMath.Evaluate(style, _pulseTime);
+
+        ShieldHaloRing.Opacity = frame.HaloOpacity;
+        ShieldHaloScale.ScaleX = frame.HaloScale;
+        ShieldHaloScale.ScaleY = frame.HaloScale;
+        ShieldBadge.Opacity = frame.SurfaceOpacity;
+        ShieldGlowEffect.Color = activeColor;
+        ShieldGlowEffect.Opacity = disabled ? 0.0 : 0.25 + (0.65 * frame.Intensity);
+
+        EngineButtonHalo.Opacity = frame.HaloOpacity;
+        EngineButtonHaloScale.ScaleX = 1.0 + ((frame.HaloScale - 1.0) * 0.25);
+        EngineButtonHaloScale.ScaleY = 1.0 + ((frame.HaloScale - 1.0) * 0.55);
+        ToggleEngineButton.Opacity = frame.SurfaceOpacity;
+        EngineButtonGlow.Color = activeColor;
+        EngineButtonGlow.Opacity = disabled ? 0.0 : 0.20 + (0.65 * frame.Intensity);
+    }
+
     private void OnFrameTick(object? sender, EventArgs e)
     {
         var now = Stopwatch.GetTimestamp();
         var dt = Math.Clamp((now - _lastFrameTimestamp) / (double)Stopwatch.Frequency, 0.005, 0.1);
         _lastFrameTimestamp = now;
+        _pulseTime += dt;
 
         LatencyGauge.StepFrame(dt);
         QueriesGauge.StepFrame(dt);
         BlockedGauge.StepFrame(dt);
         CacheHitGauge.StepFrame(dt);
         TelemetryWave.StepFrame(dt);
+        ApplyStatusPulseFrame(reset: false);
     }
 }

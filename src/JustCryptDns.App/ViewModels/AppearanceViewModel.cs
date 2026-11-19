@@ -63,6 +63,7 @@ public sealed partial class AppearanceViewModel : PageViewModel
     [ObservableProperty] private int _uiScalePercent;
     [ObservableProperty] private TextSize _textSize;
     [ObservableProperty] private AnimationLevel _animations;
+    [ObservableProperty] private StatusPulseStyle _statusPulseStyle;
 
     [ObservableProperty] private string _accentInput = string.Empty;
     [ObservableProperty] private bool _isAccentInputInvalid;
@@ -216,6 +217,8 @@ public sealed partial class AppearanceViewModel : PageViewModel
 
     partial void OnAnimationsChanged(AnimationLevel value) => Save(s => s.Animations = value);
 
+    partial void OnStatusPulseStyleChanged(StatusPulseStyle value) => Save(s => s.StatusPulseStyle = value);
+
     private void Save(Action<AppearanceSettings> mutate)
     {
         if (_loading)
@@ -246,6 +249,7 @@ public sealed partial class AppearanceViewModel : PageViewModel
             UiScalePercent = a.UiScalePercent;
             TextSize = a.TextSize;
             Animations = a.Animations;
+            StatusPulseStyle = a.StatusPulseStyle;
             AccentInput = a.AccentColor;
             IsAccentInputInvalid = false;
             Mark(AccentSwatches, a.UseSystemAccent ? null : a.AccentColor);

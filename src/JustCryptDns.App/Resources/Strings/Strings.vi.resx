@@ -16,7 +16,7 @@
     <value>JustCryptDns</value>
   </data>
   <data name="App_Tagline" xml:space="preserve">
-    <value>Bảo mật &amp; tối ưu DNS</value>
+    <value>From Longtygu with luv &lt;3</value>
   </data>
   <data name="Nav_Dashboard" xml:space="preserve">
     <value>Tổng quan</value>
@@ -1682,5 +1682,194 @@
   </data>
   <data name="Dash_Explain_Wave_Metrics" xml:space="preserve">
     <value>• Sóng vàng (trục trái, ms): Ping thời gian thực — càng thấp và phẳng thì mạng càng ổn định khi chơi game.\n• Sóng xanh dương (trục phải): Tốc độ tải xuống (Download).\n• Sóng xanh lá (trục phải): Tốc độ tải lên (Upload).\n• Tự động tạm dừng hoàn toàn khi thu nhỏ hoặc ẩn xuống khay hệ thống để tiết kiệm CPU/RAM.</value>
+  </data>
+  <data name="Dash_Status_Stopped" xml:space="preserve">
+    <value>DNS engine hiện đang tắt</value>
+  </data>
+  <data name="Dash_Status_RunningBypassOn" xml:space="preserve">
+    <value>DNS engine đang chạy (vượt tường lửa · vượt DPI đang hoạt động)</value>
+  </data>
+  <data name="Dash_Status_RunningBypassOff" xml:space="preserve">
+    <value>DNS engine đang chạy (vượt DPI không hoạt động)</value>
+  </data>
+  <data name="Dash_Status_DegradedBypassOn" xml:space="preserve">
+    <value>DNS engine suy giảm (vượt DPI đang hoạt động)</value>
+  </data>
+  <data name="Dash_Status_DegradedBypassOff" xml:space="preserve">
+    <value>DNS engine suy giảm (vượt DPI không hoạt động)</value>
+  </data>
+  <data name="Appearance_StatusPulse" xml:space="preserve">
+    <value>Hiệu ứng nhấp nháy trạng thái</value>
+  </data>
+  <data name="Appearance_StatusPulse_Desc" xml:space="preserve">
+    <value>Tùy chỉnh kiểu nhấp nháy đỏ/xanh cho biểu tượng chiếc khiên và nút bật DNS ở trang Tổng quan (tự tạm dừng khi thu nhỏ).</value>
+  </data>
+  <data name="StatusPulse_Off" xml:space="preserve">
+    <value>Tắt</value>
+  </data>
+  <data name="StatusPulse_Breathing" xml:space="preserve">
+    <value>Nhịp thở</value>
+  </data>
+  <data name="StatusPulse_GlowHalo" xml:space="preserve">
+    <value>Vòng sáng</value>
+  </data>
+  <data name="StatusPulse_Heartbeat" xml:space="preserve">
+    <value>Nhịp tim</value>
+  </data>
+  <data name="StatusPulse_Beacon" xml:space="preserve">
+    <value>Đèn báo</value>
+  </data>
+  <data name="Dash_Explain_TrafficWarn_Title" xml:space="preserve">
+    <value>Cảnh báo định tuyến lưu lượng DNS</value>
+  </data>
+  <data name="Dash_Explain_TrafficWarn_Desc" xml:space="preserve">
+    <value>Cảnh báo khi cổng 53 đang bị dịch vụ khác chiếm dụng hoặc card mạng Windows chưa trỏ về proxy DNS cục bộ.</value>
+  </data>
+  <data name="Dash_Explain_TrafficWarn_Metrics" xml:space="preserve">
+    <value>• Chọn IP loopback dự phòng trên cổng 53 hoặc dừng dịch vụ xung đột để toàn bộ ứng dụng đi qua JustCryptDns.</value>
+  </data>
+  <data name="Dash_Explain_Shield_Desc" xml:space="preserve">
+    <value>Biểu tượng khiên hiển thị trực quan trạng thái hoạt động của DNS engine.</value>
+  </data>
+  <data name="Dash_Explain_Shield_Metrics" xml:space="preserve">
+    <value>• Nhấp nháy đỏ: DNS engine hiện đang tắt.\n• Nhấp nháy xanh: DNS engine đang bật và bảo vệ kết nối.\n• Có thể đổi kiểu hoặc tắt nhấp nháy trong Cài đặt giao diện.</value>
+  </data>
+  <data name="Dash_Explain_ProtectionStatus_Desc" xml:space="preserve">
+    <value>Hiển thị trạng thái tổng thể của bộ giải mã DNS mã hóa và cơ chế vượt tường lửa / vượt DPI.</value>
+  </data>
+  <data name="Dash_Explain_ProtectionStatus_Metrics" xml:space="preserve">
+    <value>• Đang tắt: Proxy DNS cục bộ chưa hoạt động.\n• Vượt DPI đang hoạt động: Cả DNS mã hóa và vượt tường lửa Auto-PAC đều đang bật.\n• Vượt DPI không hoạt động: Chỉ chạy DNS, chế độ vượt DPI đang tắt.</value>
+  </data>
+  <data name="Dash_Explain_ToggleDns_Title" xml:space="preserve">
+    <value>Bật / Tắt DNS engine</value>
+  </data>
+  <data name="Dash_Explain_ToggleDns_Desc" xml:space="preserve">
+    <value>Khởi động hoặc dừng proxy DNS mã hóa cục bộ cùng engine vượt DPI liên kết.</value>
+  </data>
+  <data name="Dash_Explain_ToggleDns_Metrics" xml:space="preserve">
+    <value>• Nút đỏ nhấp nháy: Engine đang tắt — nhấn để bật.\n• Nút xanh nhấp nháy: Engine đang chạy — nhấn để dừng.\n• Khi bật sẽ kích hoạt hiệu ứng 4 đồng hồ kéo kịch kim như khởi động xe.</value>
+  </data>
+  <data name="Dash_Explain_Protocol_Desc" xml:space="preserve">
+    <value>Giao thức truyền tải mã hóa đang dùng để gửi truy vấn DNS ra máy chủ upstream.</value>
+  </data>
+  <data name="Dash_Explain_Protocol_Metrics" xml:space="preserve">
+    <value>• DoH, DoT hoặc DNSCrypt giúp chống nghe lén và giả mạo DNS từ nhà mạng.\n• Có thể thay đổi trong Thư viện Resolver.</value>
+  </data>
+  <data name="Dash_Explain_Resolver_Desc" xml:space="preserve">
+    <value>Máy chủ DNS upstream đang thực hiện phân giải các tên miền chưa có trong bộ nhớ đệm.</value>
+  </data>
+  <data name="Dash_Explain_Resolver_Metrics" xml:space="preserve">
+    <value>• Chọn resolver gần và phản hồi thấp giúp mở web nhanh hơn và tối ưu đường truyền game.</value>
+  </data>
+  <data name="Dash_Explain_LocalProxy_Desc" xml:space="preserve">
+    <value>Địa chỉ loopback cục bộ và cổng lắng nghe truy vấn DNS từ hệ điều hành Windows.</value>
+  </data>
+  <data name="Dash_Explain_LocalProxy_Metrics" xml:space="preserve">
+    <value>• Windows mặc định gửi DNS hệ thống về cổng 53 (127.0.0.1:53 hoặc loopback dự phòng nếu cổng 53 bận).</value>
+  </data>
+  <data name="Dash_Explain_Filtering_Desc" xml:space="preserve">
+    <value>Cho biết bộ lọc chặn quảng cáo, theo dõi và tên miền độc hại theo DNS có đang bật hay không.</value>
+  </data>
+  <data name="Dash_Explain_Filtering_Metrics" xml:space="preserve">
+    <value>• Đang bảo vệ: Tự động chặn tên miền quảng cáo/độc hại ngay tại tầng DNS.\n• Tắt: Chỉ phân giải tên miền, không áp dụng danh sách chặn.</value>
+  </data>
+  <data name="Dash_Explain_BypassStatus_Desc" xml:space="preserve">
+    <value>Engine vượt DPI thuần C# kết hợp Auto-PAC thông minh giúp truy cập website bị chặn mà vẫn giữ ping game gốc.</value>
+  </data>
+  <data name="Dash_Explain_BypassStatus_Metrics" xml:space="preserve">
+    <value>• Tách gói TLS ClientHello để vượt kiểm duyệt SNI mà không cần driver kernel, không làm tăng ping khi chơi game.</value>
+  </data>
+  <data name="Dash_Explain_ConfigureBypass_Desc" xml:space="preserve">
+    <value>Mở trang cấu hình Vượt DPI &amp; Tunnel để quản lý ngoại lệ đi thẳng, cache tự học và kiểm tra nhiều trang web.</value>
+  </data>
+  <data name="Dash_Explain_ConfigureBypass_Metrics" xml:space="preserve">
+    <value>• Cho phép chuyển đổi phạm vi mọi website hoặc chỉ theo danh sách, hoặc loại trừ các trang ngân hàng/nội bộ.</value>
+  </data>
+  <data name="Dash_Explain_ToggleBypass_Title" xml:space="preserve">
+    <value>Bật / Tắt Vượt DPI &amp; Split-Tunnel</value>
+  </data>
+  <data name="Dash_Explain_ToggleBypass_Desc" xml:space="preserve">
+    <value>Bật hoặc tắt độc lập proxy vượt DPI cục bộ và cấu hình Auto-PAC trên Windows.</value>
+  </data>
+  <data name="Dash_Explain_ToggleBypass_Metrics" xml:space="preserve">
+    <value>• Đang chạy: Các trang web tự động được vượt DPI.\n• Đã dừng: Khôi phục nguyên trạng cài đặt proxy Windows.</value>
+  </data>
+  <data name="Dash_Explain_BypassEndpoint_Desc" xml:space="preserve">
+    <value>Địa chỉ proxy thông minh cục bộ được kịch bản Auto-PAC sử dụng để tiếp nhận lưu lượng web cần vượt DPI.</value>
+  </data>
+  <data name="Dash_Explain_BypassEndpoint_Metrics" xml:space="preserve">
+    <value>• Chỉ lắng nghe trên máy cục bộ; lưu lượng không qua PAC (game UDP, mạng LAN) sẽ bỏ qua hoàn toàn cổng này.</value>
+  </data>
+  <data name="Dash_Explain_CoverageMode_Desc" xml:space="preserve">
+    <value>Xác định phạm vi trang web được áp dụng cơ chế vượt DPI qua Auto-PAC.</value>
+  </data>
+  <data name="Dash_Explain_CoverageMode_Metrics" xml:space="preserve">
+    <value>• Mọi trang web (Auto-PAC): Tự động bảo vệ toàn bộ internet với tự phục hồi 4 tầng.\n• Chỉ theo quy tắc: Chỉ áp dụng với danh sách tên miền chỉ định.</value>
+  </data>
+  <data name="Dash_Explain_DpiBypassed_Desc" xml:space="preserve">
+    <value>Số lượt kết nối web đã được mở khóa thành công bằng kỹ thuật phân mảnh gói TLS ClientHello trong phiên này.</value>
+  </data>
+  <data name="Dash_Explain_DpiBypassed_Metrics" xml:space="preserve">
+    <value>• Xác nhận cơ chế vượt kiểm duyệt DPI đang hoạt động hiệu quả trên các trang web.</value>
+  </data>
+  <data name="Dash_Explain_Tunneled_Desc" xml:space="preserve">
+    <value>Số lượt kết nối được chuyển tiếp qua kênh Upstream Tunnel (SOCKS5/HTTP) tầng 2 dự phòng.</value>
+  </data>
+  <data name="Dash_Explain_Tunneled_Metrics" xml:space="preserve">
+    <value>• Bằng 0 khi phân mảnh DPI trực tiếp đã thông suốt, giúp giữ băng thông tối đa.</value>
+  </data>
+  <data name="Dash_Explain_NetworkStatus_Desc" xml:space="preserve">
+    <value>Tổng quan thông số card mạng đang hoạt động và trạng thái kết nối cổng mặc định do Windows cung cấp.</value>
+  </data>
+  <data name="Dash_Explain_NetworkStatus_Metrics" xml:space="preserve">
+    <value>• Sẵn sàng cổng cho thấy máy tính đang có tuyến mạng hợp lệ ra router/internet.</value>
+  </data>
+  <data name="Dash_Explain_RefreshNetwork_Desc" xml:space="preserve">
+    <value>Đọc lại ngay thông tin card mạng, địa chỉ IP và máy chủ DNS hiện tại từ Windows.</value>
+  </data>
+  <data name="Dash_Explain_RefreshNetwork_Metrics" xml:space="preserve">
+    <value>• Hữu ích sau khi đổi Wi-Fi/dây mạng, bật tắt VPN hoặc vừa thay đổi DNS hệ thống.</value>
+  </data>
+  <data name="Dash_Explain_NetAdapter_Desc" xml:space="preserve">
+    <value>Card mạng chính đang đảm nhiệm lưu lượng internet theo bảng định tuyến Windows.</value>
+  </data>
+  <data name="Dash_Explain_NetAdapter_Metrics" xml:space="preserve">
+    <value>• Hiển thị tên kết nối mạng và tên phần cứng điều khiển mạng thực tế.</value>
+  </data>
+  <data name="Dash_Explain_NetType_Desc" xml:space="preserve">
+    <value>Loại kết nối vật lý và tốc độ liên kết tối đa hiện tại giữa máy tính và modem/router.</value>
+  </data>
+  <data name="Dash_Explain_NetType_Metrics" xml:space="preserve">
+    <value>• Cho biết kết nối qua cáp Ethernet hay Wi-Fi cùng băng thông liên kết vật lý.</value>
+  </data>
+  <data name="Dash_Explain_NetIp_Desc" xml:space="preserve">
+    <value>Địa chỉ IPv4 nội bộ được router cấp cho máy tính trong mạng LAN.</value>
+  </data>
+  <data name="Dash_Explain_NetIp_Metrics" xml:space="preserve">
+    <value>• IP LAN bình thường thường là 192.168.x.x hoặc 10.x.x.x (169.254.x.x nghĩa là chưa nhận được DHCP).</value>
+  </data>
+  <data name="Dash_Explain_NetGateway_Desc" xml:space="preserve">
+    <value>Địa chỉ IP của router / modem mặc định tiếp nhận mọi gói tin đi ra internet.</value>
+  </data>
+  <data name="Dash_Explain_NetGateway_Metrics" xml:space="preserve">
+    <value>• Nếu trống nghĩa là máy tính chỉ kết nối nội bộ, chưa có đường ra internet.</value>
+  </data>
+  <data name="Dash_Explain_NetDns_Desc" xml:space="preserve">
+    <value>Danh sách IP máy chủ DNS hiện đang được gán trên card mạng Windows.</value>
+  </data>
+  <data name="Dash_Explain_NetDns_Metrics" xml:space="preserve">
+    <value>• Khi được bảo vệ bởi JustCryptDns, mục này sẽ trỏ về proxy loopback cục bộ (ví dụ 127.0.0.1 hoặc 127.0.0.2).</value>
+  </data>
+  <data name="Dash_Explain_NetIpv4_Desc" xml:space="preserve">
+    <value>Trạng thái khả dụng của giao thức địa chỉ IPv4 trên card mạng chính.</value>
+  </data>
+  <data name="Dash_Explain_NetIpv4_Metrics" xml:space="preserve">
+    <value>• Đã cấu hình: IPv4 hợp lệ sẵn sàng.\n• Kết nối nội bộ / Không có: Cần kiểm tra dây mạng, Wi-Fi hoặc DHCP router.</value>
+  </data>
+  <data name="Dash_Explain_NetIpv6_Desc" xml:space="preserve">
+    <value>Trạng thái địa chỉ IPv6 (Global hay chỉ Link-Local fe80::) trên card mạng chính.</value>
+  </data>
+  <data name="Dash_Explain_NetIpv6_Metrics" xml:space="preserve">
+    <value>• Ngay cả khi tắt IPv6 ngoài mạng để đảm bảo tương thích DNS loopback IPv4, địa chỉ nội bộ fe80:: vẫn có thể hiển thị bình thường.</value>
   </data>
 </root>
