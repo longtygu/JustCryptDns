@@ -17,6 +17,7 @@ namespace JustCryptDns.Network.Monitoring;
 public sealed class NetworkTelemetryService : INetworkTelemetryService
 {
     public const int MaxHistorySamples = 60;
+    public const int MaxStabilityWindow = 20;
     private const string DefaultPingTarget = "1.1.1.1";
     private const string FallbackPingTarget = "8.8.8.8";
     private const int PingTimeoutMs = 1000;
@@ -24,6 +25,8 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
     private readonly ILogger<NetworkTelemetryService> _logger;
     private readonly object _sync = new();
     private readonly Queue<NetworkTelemetrySample> _history = new(MaxHistorySamples);
+    private readonly Queue<bool> _pingOutcomes = new(MaxStabilityWindow);
+    private readonly Queue<double> _recentPings = new(MaxStabilityWindow);
 
     private CancellationTokenSource? _loopCts;
     private string? _primaryAdapterId;
@@ -52,6 +55,8 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
                 _primaryAdapterId = primaryAdapterId;
                 // Discard the baseline when switching adapters to prevent artificial rate spikes.
                 _hasPreviousCounters = false;
+                _pingOutcomes.Clear();
+                _recentPings.Clear();
             }
 
             _preferredPingHost = preferredPingHost;
@@ -131,6 +136,47 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         var rxDelta = Math.Max(0L, currentReceived - previousReceived);
         var txDelta = Math.Max(0L, currentSent - previousSent);
         return (rxDelta / elapsedSeconds, txDelta / elapsedSeconds);
+    }
+
+    internal static (double? PacketLossPercent, double? StabilityPercent, int TotalProbes, int FailedProbes) CalculateStability(
+        IReadOnlyList<bool> probeOutcomes,
+        IReadOnlyList<double> recentPingsMs)
+    {
+        ArgumentNullException.ThrowIfNull(probeOutcomes);
+        ArgumentNullException.ThrowIfNull(recentPingsMs);
+
+        var total = probeOutcomes.Count;
+        if (total == 0)
+        {
+            return (null, null, 0, 0);
+        }
+
+        var failed = 0;
+        for (var i = 0; i < total; i++)
+        {
+            if (!probeOutcomes[i])
+            {
+                failed++;
+            }
+        }
+
+        var lossPct = Math.Round((failed * 100.0) / total, 1);
+
+        var jitterPenalty = 0.0;
+        if (recentPingsMs.Count >= 2)
+        {
+            var jitterSum = 0.0;
+            for (var i = 1; i < recentPingsMs.Count; i++)
+            {
+                jitterSum += Math.Abs(recentPingsMs[i] - recentPingsMs[i - 1]);
+            }
+
+            var avgJitterMs = jitterSum / (recentPingsMs.Count - 1);
+            jitterPenalty = Math.Clamp((avgJitterMs - 15.0) * 0.25, 0.0, 15.0);
+        }
+
+        var stabilityPct = Math.Round(Math.Clamp(100.0 - lossPct - jitterPenalty, 0.0, 100.0), 1);
+        return (lossPct, stabilityPct, total, failed);
     }
 
     public static string FormatThroughput(double bytesPerSecond)
@@ -305,7 +351,43 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
             displayPing = null;
         }
 
-        return (new NetworkTelemetrySample(now, displayPing, downRate, upRate), updatedPing);
+        (double? lossPct, double? stabilityPct, int totalProbes, int failedProbes) stability;
+        lock (_sync)
+        {
+            if (tickIndex % 2 == 0 && !ct.IsCancellationRequested)
+            {
+                if (_pingOutcomes.Count >= MaxStabilityWindow)
+                {
+                    _pingOutcomes.Dequeue();
+                }
+
+                _pingOutcomes.Enqueue(updatedPing is not null);
+
+                if (updatedPing is { } measured)
+                {
+                    if (_recentPings.Count >= MaxStabilityWindow)
+                    {
+                        _recentPings.Dequeue();
+                    }
+
+                    _recentPings.Enqueue(measured);
+                }
+            }
+
+            stability = CalculateStability([.. _pingOutcomes], [.. _recentPings]);
+        }
+
+        return (
+            new NetworkTelemetrySample(
+                now,
+                displayPing,
+                downRate,
+                upRate,
+                stability.lossPct,
+                stability.stabilityPct,
+                stability.totalProbes,
+                stability.failedProbes),
+            updatedPing);
     }
 
     private static async Task<double?> ProbePingAsync(Ping ping, string primaryTarget, CancellationToken ct)

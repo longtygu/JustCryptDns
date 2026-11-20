@@ -37,6 +37,46 @@ public sealed class DashboardTelemetryPhase15Tests
         }
     }
 
+    private sealed class FakeDiagnosticsService : INetworkDiagnosticsService
+    {
+        private readonly List<LiveQueryMonitorEntry> _entries = [];
+
+        public event EventHandler<LiveQueryMonitorEntry>? QueryObserved;
+
+        public bool IsMonitorPaused { get; set; }
+
+        public IReadOnlyList<LiveQueryMonitorEntry> GetMonitorEntries() => _entries.ToList();
+
+        public void RecordMonitorEntry(LiveQueryMonitorEntry entry)
+        {
+            _entries.Insert(0, entry);
+            QueryObserved?.Invoke(this, entry);
+        }
+
+        public void ClearMonitorEntries() => _entries.Clear();
+
+        public Task<DnsLookupReport> LookupAsync(string domain, string recordType, string? resolverId = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<DnssecTestReport> TestDnssecAsync(string? resolverId = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<(bool Success, double LatencyMs, string Summary)> TestDohConnectivityAsync(string? resolverId = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<(bool Success, double LatencyMs, string Summary)> TestDnsCryptConnectivityAsync(string? resolverId = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<ResolverComparisonEntry>> CompareResolversAsync(string domain, string recordType = "A", CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<DnsLeakTestReport> RunDnsLeakTestAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<ResolverComparisonEntry>> CheckPropagationAsync(string domain, string recordType, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
     private sealed class StubDnsEngine : IDnsEngine
     {
         public event EventHandler<DnsEngineRuntimeStats>? StateChanged
@@ -424,5 +464,120 @@ public sealed class DashboardTelemetryPhase15Tests
 
         vm.ApplyBypassStats(new BypassRuntimeStats { State = BypassEngineState.Stopped });
         Assert.Equal("Dash_Status_DegradedBypassOff", vm.ProtectionStatusLocKey);
+    }
+
+    [Fact]
+    public void NetworkTelemetryService_CalculateStability_ReflectsPacketLossAndJitter()
+    {
+        var empty = NetworkTelemetryService.CalculateStability([], []);
+        Assert.Null(empty.PacketLossPercent);
+        Assert.Null(empty.StabilityPercent);
+        Assert.Equal(0, empty.TotalProbes);
+
+        var steady = NetworkTelemetryService.CalculateStability([true, true, true, true], [18.0, 20.0, 19.0, 21.0]);
+        Assert.Equal(0.0, steady.PacketLossPercent);
+        Assert.Equal(100.0, steady.StabilityPercent);
+        Assert.Equal(4, steady.TotalProbes);
+        Assert.Equal(0, steady.FailedProbes);
+
+        var partialLoss = NetworkTelemetryService.CalculateStability([true, false, true, false], [20.0, 25.0]);
+        Assert.Equal(50.0, partialLoss.PacketLossPercent);
+        Assert.Equal(50.0, partialLoss.StabilityPercent);
+        Assert.Equal(4, partialLoss.TotalProbes);
+        Assert.Equal(2, partialLoss.FailedProbes);
+
+        var jittery = NetworkTelemetryService.CalculateStability([true, true, true, true], [10.0, 85.0, 12.0, 90.0]);
+        Assert.Equal(0.0, jittery.PacketLossPercent);
+        Assert.True(jittery.StabilityPercent < 90.0);
+
+        Assert.Equal(GaugeSeverity.Neutral, GaugeMath.EvaluateStabilitySeverity(null, null, 0));
+        Assert.Equal(GaugeSeverity.Good, GaugeMath.EvaluateStabilitySeverity(99.0, 0.0, 10));
+        Assert.Equal(GaugeSeverity.Warning, GaugeMath.EvaluateStabilitySeverity(90.0, 5.0, 10));
+        Assert.Equal(GaugeSeverity.Danger, GaugeMath.EvaluateStabilitySeverity(70.0, 25.0, 10));
+    }
+
+    [Fact]
+    public void WidthToColumnsConverter_SupportsBothFourAndFiveColumnModes()
+    {
+        var conv5 = new JustCryptDns.App.Converters.WidthToColumnsConverter
+        {
+            TwoColumnMin = 400,
+            ThreeColumnMin = 640,
+            FourColumnMin = 860,
+            MaxColumns = 5,
+        };
+
+        Assert.Equal(1, conv5.Convert(320.0, typeof(int), null, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(2, conv5.Convert(500.0, typeof(int), null, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(3, conv5.Convert(700.0, typeof(int), null, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(5, conv5.Convert(900.0, typeof(int), null, System.Globalization.CultureInfo.InvariantCulture));
+
+        var conv4 = new JustCryptDns.App.Converters.WidthToColumnsConverter();
+        Assert.Equal(4, conv4.Convert(900.0, typeof(int), null, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void DashboardViewModel_UpdatesStabilityGaugeAndLiveQueryFeed_RespectsPause()
+    {
+        using var telemetry = new FakeTelemetryService();
+        var diagnostics = new FakeDiagnosticsService();
+        using var vm = new DashboardViewModel(
+            new StubNetworkInfoService(),
+            new StubDnsEngine(),
+            new StubNavigationService(),
+            NullLogger<DashboardViewModel>.Instance,
+            telemetry: telemetry,
+            diagnostics: diagnostics);
+
+        vm.OnNavigatedTo();
+        vm.SetLiveTelemetryActive(true);
+        Assert.True(vm.IsTelemetryActive);
+
+        vm.ApplyTelemetrySample(new NetworkTelemetrySample(
+            DateTimeOffset.UtcNow,
+            21.0,
+            1_000_000,
+            250_000,
+            PacketLossPercent: 5.0,
+            StabilityPercent: 94.0,
+            TotalPingProbes: 20,
+            FailedPingProbes: 1));
+        Assert.Equal(94.0, vm.NetworkStabilityPercentValue);
+        Assert.Equal("94%", vm.NetworkStabilityDisplay);
+        Assert.Equal(GaugeSeverity.Warning, vm.StabilitySeverity);
+
+        diagnostics.RecordMonitorEntry(new LiveQueryMonitorEntry
+        {
+            Timestamp = DateTimeOffset.Now,
+            Domain = "store.steampowered.com",
+            RecordType = "A",
+            Outcome = "Allowed",
+            ResolverName = "Cloudflare (DoH)",
+            Protocol = DnsProtocol.DnsOverHttps,
+            LatencyMs = 14.2,
+        });
+        Assert.True(vm.HasRecentQueries);
+        Assert.Single(vm.RecentQueries);
+
+        // Pausing telemetry (window minimized) suppresses new UI list insertions until resumed.
+        vm.SetLiveTelemetryActive(false);
+        diagnostics.RecordMonitorEntry(new LiveQueryMonitorEntry
+        {
+            Timestamp = DateTimeOffset.Now,
+            Domain = "discord.com",
+            RecordType = "AAAA",
+            Outcome = "Cached",
+            ResolverName = "Cloudflare (DoH)",
+            Protocol = DnsProtocol.DnsOverHttps,
+            LatencyMs = 0.4,
+        });
+        Assert.Single(vm.RecentQueries);
+
+        vm.SetLiveTelemetryActive(true);
+        Assert.Equal(2, vm.RecentQueries.Count);
+
+        vm.ClearRecentQueriesCommand.Execute(null);
+        Assert.False(vm.HasRecentQueries);
+        Assert.Empty(diagnostics.GetMonitorEntries());
     }
 }

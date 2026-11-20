@@ -7,6 +7,7 @@ using System.Text;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Models;
+using JustCryptDns.Core.Network;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.Network.Bypass;
@@ -70,6 +71,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
 
         _listener = new TcpListener(_listenAddress, _requestedPort);
+        SocketHandleGuard.DisableInheritance(_listener.Server);
         _listener.Start(512);
         BoundPort = ((IPEndPoint)_listener.LocalEndpoint).Port;
         _acceptTask = Task.Run(() => AcceptLoopAsync(_cts.Token), _cts.Token);

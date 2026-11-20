@@ -53,6 +53,249 @@
                 <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
             </Border>
 
+            <!-- Live Animated Resolver Scan & Detailed Log Card -->
+            <Border Style="{StaticResource SectionCard}" BorderBrush="{DynamicResource Brush.Accent}"
+                    Visibility="{Binding HasScanPanel, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Animated Radar Scanner Icon (stops spinning when idle) -->
+                        <Grid Width="38" Height="38" VerticalAlignment="Center">
+                            <Border CornerRadius="19" Background="{DynamicResource Brush.AccentSubtle}"
+                                    BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1" />
+                            <Ellipse Width="6" Height="6" Fill="{DynamicResource Brush.Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Grid Width="38" Height="38" RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <RotateTransform Angle="0" />
+                                </Grid.RenderTransform>
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Opacity" Value="0.35" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                                <Setter Property="Opacity" Value="1.0" />
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard x:Name="RadarScanStoryboard">
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                             From="0" To="360" Duration="0:0:1.05"
+                                                                             RepeatBehavior="Forever" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.EnterActions>
+                                                <DataTrigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="RadarScanStoryboard" />
+                                                </DataTrigger.ExitActions>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Path Stroke="{DynamicResource Brush.Accent}" StrokeThickness="2.5"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Data="M 19,5 A 14,14 0 0 1 33,19" />
+                            </Grid>
+                        </Grid>
+
+                        <StackPanel Grid.Column="1" Margin="14,0,14,0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.SectionTitle}">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                        <Binding Path="ScanHeaderKey" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextSecondary}"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="0,2,0,0"
+                                       Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Resolvers_Scan_CurrentTarget">
+                                        <Binding Path="ScanCurrentTarget" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.ControlFill}" Margin="0,0,6,0">
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                           FontWeight="SemiBold" Text="{Binding ScanCounterText}" />
+                            </Border>
+                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SuccessSubtle}" Margin="0,0,6,0">
+                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource Brush.Success}">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Resolvers_Scan_OnlineCount">
+                                            <Binding Path="ScanOnlineCount" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.DangerSubtle}" Margin="0,0,6,0">
+                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource Brush.Danger}">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Resolvers_Scan_OfflineCount">
+                                            <Binding Path="ScanOfflineCount" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="0,0,8,0">
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                           Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding ScanElapsedDisplay}" />
+                            </Border>
+                            <Button Command="{Binding CancelScanCommand}" Content="{l:Loc Resolvers_Scan_Cancel}"
+                                    Padding="10,4" Margin="0,0,4,0"
+                                    Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}" />
+                            <Button Command="{Binding ClearScanLogCommand}" Content="{l:Loc Resolvers_Scan_ClearLog}"
+                                    Padding="10,4"
+                                    Visibility="{Binding IsScanning, Converter={StaticResource InverseBoolToVisibility}}" />
+                        </WrapPanel>
+                    </Grid>
+
+                    <!-- Determinate Animated Progress Bar -->
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding ScanProgressPercent, Mode=OneWay}" Height="8" Margin="0,12,0,12">
+                        <ProgressBar.Template>
+                            <ControlTemplate TargetType="ProgressBar">
+                                <Border Background="{DynamicResource Brush.ControlFill}"
+                                        BorderBrush="{DynamicResource Brush.ControlBorder}" BorderThickness="1"
+                                        CornerRadius="4" ClipToBounds="True">
+                                    <Grid x:Name="PART_Track">
+                                        <Border x:Name="PART_Indicator" HorizontalAlignment="Left" CornerRadius="3">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ScanWasCancelled}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.Warning}" />
+                                                        </DataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding IsScanning}" Value="False" />
+                                                                <Condition Binding="{Binding ScanWasCancelled}" Value="False" />
+                                                                <Condition Binding="{Binding ScanOfflineCount}" Value="0" />
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.Success}" />
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </ControlTemplate>
+                        </ProgressBar.Template>
+                    </ProgressBar>
+
+                    <!-- Live Detailed Per-Resolver Scan Log -->
+                    <Border Background="{DynamicResource Brush.ControlFill}" BorderBrush="{DynamicResource Brush.ControlBorder}"
+                            BorderThickness="1" CornerRadius="6" Padding="8,6">
+                        <ListBox ItemsSource="{Binding ScanLogs}" MaxHeight="210"
+                                 Background="Transparent" BorderThickness="0"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="6,3" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="ItemRoot" Background="{TemplateBinding Background}"
+                                                        CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource Brush.SubtleHover}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:ResolverScanLogEntry}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="66" />
+                                            <ColumnDefinition Width="96" />
+                                            <ColumnDefinition Width="78" />
+                                            <ColumnDefinition Width="195" />
+                                            <ColumnDefinition Width="68" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                   Foreground="{DynamicResource Brush.TextTertiary}" VerticalAlignment="Center"
+                                                   Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
+
+                                        <Border Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                                    <Setter Property="Padding" Value="8,2" />
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Outcome}" Value="Timeout">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Outcome}" Value="Offline">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                       Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                                        <Binding Path="OutcomeKey" />
+                                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Border>
+
+                                        <Border Grid.Column="2" Style="{StaticResource Pill}" Padding="8,2" Margin="0,0,6,0"
+                                                Background="{DynamicResource Brush.AccentSubtle}">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Brush.Accent}" Text="{Binding ProtocolBadge}" />
+                                        </Border>
+
+                                        <TextBlock Grid.Column="3" Style="{StaticResource Text.Caption}" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.TextPrimary}"
+                                                   Text="{Binding ResolverName}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                   Margin="0,0,8,0" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Column="4" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                   Text="{Binding LatencyText}" HorizontalAlignment="Right" Margin="0,0,10,0" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Column="5" Style="{StaticResource Text.Caption}" FontSize="{DynamicResource Font.Size.Small}"
+                                                   Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding DetailText}"
+                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </StackPanel>
+            </Border>
+
             <!-- Summary & Active Primary / Secondary Card -->
             <Border Style="{StaticResource SectionCard}">
                 <StackPanel>
@@ -278,6 +521,11 @@
                                             <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="0,0,6,0"
                                                     Visibility="{Binding IsCustom, Converter={StaticResource BoolToVisibility}}">
                                                 <TextBlock FontSize="{DynamicResource Font.Size.Small}" Text="{l:Loc Resolvers_Badge_Custom}" />
+                                            </Border>
+                                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="0,0,6,0"
+                                                    Visibility="{Binding IsProbing, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Brush.Accent}" Text="{l:Loc Resolvers_Scan_Probing}" />
                                             </Border>
                                         </WrapPanel>
 

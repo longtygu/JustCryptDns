@@ -41,6 +41,7 @@ public sealed class BypassEngineService : IBypassEngineService
     private long _selfHealedDirectCount;
     private long _escalatedDpiCount;
     private int _pacRevision = 1;
+    private bool _hasStartedOnce;
     private bool _disposed;
 
     public BypassEngineService(
@@ -114,51 +115,57 @@ public sealed class BypassEngineService : IBypassEngineService
             var bypass = _settings.Current.Bypass;
             var listenIp = ParseListenIp(bypass.ListenAddress);
 
-            var pacServer = new LocalPacHttpServer(
+            var (pacServer, pacError) = await StartListenerWithFallbackAsync(
+                "local PAC server",
                 listenIp,
                 bypass.PacPort,
-                GeneratePacScript,
-                _logger);
+                avoidPort: bypass.ProxyPort,
+                port => new LocalPacHttpServer(listenIp, port, GeneratePacScript, _logger),
+                server => server.Start()).ConfigureAwait(false);
 
-            try
+            if (pacServer is null)
             {
-                pacServer.Start();
-            }
-            catch (SocketException ex)
-            {
-                await pacServer.DisposeAsync().ConfigureAwait(false);
-                var msg = $"Could not start local PAC server on {listenIp}:{bypass.PacPort}: {ex.Message}";
-                SetState(BypassEngineState.Stopped, msg);
-                return (false, msg);
+                _logger.LogError("Bypass start failed: {Error}", pacError);
+                SetState(BypassEngineState.Stopped, pacError);
+                return (false, pacError);
             }
 
-            var proxy = new LocalSmartBypassProxy(
+            var (proxy, proxyError) = await StartListenerWithFallbackAsync(
+                "DPI bypass proxy",
                 listenIp,
                 bypass.ProxyPort,
-                () => pacServer.BoundPort,
-                () => _settings.Current.Bypass,
-                () => _settings.Current.Dns.EnableIpv6,
-                _matcher,
-                _connector,
-                RecordConnectionEvent,
-                _logger);
+                avoidPort: pacServer.BoundPort,
+                port => new LocalSmartBypassProxy(
+                    listenIp,
+                    port,
+                    () => pacServer.BoundPort,
+                    () => _settings.Current.Bypass,
+                    () => _settings.Current.Dns.EnableIpv6,
+                    _matcher,
+                    _connector,
+                    RecordConnectionEvent,
+                    _logger),
+                server => server.Start()).ConfigureAwait(false);
 
-            try
+            if (proxy is null)
             {
-                proxy.Start();
-            }
-            catch (SocketException ex)
-            {
-                await proxy.DisposeAsync().ConfigureAwait(false);
                 await pacServer.DisposeAsync().ConfigureAwait(false);
-                var msg = $"Could not start DPI bypass proxy on {listenIp}:{bypass.ProxyPort}: {ex.Message}";
-                SetState(BypassEngineState.Stopped, msg);
-                return (false, msg);
+                _logger.LogError("Bypass start failed: {Error}", proxyError);
+                SetState(BypassEngineState.Stopped, proxyError);
+                return (false, proxyError);
             }
 
             _pacServer = pacServer;
             _proxy = proxy;
             _windowsProxyApplied = false;
+            if (_hasStartedOnce)
+            {
+                Interlocked.Increment(ref _pacRevision);
+            }
+            else
+            {
+                _hasStartedOnce = true;
+            }
 
             string? warning = null;
             var pacUrl = BuildVersionedPacUrl(listenIp, pacServer.BoundPort);
@@ -795,6 +802,66 @@ public sealed class BypassEngineService : IBypassEngineService
         IPAddress.TryParse(address, out var parsed) && IPAddress.IsLoopback(parsed)
             ? parsed
             : IPAddress.Loopback;
+
+    private async Task<(T? Listener, string? Error)> StartListenerWithFallbackAsync<T>(
+        string roleName,
+        IPAddress listenIp,
+        int requestedPort,
+        int avoidPort,
+        Func<int, T> factory,
+        Action<T> startAction)
+        where T : class, IAsyncDisposable
+    {
+        var candidates = new List<int> { requestedPort };
+        if (requestedPort > 0)
+        {
+            for (var offset = 1; offset <= 20; offset++)
+            {
+                var candidate = requestedPort + offset;
+                if (candidate is > 1024 and <= 65534 && candidate != avoidPort)
+                {
+                    candidates.Add(candidate);
+                }
+            }
+
+            candidates.Add(0);
+        }
+
+        SocketException? lastSocketError = null;
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            var port = candidates[i];
+            var server = factory(port);
+            try
+            {
+                startAction(server);
+                if (i > 0)
+                {
+                    _logger.LogWarning(
+                        "Configured {Role} port {RequestedPort} on {Ip} was unavailable ({Reason}); rebound cleanly to {ActualPort}.",
+                        roleName,
+                        requestedPort,
+                        listenIp,
+                        lastSocketError?.SocketErrorCode,
+                        port == 0 ? "ephemeral" : port);
+                }
+
+                return (server, null);
+            }
+            catch (SocketException ex)
+            {
+                lastSocketError = ex;
+                await server.DisposeAsync().ConfigureAwait(false);
+                if (ex.SocketErrorCode is not (SocketError.AddressAlreadyInUse or SocketError.AccessDenied)
+                    || i == candidates.Count - 1)
+                {
+                    return (null, $"Could not start {roleName} on {listenIp}:{requestedPort}: {ex.Message}");
+                }
+            }
+        }
+
+        return (null, $"Could not start {roleName} on {listenIp}:{requestedPort}: {lastSocketError?.Message}");
+    }
 
     private async Task StopCoreAsync()
     {

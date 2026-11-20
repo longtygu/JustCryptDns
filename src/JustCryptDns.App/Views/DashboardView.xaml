@@ -346,9 +346,9 @@
                 </Grid>
             </Border>
 
-            <!-- Engine metrics (4 live automotive speedometer gauges) -->
+            <!-- Engine & Network Stability metrics (5 live automotive speedometer gauges) -->
             <UniformGrid x:Name="Metrics" Margin="{DynamicResource Card.GridCompensation}"
-                         Columns="{Binding ActualWidth, RelativeSource={RelativeSource Self}, Converter={StaticResource WidthToColumns}}">
+                         Columns="{Binding ActualWidth, RelativeSource={RelativeSource Self}, Converter={StaticResource WidthToFiveColumns}}">
                 <Border Style="{StaticResource ChartCard}"
                         controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Metric_Latency}"
                         controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Latency_Desc}"
@@ -476,6 +476,47 @@
                             </controls:SpeedometerGaugeControl.Style>
                         </controls:SpeedometerGaugeControl>
                         <TextBlock Style="{StaticResource Text.Caption}" Text="TTL Cache" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource ChartCard}"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Metric_Stability}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_Stability_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_Stability_Metrics}">
+                    <StackPanel IsHitTestVisible="False">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Stability}" HorizontalAlignment="Center" />
+                        <controls:SpeedometerGaugeControl x:Name="StabilityGauge" Height="142" Margin="0,4,0,2"
+                                                          Value="{Binding NetworkStabilityPercentValue}"
+                                                          Minimum="0"
+                                                          Maximum="100"
+                                                          ValueText="{Binding NetworkStabilityDisplay}"
+                                                          MaxScaleLabel="100%"
+                                                          PhaseOffset="6.1"
+                                                          IsActive="{Binding IsTelemetryActive}"
+                                                          TrackBrush="{DynamicResource Brush.Divider}"
+                                                          TextBrush="{DynamicResource Brush.TextPrimary}"
+                                                          SecondaryTextBrush="{DynamicResource Brush.TextTertiary}"
+                                                          DangerBrush="{DynamicResource Brush.Danger}"
+                                                          FaceBrush="{DynamicResource Brush.ControlFill}"
+                                                          BorderBrush="{DynamicResource Brush.CardBorder}">
+                            <controls:SpeedometerGaugeControl.Style>
+                                <Style TargetType="controls:SpeedometerGaugeControl">
+                                    <Setter Property="AccentBrush" Value="{DynamicResource Brush.Accent}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding StabilitySeverity}" Value="{x:Static controls:GaugeSeverity.Good}">
+                                            <Setter Property="AccentBrush" Value="{DynamicResource Brush.Success}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding StabilitySeverity}" Value="{x:Static controls:GaugeSeverity.Warning}">
+                                            <Setter Property="AccentBrush" Value="{DynamicResource Brush.Warning}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding StabilitySeverity}" Value="{x:Static controls:GaugeSeverity.Danger}">
+                                            <Setter Property="AccentBrush" Value="{DynamicResource Brush.Danger}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </controls:SpeedometerGaugeControl.Style>
+                        </controls:SpeedometerGaugeControl>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PacketLossSummaryDisplay}" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Border>
             </UniformGrid>
@@ -685,68 +726,74 @@
                 </Grid>
             </Border>
 
-            <!-- Network: real local adapter data. -->
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <Grid Margin="0,0,0,20">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+            <!-- Compact Network Card (Left) + Live Running DNS Query Log Card (Right) -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="4.3*" />
+                    <ColumnDefinition Width="5.7*" />
+                </Grid.ColumnDefinitions>
 
-                        <StackPanel Background="Transparent" Margin="0,0,16,0"
-                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Title}"
-                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetworkStatus_Desc}"
-                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetworkStatus_Metrics}"
-                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" IsHitTestVisible="False">
-                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Dash_Network_Title}" VerticalAlignment="Center" />
+                <!-- Left: Compact Network adapter status -->
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="20,16" Margin="0,0,7,0">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                                <Border Margin="12,0,0,0" Visibility="{Binding HasSnapshot, Converter={StaticResource BoolToVisibility}}">
-                                    <Border.Style>
-                                        <Style TargetType="Border" BasedOn="{StaticResource Pill}">
-                                            <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
-                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Connectivity}" Value="{x:Static models:LocalConnectivity.LocalOnly}">
-                                                    <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
-                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Connectivity}" Value="{x:Static models:LocalConnectivity.GatewayAvailable}">
-                                                    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
-                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Ellipse Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center"
-                                                 Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
-                                        <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold">
-                                            <TextBlock.Text>
-                                                <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="Connectivity_">
-                                                    <Binding Path="Connectivity" />
-                                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
+                            <StackPanel Background="Transparent" Margin="0,0,8,0"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Title}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetworkStatus_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetworkStatus_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,3" IsHitTestVisible="False">
+                                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Dash_Network_Title}" VerticalAlignment="Center" Margin="0,0,8,2" />
+
+                                    <Border Margin="0,0,0,2" Visibility="{Binding HasSnapshot, Converter={StaticResource BoolToVisibility}}">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                                <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Connectivity}" Value="{x:Static models:LocalConnectivity.LocalOnly}">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Connectivity}" Value="{x:Static models:LocalConnectivity.GatewayAvailable}">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                        <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                     Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="Connectivity_">
+                                                        <Binding Path="Connectivity" />
+                                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </WrapPanel>
+                                <TextBlock Style="{StaticResource Text.Caption}" FontSize="{DynamicResource Font.Size.Small}"
+                                           Foreground="{DynamicResource Brush.TextTertiary}" IsHitTestVisible="False">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Dash_Network_Updated">
+                                            <Binding Path="LastUpdated" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
                             </StackPanel>
-                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextTertiary}"
-                                       Text="{l:Loc Dash_Network_LocalNote}" IsHitTestVisible="False" />
-                        </StackPanel>
 
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                            <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,10,0">
-                                <TextBlock.Text>
-                                    <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Dash_Network_Updated">
-                                        <Binding Path="LastUpdated" />
-                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                            <Button Style="{StaticResource Button.Subtle}" Command="{Binding RefreshCommand}" Padding="10,6"
+                            <Button Grid.Column="1" Style="{StaticResource Button.Subtle}" Command="{Binding RefreshCommand}" Padding="8,6"
+                                    VerticalAlignment="Top"
                                     AutomationProperties.Name="{l:Loc Common_Refresh}"
                                     controls:ChartHoverInfoBehavior.Title="{l:Loc Common_Refresh}"
                                     controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_RefreshNetwork_Desc}"
@@ -754,115 +801,311 @@
                                     controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                                 <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72C;" FontSize="14" IsHitTestVisible="False" />
                             </Button>
-                        </StackPanel>
-                    </Grid>
+                        </Grid>
 
-                    <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc Dash_Network_NoActive}"
-                               Foreground="{DynamicResource Brush.TextSecondary}">
-                        <TextBlock.Visibility>
-                            <MultiBinding Converter="{StaticResource NoAdapterVisibility}">
-                                <Binding Path="HasSnapshot" />
-                                <Binding Path="PrimaryAdapter" />
-                            </MultiBinding>
-                        </TextBlock.Visibility>
-                    </TextBlock>
+                        <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc Dash_Network_NoActive}"
+                                   Foreground="{DynamicResource Brush.TextSecondary}">
+                            <TextBlock.Visibility>
+                                <MultiBinding Converter="{StaticResource NoAdapterVisibility}">
+                                    <Binding Path="HasSnapshot" />
+                                    <Binding Path="PrimaryAdapter" />
+                                </MultiBinding>
+                            </TextBlock.Visibility>
+                        </TextBlock>
 
-                    <Grid Visibility="{Binding PrimaryAdapter, Converter={StaticResource NullToVisibility}}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
+                        <Grid Visibility="{Binding PrimaryAdapter, Converter={StaticResource NullToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Style="{StaticResource Cell}" Margin="0,0,12,12" Background="Transparent"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Adapter}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetAdapter_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetAdapter_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Adapter}" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding PrimaryAdapter.Name}" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.Caption}" FontSize="{DynamicResource Font.Size.Small}"
+                                           Text="{Binding PrimaryAdapter.Description}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" IsHitTestVisible="False" />
+                            </StackPanel>
+                            <StackPanel Style="{StaticResource Cell}" Grid.Column="1" Margin="0,0,0,12" Background="Transparent"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Type}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetType_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetType_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Type}" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" IsHitTestVisible="False">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="AdapterKind_">
+                                            <Binding Path="PrimaryAdapter.Kind" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource Text.Caption}" FontSize="{DynamicResource Font.Size.Small}"
+                                           Text="{Binding PrimaryAdapter.SpeedBitsPerSecond, Converter={StaticResource LinkSpeed}}" IsHitTestVisible="False" />
+                            </StackPanel>
+
+                            <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Margin="0,0,12,12" Background="Transparent"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_LocalIp}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIp_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIp_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_LocalIp}" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Text="{Binding PrimaryAdapter.IPv4Addresses, Converter={StaticResource AddressList}}"
+                                           TextTrimming="CharacterEllipsis" IsHitTestVisible="False" />
+                            </StackPanel>
+                            <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Grid.Column="1" Margin="0,0,0,12" Background="Transparent"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Gateway}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetGateway_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetGateway_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Gateway}" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Text="{Binding PrimaryAdapter.Gateways, Converter={StaticResource AddressList}}"
+                                           TextTrimming="CharacterEllipsis" IsHitTestVisible="False" />
+                            </StackPanel>
+
+                            <StackPanel Style="{StaticResource Cell}" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,0,12" Background="Transparent"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Dns}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetDns_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetDns_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Dns}" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                           Text="{Binding PrimaryAdapter.DnsServers, Converter={StaticResource AddressList}}"
+                                           TextTrimming="CharacterEllipsis" IsHitTestVisible="False" />
+                            </StackPanel>
+
+                            <StackPanel Style="{StaticResource Cell}" Grid.Row="3" Margin="0,0,12,0" Background="Transparent"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_IPv4}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIpv4_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIpv4_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_IPv4}" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.Body}" IsHitTestVisible="False">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="IpStatus_">
+                                            <Binding Path="Ipv4Status" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Style="{StaticResource Cell}" Grid.Row="3" Grid.Column="1" Margin="0" Background="Transparent"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_IPv6}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIpv6_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIpv6_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_IPv6}" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.Body}" IsHitTestVisible="False">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="IpStatus_">
+                                            <Binding Path="Ipv6Status" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Right: Live Running DNS Query Log Card -->
+                <Border Grid.Column="1" Style="{StaticResource Card}" Padding="20,16" Margin="7,0,0,0">
+                    <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <StackPanel Style="{StaticResource Cell}" Grid.ColumnSpan="2" Background="Transparent"
-                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Adapter}"
-                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetAdapter_Desc}"
-                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetAdapter_Metrics}"
-                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Adapter}" IsHitTestVisible="False" />
-                            <TextBlock Style="{StaticResource ValueText}" Text="{Binding PrimaryAdapter.Name}" FontWeight="SemiBold" IsHitTestVisible="False" />
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PrimaryAdapter.Description}" IsHitTestVisible="False" />
-                        </StackPanel>
-                        <StackPanel Style="{StaticResource Cell}" Grid.Column="2" Background="Transparent"
-                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Type}"
-                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetType_Desc}"
-                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetType_Metrics}"
-                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Type}" IsHitTestVisible="False" />
-                            <TextBlock Style="{StaticResource ValueText}" IsHitTestVisible="False">
-                                <TextBlock.Text>
-                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="AdapterKind_">
-                                        <Binding Path="PrimaryAdapter.Kind" />
-                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PrimaryAdapter.SpeedBitsPerSecond, Converter={StaticResource LinkSpeed}}" IsHitTestVisible="False" />
-                        </StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Background="Transparent"
-                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_LocalIp}"
-                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIp_Desc}"
-                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIp_Metrics}"
-                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_LocalIp}" IsHitTestVisible="False" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.IPv4Addresses, Converter={StaticResource AddressList}}" IsHitTestVisible="False" />
-                        </StackPanel>
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Grid.Column="1" Background="Transparent"
-                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Gateway}"
-                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetGateway_Desc}"
-                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetGateway_Metrics}"
-                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Gateway}" IsHitTestVisible="False" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.Gateways, Converter={StaticResource AddressList}}" IsHitTestVisible="False" />
-                        </StackPanel>
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="1" Grid.Column="2" Background="Transparent"
-                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_Dns}"
-                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetDns_Desc}"
-                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetDns_Metrics}"
-                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_Dns}" IsHitTestVisible="False" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PrimaryAdapter.DnsServers, Converter={StaticResource AddressList}}" IsHitTestVisible="False" />
-                        </StackPanel>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Background="Transparent"
+                                        controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_LiveLog_Title}"
+                                        controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_LiveLog_Desc}"
+                                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_LiveLog_Metrics}"
+                                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE9D5;" FontSize="15"
+                                           Foreground="{DynamicResource Brush.Accent}" Margin="0,0,8,0" IsHitTestVisible="False" />
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Dash_LiveLog_Title}"
+                                           VerticalAlignment="Center" IsHitTestVisible="False" />
+                                <Border Margin="10,0,0,0" IsHitTestVisible="False">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                            <Setter Property="Padding" Value="8,2" />
+                                            <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsQueryLogPaused}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center"
+                                                 Fill="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}" />
+                                        <TextBlock FontSize="10" FontWeight="SemiBold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{l:Loc Dash_LiveLog_Live}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsQueryLogPaused}" Value="True">
+                                                            <Setter Property="Text" Value="{l:Loc Dash_LiveLog_Paused}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
 
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="2" Background="Transparent"
-                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_IPv4}"
-                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIpv4_Desc}"
-                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIpv4_Metrics}"
-                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_IPv4}" IsHitTestVisible="False" />
-                            <TextBlock Style="{StaticResource ValueText}" IsHitTestVisible="False">
-                                <TextBlock.Text>
-                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="IpStatus_">
-                                        <Binding Path="Ipv4Status" />
-                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </StackPanel>
-                        <StackPanel Style="{StaticResource Cell}" Grid.Row="2" Grid.Column="1" Background="Transparent"
-                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Network_IPv6}"
-                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_NetIpv6_Desc}"
-                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_NetIpv6_Metrics}"
-                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-                            <TextBlock Style="{StaticResource KeyText}" Text="{l:Loc Dash_Network_IPv6}" IsHitTestVisible="False" />
-                            <TextBlock Style="{StaticResource ValueText}" IsHitTestVisible="False">
-                                <TextBlock.Text>
-                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="IpStatus_">
-                                        <Binding Path="Ipv6Status" />
-                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
-                                    </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Command="{Binding ToggleQueryLogPauseCommand}" Padding="9,4" Margin="0,0,6,0"
+                                        FontSize="{DynamicResource Font.Size.Small}">
+                                    <TextBlock IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{l:Loc Dash_LiveLog_Pause}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsQueryLogPaused}" Value="True">
+                                                        <Setter Property="Text" Value="{l:Loc Dash_LiveLog_Resume}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Button>
+                                <Button Command="{Binding ClearRecentQueriesCommand}" Content="{l:Loc Dash_LiveLog_Clear}"
+                                        Padding="9,4" Margin="0,0,6,0" FontSize="{DynamicResource Font.Size.Small}" />
+                                <Button Command="{Binding OpenMonitorCommand}" Content="{l:Loc Dash_LiveLog_OpenMonitor}"
+                                        Padding="9,4" FontSize="{DynamicResource Font.Size.Small}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Grid.Row="1" Height="232" Background="{DynamicResource Brush.ControlFill}"
+                                BorderBrush="{DynamicResource Brush.ControlBorder}" BorderThickness="1" CornerRadius="6" Padding="6">
+                            <Grid>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_LiveLog_Empty}"
+                                           Foreground="{DynamicResource Brush.TextTertiary}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                           Margin="16"
+                                           Visibility="{Binding HasRecentQueries, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                                <ListBox ItemsSource="{Binding RecentQueries}"
+                                         Background="Transparent" BorderThickness="0"
+                                         VirtualizingPanel.IsVirtualizing="True"
+                                         VirtualizingPanel.VirtualizationMode="Recycling"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         Visibility="{Binding HasRecentQueries, Converter={StaticResource BoolToVisibility}}">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="6,3" />
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="RowBorder" Background="{TemplateBinding Background}"
+                                                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="RowBorder" Property="Background" Value="{DynamicResource Brush.SubtleHover}" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:LiveQueryMonitorEntry}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="58" />
+                                                    <ColumnDefinition Width="72" />
+                                                    <ColumnDefinition Width="40" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="106" />
+                                                    <ColumnDefinition Width="56" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                           Foreground="{DynamicResource Brush.TextTertiary}" VerticalAlignment="Center"
+                                                           Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
+
+                                                <Border Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                                            <Setter Property="Padding" Value="7,2" />
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Outcome}" Value="Cached">
+                                                                    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Outcome}" Value="Blocked">
+                                                                    <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Outcome}" Value="Failed">
+                                                                    <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock FontSize="10.5" FontWeight="SemiBold"
+                                                               Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}"
+                                                               Text="{Binding Outcome}" />
+                                                </Border>
+
+                                                <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                           Foreground="{DynamicResource Brush.TextSecondary}"
+                                                           Text="{Binding RecordType}" VerticalAlignment="Center" />
+
+                                                <TextBlock Grid.Column="3" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                           Foreground="{DynamicResource Brush.TextPrimary}"
+                                                           Text="{Binding Domain}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                           Margin="0,0,8,0" VerticalAlignment="Center" />
+
+                                                <TextBlock Grid.Column="4" Style="{StaticResource Text.Caption}" FontSize="{DynamicResource Font.Size.Small}"
+                                                           Foreground="{DynamicResource Brush.TextSecondary}"
+                                                           Text="{Binding ResolverName}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                           Margin="0,0,6,0" VerticalAlignment="Center" />
+
+                                                <TextBlock Grid.Column="5" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                           Foreground="{DynamicResource Brush.TextSecondary}"
+                                                           Text="{Binding LatencyMs, StringFormat={}{0:0.#} ms, TargetNullValue=—}"
+                                                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Border>
                     </Grid>
-                </StackPanel>
-            </Border>
+                </Border>
+            </Grid>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

@@ -35,6 +35,7 @@ public sealed class DohDnsUpstream : IDnsUpstreamClient, IDisposable
         {
             PooledConnectionLifetime = TimeSpan.FromMinutes(10),
             PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            ConnectTimeout = TimeSpan.FromSeconds(3),
             EnableMultipleHttp2Connections = true,
             AutomaticDecompression = DecompressionMethods.None,
             UseProxy = false,
@@ -42,6 +43,7 @@ public sealed class DohDnsUpstream : IDnsUpstreamClient, IDisposable
         };
         _httpClient = new HttpClient(handler, disposeHandler: true)
         {
+            Timeout = Timeout.InfiniteTimeSpan,
             DefaultRequestVersion = HttpVersion.Version20,
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
         };
@@ -107,7 +109,12 @@ public sealed class DohDnsUpstream : IDnsUpstreamClient, IDisposable
             DnsPacket.WriteTransactionId(bytes, callerId);
             return new DnsQueryResult(true, bytes, sw.Elapsed.TotalMilliseconds, resolver.Id, Protocol);
         }
-        catch (Exception ex) when (ex is HttpRequestException or SocketException or System.Security.Authentication.AuthenticationException or OperationCanceledException or IOException)
+        catch (Exception ex) when (ex is HttpRequestException
+            or SocketException
+            or System.Security.Authentication.AuthenticationException
+            or System.Security.Cryptography.CryptographicException
+            or OperationCanceledException
+            or IOException)
         {
             sw.Stop();
             var reason = ex is OperationCanceledException && !cancellationToken.IsCancellationRequested

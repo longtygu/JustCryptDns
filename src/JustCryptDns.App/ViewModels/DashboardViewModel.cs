@@ -1,7 +1,9 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Controls;
+using JustCryptDns.App.Localization;
 using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
@@ -26,6 +28,8 @@ public enum IpFamilyStatus
 /// </summary>
 public sealed partial class DashboardViewModel : PageViewModel
 {
+    private const int MaxDashboardQueries = 60;
+
     private readonly INetworkInfoService _network;
     private readonly IDnsEngine _dnsEngine;
     private readonly INavigationService _navigation;
@@ -35,6 +39,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly IBypassEngineService? _bypassEngine;
     private readonly INetworkTelemetryService? _telemetry;
     private readonly IResolverLibraryService? _resolverLibrary;
+    private readonly INetworkDiagnosticsService? _diagnostics;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
     private string _activeResolverId = string.Empty;
@@ -72,7 +77,16 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _pingDisplay = "—";
     [ObservableProperty] private string _downloadSpeedDisplay = "0 Kbps";
     [ObservableProperty] private string _uploadSpeedDisplay = "0 Kbps";
-    [ObservableProperty] private bool _isTelemetryPaused;
+    [ObservableProperty] private double _networkStabilityPercentValue;
+    [ObservableProperty] private string _networkStabilityDisplay = "—";
+    [ObservableProperty] private string _packetLossSummaryDisplay = "—";
+    [ObservableProperty] private GaugeSeverity _stabilitySeverity = GaugeSeverity.Neutral;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTelemetryActive))]
+    private bool _isTelemetryPaused;
+
+    [ObservableProperty] private bool _isQueryLogPaused;
     [ObservableProperty] private StatusPulseStyle _statusPulseStyle = StatusPulseStyle.Breathing;
     [ObservableProperty] private bool _isFilteringActive;
     [ObservableProperty] private SystemTrafficStatus _trafficStatus = SystemTrafficStatus.Stopped;
@@ -104,7 +118,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         ISettingsService? settings = null,
         IBypassEngineService? bypassEngine = null,
         INetworkTelemetryService? telemetry = null,
-        IResolverLibraryService? resolverLibrary = null)
+        IResolverLibraryService? resolverLibrary = null,
+        INetworkDiagnosticsService? diagnostics = null)
         : base("Nav_Dashboard", "Page_Dashboard_Subtitle")
     {
         _network = network;
@@ -116,17 +131,27 @@ public sealed partial class DashboardViewModel : PageViewModel
         _bypassEngine = bypassEngine;
         _telemetry = telemetry;
         _resolverLibrary = resolverLibrary;
+        _diagnostics = diagnostics;
         _ui = SynchronizationContext.Current;
         StatusPulseStyle = _settings?.Current.Appearance.StatusPulseStyle ?? StatusPulseStyle.Breathing;
         IsFilteringActive = _filtering?.IsFilteringEnabled ?? false;
+        PacketLossSummaryDisplay = LocalizationManager.Instance["Dash_Stability_Measuring"];
         ApplyEngineStats(dnsEngine.GetStats());
         if (_bypassEngine is not null)
         {
             ApplyBypassStats(_bypassEngine.GetStats());
         }
+
+        RefreshRecentQueries();
     }
 
     public event EventHandler<NetworkTelemetrySample>? TelemetrySampleArrived;
+
+    public ObservableCollection<LiveQueryMonitorEntry> RecentQueries { get; } = [];
+
+    public bool HasRecentQueries => RecentQueries.Count > 0;
+
+    public bool IsTelemetryActive => !IsTelemetryPaused;
 
     public bool IsEngineAvailable => true;
 
@@ -149,19 +174,29 @@ public sealed partial class DashboardViewModel : PageViewModel
     public void SetLiveTelemetryActive(bool active)
     {
         IsTelemetryPaused = !active;
-        if (_telemetry is null)
+        if (_telemetry is not null)
         {
-            return;
+            if (active)
+            {
+                UpdateTelemetryTargets();
+                _telemetry.Resume();
+            }
+            else
+            {
+                _telemetry.Pause();
+            }
         }
 
-        if (active)
+        if (active && !IsQueryLogPaused && _diagnostics is not null)
         {
-            UpdateTelemetryTargets();
-            _telemetry.Resume();
-        }
-        else
-        {
-            _telemetry.Pause();
+            if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(RefreshRecentQueries);
+            }
+            else
+            {
+                RefreshRecentQueries();
+            }
         }
     }
 
@@ -194,6 +229,13 @@ public sealed partial class DashboardViewModel : PageViewModel
             }
         }
 
+        if (_diagnostics is not null)
+        {
+            _diagnostics.QueryObserved -= OnQueryObserved;
+            _diagnostics.QueryObserved += OnQueryObserved;
+            RefreshRecentQueries();
+        }
+
         ApplyEngineStats(_dnsEngine.GetStats());
         _ = RefreshCommand.ExecuteAsync(null);
     }
@@ -216,6 +258,11 @@ public sealed partial class DashboardViewModel : PageViewModel
         {
             _telemetry.SampleReceived -= OnTelemetrySampleReceived;
             _telemetry.Pause();
+        }
+
+        if (_diagnostics is not null)
+        {
+            _diagnostics.QueryObserved -= OnQueryObserved;
         }
 
         _cts?.Cancel();
@@ -241,6 +288,11 @@ public sealed partial class DashboardViewModel : PageViewModel
             {
                 _telemetry.SampleReceived -= OnTelemetrySampleReceived;
                 _telemetry.Pause();
+            }
+
+            if (_diagnostics is not null)
+            {
+                _diagnostics.QueryObserved -= OnQueryObserved;
             }
 
             _cts?.Cancel();
@@ -410,6 +462,20 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     [RelayCommand]
     private void OpenDnsManager() => _navigation.Navigate(PageKeys.DnsManager);
+
+    [RelayCommand]
+    private void ToggleQueryLogPause() => IsQueryLogPaused = !IsQueryLogPaused;
+
+    [RelayCommand]
+    private void ClearRecentQueries()
+    {
+        _diagnostics?.ClearMonitorEntries();
+        RecentQueries.Clear();
+        OnPropertyChanged(nameof(HasRecentQueries));
+    }
+
+    [RelayCommand]
+    private void OpenMonitor() => _navigation.Navigate(PageKeys.Monitor);
 
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task RefreshAsync()
@@ -608,7 +674,64 @@ public sealed partial class DashboardViewModel : PageViewModel
             : "—";
         DownloadSpeedDisplay = NetworkTelemetryService.FormatThroughput(sample.DownloadBytesPerSecond);
         UploadSpeedDisplay = NetworkTelemetryService.FormatThroughput(sample.UploadBytesPerSecond);
+
+        NetworkStabilityPercentValue = sample.StabilityPercent ?? 0.0;
+        NetworkStabilityDisplay = sample.StabilityPercent is { } stab && sample.TotalPingProbes > 0
+            ? string.Create(CultureInfo.InvariantCulture, $"{stab:0.#}%")
+            : "—";
+        PacketLossSummaryDisplay = sample.PacketLossPercent is { } loss && sample.TotalPingProbes > 0
+            ? LocalizationManager.Instance.Format("Dash_Stability_LossFormat", Math.Round(loss, 1))
+            : LocalizationManager.Instance["Dash_Stability_Measuring"];
+        StabilitySeverity = GaugeMath.EvaluateStabilitySeverity(
+            sample.StabilityPercent,
+            sample.PacketLossPercent,
+            sample.TotalPingProbes);
+
         TelemetrySampleArrived?.Invoke(this, sample);
+    }
+
+    internal void RefreshRecentQueries()
+    {
+        if (_diagnostics is null)
+        {
+            return;
+        }
+
+        RecentQueries.Clear();
+        foreach (var entry in _diagnostics.GetMonitorEntries().Take(MaxDashboardQueries))
+        {
+            RecentQueries.Add(entry);
+        }
+
+        OnPropertyChanged(nameof(HasRecentQueries));
+    }
+
+    private void OnQueryObserved(object? sender, LiveQueryMonitorEntry entry)
+    {
+        if (IsTelemetryPaused || IsQueryLogPaused)
+        {
+            return;
+        }
+
+        void Insert()
+        {
+            RecentQueries.Insert(0, entry);
+            while (RecentQueries.Count > MaxDashboardQueries)
+            {
+                RecentQueries.RemoveAt(RecentQueries.Count - 1);
+            }
+
+            OnPropertyChanged(nameof(HasRecentQueries));
+        }
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Insert);
+        }
+        else
+        {
+            Insert();
+        }
     }
 
     private void OnTelemetrySampleReceived(object? sender, NetworkTelemetrySample sample)

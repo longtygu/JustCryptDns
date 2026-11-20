@@ -202,6 +202,9 @@ public partial class App : Application
         {
             try
             {
+                // TrayIconService wraps an HwndSource tied to the UI Dispatcher thread; dispose it here before offloading async container teardown.
+                services.GetService<ITrayIconService>()?.Dispose();
+
                 if (services.GetService<IBypassEngineService>() is { } bypassEngine)
                 {
                     Task.Run(() => bypassEngine.DisposeAsync().AsTask()).Wait(1500);

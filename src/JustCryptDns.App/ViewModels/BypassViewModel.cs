@@ -663,9 +663,16 @@ public sealed partial class BypassViewModel : PageViewModel
         SelfHealedDisplay = $"{stats.SelfHealedDirectCount:N0} / {stats.EscalatedDpiCount:N0}";
         LearnedCountDisplay = stats.LearnedHostCount.ToString("N0", CultureInfo.CurrentCulture);
         ActiveAndDirectDisplay = $"{stats.ActiveTunnels} / {stats.DirectConnections:N0}";
-        if (!string.IsNullOrWhiteSpace(stats.LastError) && ErrorMessage is null)
+        if (!string.IsNullOrWhiteSpace(stats.LastError))
         {
-            ErrorMessage = stats.LastError;
+            if (ErrorMessage is null)
+            {
+                ErrorMessage = stats.LastError;
+            }
+        }
+        else if (stats.State is BypassEngineState.Running or BypassEngineState.Degraded)
+        {
+            ErrorMessage = null;
         }
     }
 

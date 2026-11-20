@@ -67,11 +67,20 @@ public sealed class WidthToColumnsConverter : IValueConverter
 {
     public double TwoColumnMin { get; set; } = 420;
 
+    public double ThreeColumnMin { get; set; } = 640;
+
     public double FourColumnMin { get; set; } = 760;
+
+    public int MaxColumns { get; set; } = 4;
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         var width = value is double d ? d : 0;
+        if (MaxColumns >= 5)
+        {
+            return width >= FourColumnMin ? MaxColumns : width >= ThreeColumnMin ? 3 : width >= TwoColumnMin ? 2 : 1;
+        }
+
         return width >= FourColumnMin ? 4 : width >= TwoColumnMin ? 2 : 1;
     }
 

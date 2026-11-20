@@ -504,6 +504,58 @@ public sealed class BypassAndSplitTunnelPhase13Tests : IDisposable
         Assert.False(bStop.Status.IsBypassRunning);
     }
 
+    [Fact]
+    public async Task BypassEngineService_RecoversCleanlyViaPortFallback_WhenConfiguredPortsAreOccupied()
+    {
+        var occupiedPacPort = JustCryptDns.DNS.Proxy.PortConflictDetector.GetEphemeralPort(IPAddress.Loopback);
+        var occupiedProxyPort = JustCryptDns.DNS.Proxy.PortConflictDetector.GetEphemeralPort(IPAddress.Loopback);
+        while (occupiedProxyPort == occupiedPacPort)
+        {
+            occupiedProxyPort = JustCryptDns.DNS.Proxy.PortConflictDetector.GetEphemeralPort(IPAddress.Loopback);
+        }
+
+        using var pacOccupier = new TcpListener(IPAddress.Loopback, occupiedPacPort);
+        using var proxyOccupier = new TcpListener(IPAddress.Loopback, occupiedProxyPort);
+        pacOccupier.Start();
+        proxyOccupier.Start();
+        JustCryptDns.Core.Network.SocketHandleGuard.DisableInheritance(pacOccupier.Server);
+
+        var initial = new AppSettings
+        {
+            General = { AutoStartDnsEngine = false },
+            Bypass =
+            {
+                ProxyPort = occupiedProxyPort,
+                PacPort = occupiedPacPort,
+                ApplyWindowsProxyAutomatically = false,
+            },
+        };
+
+        var store = new MemorySettingsStore(initial);
+        using var settingsService = new SettingsService(store, NullLogger<SettingsService>.Instance);
+        var fakeProxyMgr = new WindowsSystemProxyService(_paths, NullLogger<WindowsSystemProxyService>.Instance, new FakeSystemProxyConfigurator());
+        await using var bypassEngine = new BypassEngineService(
+            settingsService,
+            fakeProxyMgr,
+            new LoopbackResolvingDnsEngine(),
+            NullLogger<BypassEngineService>.Instance);
+
+        var (ok, err) = await bypassEngine.StartAsync();
+        Assert.True(ok, err);
+
+        var stats = bypassEngine.GetStats();
+        Assert.Equal(BypassEngineState.Running, stats.State);
+        Assert.NotEqual(occupiedPacPort, stats.BoundPacPort);
+        Assert.NotEqual(occupiedProxyPort, stats.BoundProxyPort);
+        Assert.Contains($":{stats.BoundPacPort}/proxy.pac", stats.PacUrl, StringComparison.Ordinal);
+
+        var pacScript = bypassEngine.GeneratePacScript();
+        Assert.Contains($"PROXY 127.0.0.1:{stats.BoundProxyPort}; DIRECT", pacScript, StringComparison.Ordinal);
+
+        await bypassEngine.StopAsync();
+        Assert.Equal(BypassEngineState.Stopped, bypassEngine.GetStats().State);
+    }
+
     private static byte[] BuildSampleClientHello(string sni, int paddingLen)
     {
         var sniBytes = Encoding.ASCII.GetBytes(sni);

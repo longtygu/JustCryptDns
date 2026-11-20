@@ -69,6 +69,10 @@ public interface IResolverLibraryService
     Task<IReadOnlyList<ResolverHealthStatus>> CheckAllEnabledHealthAsync(
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ResolverHealthStatus>> CheckAllEnabledHealthAsync(
+        IProgress<ResolverProbeProgress>? progress,
+        CancellationToken cancellationToken = default);
+
     string ExportProfileJson();
 
     Task<(bool Success, int ImportedCount, string? Error)> ImportProfileJsonAsync(

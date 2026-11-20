@@ -390,7 +390,124 @@ public sealed class ResolverLibraryService : IResolverLibraryService, IDisposabl
         return (true, null);
     }
 
-    public async Task<ResolverHealthStatus> CheckHealthAsync(string resolverId, CancellationToken cancellationToken = default)
+    public Task<ResolverHealthStatus> CheckHealthAsync(string resolverId, CancellationToken cancellationToken = default)
+    {
+        var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
+        return CheckHealthCoreAsync(resolverId, timeout, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<ResolverHealthStatus>> CheckAllEnabledHealthAsync(CancellationToken cancellationToken = default) =>
+        CheckAllEnabledHealthAsync(progress: null, cancellationToken);
+
+    public async Task<IReadOnlyList<ResolverHealthStatus>> CheckAllEnabledHealthAsync(
+        IProgress<ResolverProbeProgress>? progress,
+        CancellationToken cancellationToken = default)
+    {
+        var enabled = GetEnabled();
+        var total = enabled.Count;
+        var batchTimeout = TimeSpan.FromMilliseconds(Math.Clamp(_settings.Current.Dns.QueryTimeoutMs, 1000, 2200));
+
+        using var gate = new SemaphoreSlim(8, 8);
+        var results = new ResolverHealthStatus?[total];
+        var completed = 0;
+        var online = 0;
+        var offline = 0;
+
+        var tasks = enabled.Select(async (r, index) =>
+        {
+            var acquired = false;
+            try
+            {
+                await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                acquired = true;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            try
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                progress?.Report(new ResolverProbeProgress
+                {
+                    ResolverId = r.Id,
+                    ResolverName = r.Name,
+                    Provider = r.Provider,
+                    Protocol = r.Protocol,
+                    Endpoint = r.Endpoint,
+                    Stage = ResolverProbeStage.Started,
+                    CompletedCount = Volatile.Read(ref completed),
+                    TotalCount = total,
+                    OnlineCount = Volatile.Read(ref online),
+                    OfflineCount = Volatile.Read(ref offline),
+                });
+
+                var status = await CheckHealthCoreAsync(r.Id, batchTimeout, cancellationToken).ConfigureAwait(false);
+                results[index] = status;
+
+                var doneNow = Interlocked.Increment(ref completed);
+                var onlineNow = status.IsAvailable == true
+                    ? Interlocked.Increment(ref online)
+                    : Volatile.Read(ref online);
+                var offlineNow = status.IsAvailable == true
+                    ? Volatile.Read(ref offline)
+                    : Interlocked.Increment(ref offline);
+
+                progress?.Report(new ResolverProbeProgress
+                {
+                    ResolverId = r.Id,
+                    ResolverName = r.Name,
+                    Provider = r.Provider,
+                    Protocol = r.Protocol,
+                    Endpoint = r.Endpoint,
+                    Stage = ResolverProbeStage.Completed,
+                    CompletedCount = doneNow,
+                    TotalCount = total,
+                    OnlineCount = onlineNow,
+                    OfflineCount = offlineNow,
+                    IsAvailable = status.IsAvailable,
+                    LatencyMs = status.LastLatencyMs,
+                    Error = status.LastError,
+                });
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                progress?.Report(new ResolverProbeProgress
+                {
+                    ResolverId = r.Id,
+                    ResolverName = r.Name,
+                    Provider = r.Provider,
+                    Protocol = r.Protocol,
+                    Endpoint = r.Endpoint,
+                    Stage = ResolverProbeStage.Cancelled,
+                    CompletedCount = Volatile.Read(ref completed),
+                    TotalCount = total,
+                    OnlineCount = Volatile.Read(ref online),
+                    OfflineCount = Volatile.Read(ref offline),
+                });
+            }
+            finally
+            {
+                if (acquired)
+                {
+                    gate.Release();
+                }
+            }
+        });
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+        return results.Where(s => s is not null).Cast<ResolverHealthStatus>().ToList();
+    }
+
+    private async Task<ResolverHealthStatus> CheckHealthCoreAsync(
+        string resolverId,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
     {
         var resolver = GetAll().FirstOrDefault(r => string.Equals(r.Id, resolverId, StringComparison.OrdinalIgnoreCase));
         if (resolver is null)
@@ -412,57 +529,60 @@ public sealed class ResolverLibraryService : IResolverLibraryService, IDisposabl
             return invalidStatus;
         }
 
-        var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
         bool ok;
         double? latencyMs;
         string? error;
+        var deadline = timeout + TimeSpan.FromMilliseconds(500);
 
-        if (_upstreams.TryGetValue(resolver.Protocol, out var upstream))
+        try
         {
-            var query = DnsPacket.CreateQuery("example.com", DnsRecordType.A);
-            var result = await upstream.QueryAsync(query, resolver, timeout, cancellationToken).ConfigureAwait(false);
-            ok = result.Success;
-            latencyMs = result.Success ? Math.Round(result.LatencyMs, 1) : null;
-            error = result.Error;
+            if (_upstreams.TryGetValue(resolver.Protocol, out var upstream))
+            {
+                var query = DnsPacket.CreateQuery("example.com", DnsRecordType.A);
+                var result = await upstream.QueryAsync(query, resolver, timeout, cancellationToken)
+                    .WaitAsync(deadline, cancellationToken)
+                    .ConfigureAwait(false);
+                ok = result.Success;
+                latencyMs = result.Success ? Math.Round(result.LatencyMs, 1) : null;
+                error = result.Error;
+            }
+            else if (resolver.Protocol == DnsProtocol.DnsCrypt)
+            {
+                // When no live dnscrypt-proxy child is bound to this stamp yet, verify stamp validity + TCP reachability of PrimaryIp:Port.
+                var (tcpOk, tcpMs, tcpErr) = await ProbeTcpEndpointAsync(resolver.PrimaryIp, resolver.Port, timeout, cancellationToken)
+                    .WaitAsync(deadline, cancellationToken)
+                    .ConfigureAwait(false);
+                ok = tcpOk;
+                latencyMs = tcpOk ? Math.Round(tcpMs, 1) : null;
+                error = tcpErr;
+            }
+            else
+            {
+                ok = false;
+                latencyMs = null;
+                error = $"Unsupported protocol {resolver.Protocol}.";
+            }
         }
-        else if (resolver.Protocol == DnsProtocol.DnsCrypt)
-        {
-            // When no live dnscrypt-proxy child is bound to this stamp yet, verify stamp validity + TCP reachability of PrimaryIp:Port.
-            var (tcpOk, tcpMs, tcpErr) = await ProbeTcpEndpointAsync(resolver.PrimaryIp, resolver.Port, timeout, cancellationToken).ConfigureAwait(false);
-            ok = tcpOk;
-            latencyMs = tcpOk ? Math.Round(tcpMs, 1) : null;
-            error = tcpErr;
-        }
-        else
+        catch (TimeoutException)
         {
             ok = false;
             latencyMs = null;
-            error = $"Unsupported protocol {resolver.Protocol}.";
+            error = $"Probe timed out after {(int)deadline.TotalMilliseconds} ms.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            ok = false;
+            latencyMs = null;
+            error = ex.Message;
         }
 
         var status = UpdateHealthEntry(resolver.Id, ok, latencyMs, error);
         HealthUpdated?.Invoke(this, status);
         return status;
-    }
-
-    public async Task<IReadOnlyList<ResolverHealthStatus>> CheckAllEnabledHealthAsync(CancellationToken cancellationToken = default)
-    {
-        var enabled = GetEnabled();
-        using var gate = new SemaphoreSlim(6, 6);
-        var tasks = enabled.Select(async r =>
-        {
-            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                return await CheckHealthAsync(r.Id, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                gate.Release();
-            }
-        });
-
-        return await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     public string ExportProfileJson()

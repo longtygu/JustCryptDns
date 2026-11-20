@@ -23,6 +23,7 @@
             <conv:AddressListConverter x:Key="AddressList" />
             <conv:LinkSpeedConverter x:Key="LinkSpeed" />
             <conv:WidthToColumnsConverter x:Key="WidthToColumns" />
+            <conv:WidthToColumnsConverter x:Key="WidthToFiveColumns" TwoColumnMin="400" ThreeColumnMin="640" FourColumnMin="860" MaxColumns="5" />
             <conv:NoAdapterVisibilityConverter x:Key="NoAdapterVisibility" />
             <l:LocKeyConverter x:Key="LocKey" />
             <l:LocFormatConverter x:Key="LocFormat" />

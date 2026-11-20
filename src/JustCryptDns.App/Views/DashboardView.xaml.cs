@@ -227,6 +227,7 @@ public partial class DashboardView : UserControl
         QueriesGauge.TriggerIgnitionSweep();
         BlockedGauge.TriggerIgnitionSweep();
         CacheHitGauge.TriggerIgnitionSweep();
+        StabilityGauge.TriggerIgnitionSweep();
     }
 
     private void ApplyStatusPulseFrame(bool reset)
@@ -269,6 +270,7 @@ public partial class DashboardView : UserControl
         QueriesGauge.StepFrame(dt);
         BlockedGauge.StepFrame(dt);
         CacheHitGauge.StepFrame(dt);
+        StabilityGauge.StepFrame(dt);
         TelemetryWave.StepFrame(dt);
         ApplyStatusPulseFrame(reset: false);
     }

@@ -49,6 +49,10 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient
         try
         {
             using var tcp = new TcpClient(ip.AddressFamily) { NoDelay = true };
+            using var cancelReg = cts.Token.Register(() =>
+            {
+                try { tcp.Dispose(); } catch { }
+            });
             await tcp.ConnectAsync(ip, port, cts.Token).ConfigureAwait(false);
 
             await using var ssl = new SslStream(tcp.GetStream(), leaveInnerStreamOpen: false);
@@ -80,10 +84,10 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient
             DnsPacket.WriteTransactionId(response, callerId);
             return new DnsQueryResult(true, response, sw.Elapsed.TotalMilliseconds, resolver.Id, Protocol);
         }
-        catch (Exception ex) when (ex is SocketException or AuthenticationException or IOException or InvalidDataException or OperationCanceledException)
+        catch (Exception ex) when (ex is SocketException or AuthenticationException or IOException or InvalidDataException or OperationCanceledException or ObjectDisposedException)
         {
             sw.Stop();
-            var reason = ex is OperationCanceledException && !cancellationToken.IsCancellationRequested
+            var reason = (ex is OperationCanceledException or ObjectDisposedException) && !cancellationToken.IsCancellationRequested
                 ? "DoT query timed out."
                 : ex.Message;
             return new DnsQueryResult(false, [], sw.Elapsed.TotalMilliseconds, resolver.Id, Protocol, reason);

@@ -171,6 +171,26 @@ public static class GaugeMath
         };
     }
 
+    public static GaugeSeverity EvaluateStabilitySeverity(double? stabilityPercent, double? packetLossPercent, int totalProbes)
+    {
+        if (totalProbes <= 0 || stabilityPercent is null)
+        {
+            return GaugeSeverity.Neutral;
+        }
+
+        if (packetLossPercent >= 10.0 || stabilityPercent < 80.0)
+        {
+            return GaugeSeverity.Danger;
+        }
+
+        if (packetLossPercent >= 2.0 || stabilityPercent < 95.0)
+        {
+            return GaugeSeverity.Warning;
+        }
+
+        return GaugeSeverity.Good;
+    }
+
     public static (double Normalized, bool Completed) ComputeIgnitionSweepValue(
         double elapsedSeconds,
         double startNormalized,

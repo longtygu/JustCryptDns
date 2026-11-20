@@ -5,6 +5,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using JustCryptDns.Core.Models;
+using JustCryptDns.Core.Network;
 using JustCryptDns.DNS.Wire;
 using Microsoft.Extensions.Logging;
 
@@ -597,11 +598,13 @@ public sealed class LocalDnsProxy : IAsyncDisposable
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
             udp = new Socket(address.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            SocketHandleGuard.DisableInheritance(udp);
             try
             {
                 udp.Bind(new IPEndPoint(address, port));
                 actualPort = ((IPEndPoint)udp.LocalEndPoint!).Port;
                 tcp = new TcpListener(address, actualPort);
+                SocketHandleGuard.DisableInheritance(tcp.Server);
                 tcp.Start();
                 break;
             }

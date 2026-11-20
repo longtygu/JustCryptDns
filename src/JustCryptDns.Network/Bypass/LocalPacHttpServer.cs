@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using JustCryptDns.Core.Network;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.Network.Bypass;
@@ -44,6 +45,7 @@ public sealed class LocalPacHttpServer : IAsyncDisposable
         }
 
         _listener = new TcpListener(_listenAddress, _requestedPort);
+        SocketHandleGuard.DisableInheritance(_listener.Server);
         _listener.Start();
         BoundPort = ((IPEndPoint)_listener.LocalEndpoint).Port;
         _acceptTask = Task.Run(() => AcceptLoopAsync(_cts.Token), _cts.Token);

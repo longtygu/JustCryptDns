@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Localization;
@@ -9,6 +11,30 @@ using JustCryptDns.Core.Models;
 using Microsoft.Win32;
 
 namespace JustCryptDns.App.ViewModels;
+
+public sealed record ResolverScanLogEntry
+{
+    public required DateTimeOffset Timestamp { get; init; }
+
+    public required string ResolverId { get; init; }
+
+    public required string ResolverName { get; init; }
+
+    public required string Provider { get; init; }
+
+    public required string ProtocolBadge { get; init; }
+
+    public required string Endpoint { get; init; }
+
+    /// <summary>Online, Timeout, or Offline.</summary>
+    public required string Outcome { get; init; }
+
+    public required string LatencyText { get; init; }
+
+    public required string DetailText { get; init; }
+
+    public string OutcomeKey => $"Resolvers_Scan_Outcome_{Outcome}";
+}
 
 public sealed partial class ResolverItemViewModel : ObservableObject
 {
@@ -41,14 +67,7 @@ public sealed partial class ResolverItemViewModel : ObservableObject
 
     public DnsProtocol Protocol => Resolver.Protocol;
 
-    public string ProtocolBadge => Resolver.Protocol switch
-    {
-        DnsProtocol.DnsOverHttps => "DoH",
-        DnsProtocol.DnsOverTls => "DoT",
-        DnsProtocol.DnsCrypt => "DNSCrypt",
-        DnsProtocol.UdpTcp => "UDP/TCP",
-        _ => Resolver.Protocol.ToString(),
-    };
+    public string ProtocolBadge => ResolverLibraryViewModel.FormatProtocolBadge(Resolver.Protocol);
 
     public string Endpoint => Resolver.Endpoint;
 
@@ -101,8 +120,14 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
 {
     public const string AllFilterValue = "All";
 
+    private const int MaxScanLogEntries = 100;
+
     private readonly IResolverLibraryService _library;
     private readonly IDnsEngine _dnsEngine;
+    private readonly object _scanLogSync = new();
+    private CancellationTokenSource? _scanCts;
+    private DispatcherTimer? _scanElapsedTimer;
+    private Stopwatch? _scanStopwatch;
 
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private string _selectedGroupFilter = AllFilterValue;
@@ -117,6 +142,29 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private string? _errorMessage;
     [ObservableProperty] private string _newGroupName = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasScanPanel))]
+    [NotifyPropertyChangedFor(nameof(ScanHeaderKey))]
+    private bool _isScanning;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ScanCounterText))]
+    private int _scanCompletedCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ScanCounterText))]
+    private int _scanTotalCount;
+
+    [ObservableProperty] private int _scanOnlineCount;
+    [ObservableProperty] private int _scanOfflineCount;
+    [ObservableProperty] private double _scanProgressPercent;
+    [ObservableProperty] private string _scanCurrentTarget = string.Empty;
+    [ObservableProperty] private string _scanElapsedDisplay = "0.0s";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ScanHeaderKey))]
+    private bool _scanWasCancelled;
 
     // Editor state
     [ObservableProperty] private bool _isEditorOpen;
@@ -156,6 +204,18 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
 
     public ObservableCollection<string> AvailableGroups { get; } = [];
 
+    public ObservableCollection<ResolverScanLogEntry> ScanLogs { get; } = [];
+
+    public bool HasScanPanel => IsScanning || ScanLogs.Count > 0;
+
+    public string ScanHeaderKey => IsScanning
+        ? "Resolvers_Scan_TitleRunning"
+        : ScanWasCancelled
+            ? "Resolvers_Scan_TitleCancelled"
+            : "Resolvers_Scan_TitleDone";
+
+    public string ScanCounterText => string.Create(CultureInfo.InvariantCulture, $"{ScanCompletedCount} / {ScanTotalCount}");
+
     public IReadOnlyList<string> ProtocolFilterOptions { get; } =
     [
         AllFilterValue,
@@ -178,6 +238,7 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
 
     public override void OnNavigatedFrom()
     {
+        CancelScanCore();
         _library.LibraryChanged -= OnLibraryChanged;
         _library.HealthUpdated -= OnHealthUpdated;
     }
@@ -186,6 +247,8 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
     {
         if (disposing)
         {
+            CancelScanCore();
+            StopScanElapsedTimer();
             _library.LibraryChanged -= OnLibraryChanged;
             _library.HealthUpdated -= OnHealthUpdated;
         }
@@ -330,6 +393,16 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
         EditorErrorMessage = null;
         ErrorMessage = null;
         StatusMessage = LocalizationManager.Instance.Format("Resolvers_Msg_Saved", result.Resolver!.Name);
+
+        if (IsEditingExisting && string.Equals(result.Resolver.Id, PrimaryResolver.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            var (switchOk, switchErr) = await _dnsEngine.SwitchResolverAsync(result.Resolver.Id);
+            if (!switchOk)
+            {
+                ErrorMessage = switchErr;
+            }
+        }
+
         RefreshCatalog();
     }
 
@@ -438,23 +511,219 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
         }
     }
 
+    [RelayCommand]
+    private void CancelScan() => CancelScanCore();
+
+    [RelayCommand]
+    private void ClearScanLog()
+    {
+        if (IsScanning)
+        {
+            return;
+        }
+
+        ScanLogs.Clear();
+        OnPropertyChanged(nameof(HasScanPanel));
+    }
+
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task CheckAllHealthAsync()
     {
+        CancelScanCore();
+        using var scanCts = new CancellationTokenSource();
+        _scanCts = scanCts;
+
+        var total = _library.GetEnabled().Count;
         IsBusy = true;
+        IsScanning = true;
+        ScanWasCancelled = false;
         ErrorMessage = null;
         StatusMessage = LocalizationManager.Instance["Resolvers_Msg_ProbingAll"];
+        ScanCompletedCount = 0;
+        ScanTotalCount = total;
+        ScanOnlineCount = 0;
+        ScanOfflineCount = 0;
+        ScanProgressPercent = total == 0 ? 100.0 : 0.0;
+        ScanCurrentTarget = string.Empty;
+        ScanElapsedDisplay = "0.0s";
+        ScanLogs.Clear();
+        OnPropertyChanged(nameof(HasScanPanel));
+
+        _scanStopwatch = Stopwatch.StartNew();
+        StartScanElapsedTimer();
+
+        var progress = new DispatchingProgress<ResolverProbeProgress>(HandleProbeProgress);
         try
         {
-            var results = await _library.CheckAllEnabledHealthAsync();
+            var results = await _library.CheckAllEnabledHealthAsync(progress, scanCts.Token);
             var online = results.Count(r => r.IsAvailable == true);
-            StatusMessage = LocalizationManager.Instance.Format("Resolvers_Msg_ProbeAllDone", online, results.Count);
+            if (scanCts.IsCancellationRequested)
+            {
+                ScanWasCancelled = true;
+                StatusMessage = LocalizationManager.Instance.Format("Resolvers_Msg_ProbeAllCancelled", results.Count, total);
+            }
+            else
+            {
+                StatusMessage = LocalizationManager.Instance.Format("Resolvers_Msg_ProbeAllDone", online, results.Count);
+            }
+
             RefreshCatalog();
         }
         finally
         {
+            _scanCts = null;
+            _scanStopwatch?.Stop();
+            UpdateScanElapsedDisplay();
+            StopScanElapsedTimer();
+            foreach (var item in FilteredResolvers)
+            {
+                item.IsProbing = false;
+            }
+
+            IsScanning = false;
             IsBusy = false;
+            OnPropertyChanged(nameof(HasScanPanel));
         }
+    }
+
+    private void CancelScanCore()
+    {
+        try
+        {
+            _scanCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void StartScanElapsedTimer()
+    {
+        StopScanElapsedTimer();
+        if (System.Windows.Application.Current?.Dispatcher is not { } dispatcher)
+        {
+            return;
+        }
+
+        _scanElapsedTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, (_, _) => UpdateScanElapsedDisplay(), dispatcher);
+        _scanElapsedTimer.Start();
+    }
+
+    private void StopScanElapsedTimer()
+    {
+        if (_scanElapsedTimer is null)
+        {
+            return;
+        }
+
+        _scanElapsedTimer.Stop();
+        _scanElapsedTimer = null;
+    }
+
+    private void UpdateScanElapsedDisplay()
+    {
+        if (_scanStopwatch is not null)
+        {
+            ScanElapsedDisplay = string.Create(CultureInfo.InvariantCulture, $"{_scanStopwatch.Elapsed.TotalSeconds:0.0}s");
+        }
+    }
+
+    private void HandleProbeProgress(ResolverProbeProgress p)
+    {
+        void Apply()
+        {
+            lock (_scanLogSync)
+            {
+                var match = FilteredResolvers.FirstOrDefault(x => string.Equals(x.Id, p.ResolverId, StringComparison.OrdinalIgnoreCase));
+                switch (p.Stage)
+                {
+                    case ResolverProbeStage.Started:
+                        if (match is not null)
+                        {
+                            match.IsProbing = true;
+                        }
+
+                        ScanCurrentTarget = $"{p.ResolverName} ({FormatProtocolBadge(p.Protocol)})";
+                        break;
+
+                    case ResolverProbeStage.Completed:
+                        if (match is not null)
+                        {
+                            match.IsProbing = false;
+                        }
+
+                        ScanCompletedCount = p.CompletedCount;
+                        ScanTotalCount = p.TotalCount;
+                        ScanOnlineCount = p.OnlineCount;
+                        ScanOfflineCount = p.OfflineCount;
+                        ScanProgressPercent = p.TotalCount > 0 ? Math.Clamp((p.CompletedCount * 100.0) / p.TotalCount, 0.0, 100.0) : 100.0;
+
+                        var outcome = p.IsAvailable == true
+                            ? "Online"
+                            : IsTimeoutError(p.Error) ? "Timeout" : "Offline";
+                        var latency = p.LatencyMs is { } ms ? string.Create(CultureInfo.InvariantCulture, $"{ms:0.#} ms") : "—";
+                        var detail = p.IsAvailable == true
+                            ? p.Endpoint
+                            : string.IsNullOrWhiteSpace(p.Error) ? p.Endpoint : p.Error!;
+
+                        ScanLogs.Insert(0, new ResolverScanLogEntry
+                        {
+                            Timestamp = p.Timestamp,
+                            ResolverId = p.ResolverId,
+                            ResolverName = p.ResolverName,
+                            Provider = p.Provider,
+                            ProtocolBadge = FormatProtocolBadge(p.Protocol),
+                            Endpoint = p.Endpoint,
+                            Outcome = outcome,
+                            LatencyText = latency,
+                            DetailText = detail,
+                        });
+                        while (ScanLogs.Count > MaxScanLogEntries)
+                        {
+                            ScanLogs.RemoveAt(ScanLogs.Count - 1);
+                        }
+
+                        OnPropertyChanged(nameof(HasScanPanel));
+                        break;
+
+                    case ResolverProbeStage.Cancelled:
+                        if (match is not null)
+                        {
+                            match.IsProbing = false;
+                        }
+
+                        break;
+                }
+            }
+        }
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Apply);
+        }
+        else
+        {
+            Apply();
+        }
+    }
+
+    private static bool IsTimeoutError(string? error) =>
+        !string.IsNullOrWhiteSpace(error)
+        && (error.Contains("timed out", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("timeout", StringComparison.OrdinalIgnoreCase));
+
+    internal static string FormatProtocolBadge(DnsProtocol protocol) => protocol switch
+    {
+        DnsProtocol.DnsOverHttps => "DoH",
+        DnsProtocol.DnsOverTls => "DoT",
+        DnsProtocol.DnsCrypt => "DNSCrypt",
+        DnsProtocol.UdpTcp => "UDP/TCP",
+        _ => protocol.ToString(),
+    };
+
+    private sealed class DispatchingProgress<T>(Action<T> handler) : IProgress<T>
+    {
+        public void Report(T value) => handler(value);
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]

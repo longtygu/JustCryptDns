@@ -2130,4 +2130,88 @@
   <data name="UpdateState_Error" xml:space="preserve">
     <value>Lỗi kết nối</value>
   </data>
+  <data name="Resolvers_Scan_TitleRunning" xml:space="preserve">
+    <value>Đang quét các DNS resolver đang bật...</value>
+  </data>
+  <data name="Resolvers_Scan_TitleDone" xml:space="preserve">
+    <value>Hoàn tất quét Resolver</value>
+  </data>
+  <data name="Resolvers_Scan_TitleCancelled" xml:space="preserve">
+    <value>Đã dừng quét Resolver</value>
+  </data>
+  <data name="Resolvers_Scan_Cancel" xml:space="preserve">
+    <value>Dừng quét</value>
+  </data>
+  <data name="Resolvers_Scan_ClearLog" xml:space="preserve">
+    <value>Xóa nhật ký</value>
+  </data>
+  <data name="Resolvers_Scan_OnlineCount" xml:space="preserve">
+    <value>{0} trực tuyến</value>
+  </data>
+  <data name="Resolvers_Scan_OfflineCount" xml:space="preserve">
+    <value>{0} ngoại tuyến</value>
+  </data>
+  <data name="Resolvers_Scan_Probing" xml:space="preserve">
+    <value>Đang đo...</value>
+  </data>
+  <data name="Resolvers_Scan_Outcome_Online" xml:space="preserve">
+    <value>Trực tuyến</value>
+  </data>
+  <data name="Resolvers_Scan_Outcome_Timeout" xml:space="preserve">
+    <value>Hết giờ</value>
+  </data>
+  <data name="Resolvers_Scan_Outcome_Offline" xml:space="preserve">
+    <value>Lỗi / Tắt</value>
+  </data>
+  <data name="Resolvers_Scan_CurrentTarget" xml:space="preserve">
+    <value>Đang kiểm tra: {0}</value>
+  </data>
+  <data name="Resolvers_Msg_ProbeAllCancelled" xml:space="preserve">
+    <value>Đã dừng quét: kiểm tra được {0}/{1} resolver.</value>
+  </data>
+  <data name="Dash_Metric_Stability" xml:space="preserve">
+    <value>Độ ổn định mạng</value>
+  </data>
+  <data name="Dash_Stability_LossFormat" xml:space="preserve">
+    <value>Mất kết nối: {0}%</value>
+  </data>
+  <data name="Dash_Stability_Measuring" xml:space="preserve">
+    <value>Đang đo độ ổn định...</value>
+  </data>
+  <data name="Dash_Explain_Stability_Desc" xml:space="preserve">
+    <value>Đồng hồ theo dõi độ ổn định đường truyền (%) và tỷ lệ rớt gói tin theo thời gian thực khi cửa sổ đang mở.</value>
+  </data>
+  <data name="Dash_Explain_Stability_Metrics" xml:space="preserve">
+    <value>Xanh (&gt;=95%): mạng ổn định, gần như không mất gói.\nVàng (80–94%): ping dao động hoặc mất 2–9% gói.\nĐỏ (&lt;80%): chập chờn nặng hoặc rớt kết nối &gt;=10%.</value>
+  </data>
+  <data name="Dash_LiveLog_Title" xml:space="preserve">
+    <value>Nhật ký truy vấn đang chạy</value>
+  </data>
+  <data name="Dash_LiveLog_Live" xml:space="preserve">
+    <value>TRỰC TIẾP</value>
+  </data>
+  <data name="Dash_LiveLog_Paused" xml:space="preserve">
+    <value>TẠM DỪNG</value>
+  </data>
+  <data name="Dash_LiveLog_Pause" xml:space="preserve">
+    <value>Tạm dừng</value>
+  </data>
+  <data name="Dash_LiveLog_Resume" xml:space="preserve">
+    <value>Tiếp tục</value>
+  </data>
+  <data name="Dash_LiveLog_Clear" xml:space="preserve">
+    <value>Xóa</value>
+  </data>
+  <data name="Dash_LiveLog_OpenMonitor" xml:space="preserve">
+    <value>Xem đầy đủ</value>
+  </data>
+  <data name="Dash_LiveLog_Empty" xml:space="preserve">
+    <value>Đang chờ các truy vấn DNS đi qua proxy cục bộ...</value>
+  </data>
+  <data name="Dash_Explain_LiveLog_Desc" xml:space="preserve">
+    <value>Luồng nhật ký chi tiết từng tên miền đang được phân giải qua JustCryptDns, tự tạm dừng khi thu nhỏ để tiết kiệm CPU.</value>
+  </data>
+  <data name="Dash_Explain_LiveLog_Metrics" xml:space="preserve">
+    <value>Hiển thị thời gian, trạng thái (Allowed/Cached/Blocked/Routed/Failed), loại bản ghi, tên miền, resolver xử lý và độ trễ (ms).</value>
+  </data>
 </root>

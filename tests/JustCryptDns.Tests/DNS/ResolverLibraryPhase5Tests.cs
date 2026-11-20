@@ -46,6 +46,19 @@ public sealed class ResolverLibraryPhase5Tests
         }
     }
 
+    private sealed class FaultyUpstreamClient(DnsProtocol protocol, Func<DnsResolverEndpoint, CancellationToken, Task<DnsQueryResult>> handler)
+        : IDnsUpstreamClient
+    {
+        public DnsProtocol Protocol => protocol;
+
+        public Task<DnsQueryResult> QueryAsync(
+            ReadOnlyMemory<byte> queryWire,
+            DnsResolverEndpoint resolver,
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default) =>
+            handler(resolver, cancellationToken);
+    }
+
     private sealed class FakeDnsEngine : IDnsEngine
     {
         public string SwitchedResolverId { get; private set; } = BuiltInResolvers.DefaultResolverId;
@@ -304,5 +317,94 @@ public sealed class ResolverLibraryPhase5Tests
         var addedItem = vm.FilteredResolvers.First(r => r.Name == "Custom Gaming DoH");
         await vm.SetPrimaryCommand.ExecuteAsync(addedItem);
         Assert.Equal(addedItem.Id, engine.SwitchedResolverId);
+    }
+
+    [Fact]
+    public async Task CheckAllEnabledHealthAsync_ReportsProgressHandlesFaultsAndSupportsCancellation()
+    {
+        var store = new MemorySettingsStore();
+        var settings = new SettingsService(store, NullLogger<SettingsService>.Instance, store.Load());
+        await settings.UpdateAsync(s => s.Dns.QueryTimeoutMs = 1000);
+
+        var upstreams = new IDnsUpstreamClient[]
+        {
+            new FaultyUpstreamClient(DnsProtocol.DnsOverHttps, (r, _) =>
+            {
+                if (r.Id.Contains("dns0", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Simulated endpoint failure");
+                }
+
+                return Task.FromResult(new DnsQueryResult(true, [0x01, 0x02], 11.2, r.Id, DnsProtocol.DnsOverHttps));
+            }),
+            new FakeUpstreamClient(DnsProtocol.DnsOverTls, true, 16.0),
+            new FakeUpstreamClient(DnsProtocol.UdpTcp, true, 8.0),
+        };
+        using var library = new ResolverLibraryService(settings, NullLogger<ResolverLibraryService>.Instance, upstreams);
+
+        var reports = new List<ResolverProbeProgress>();
+        var progressLock = new object();
+        var progress = new SyncProgress<ResolverProbeProgress>(p =>
+        {
+            lock (progressLock)
+            {
+                reports.Add(p);
+            }
+        });
+
+        var enabledCount = library.GetEnabled().Count;
+        var results = await library.CheckAllEnabledHealthAsync(progress);
+        Assert.Equal(enabledCount, results.Count);
+
+        var startedCount = reports.Count(r => r.Stage == ResolverProbeStage.Started);
+        var completed = reports.Where(r => r.Stage == ResolverProbeStage.Completed).ToList();
+        Assert.Equal(enabledCount, startedCount);
+        Assert.Equal(enabledCount, completed.Count);
+        Assert.Contains(results, r => r.ResolverId.Contains("dns0", StringComparison.OrdinalIgnoreCase) && r.IsAvailable == false);
+
+        using var cts = new CancellationTokenSource();
+        var slowUpstreams = new IDnsUpstreamClient[]
+        {
+            new FaultyUpstreamClient(DnsProtocol.DnsOverHttps, async (r, ct) =>
+            {
+                cts.Cancel();
+                await Task.Delay(Timeout.Infinite, ct);
+                return new DnsQueryResult(true, [], 1, r.Id, DnsProtocol.DnsOverHttps);
+            }),
+            new FakeUpstreamClient(DnsProtocol.DnsOverTls, true, 16.0),
+            new FakeUpstreamClient(DnsProtocol.UdpTcp, true, 8.0),
+        };
+        using var slowLib = new ResolverLibraryService(settings, NullLogger<ResolverLibraryService>.Instance, slowUpstreams);
+        var partial = await slowLib.CheckAllEnabledHealthAsync(null, cts.Token);
+        Assert.True(partial.Count < enabledCount);
+    }
+
+    [Fact]
+    public async Task ResolverLibraryViewModel_CheckAllHealth_PopulatesScanLogsAndResetsState()
+    {
+        var (library, _) = CreateService(upstreamSucceeds: true);
+        var engine = new FakeDnsEngine();
+        using var vm = new ResolverLibraryViewModel(library, engine);
+
+        await vm.CheckAllHealthCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsScanning);
+        Assert.False(vm.IsBusy);
+        Assert.False(vm.ScanWasCancelled);
+        Assert.True(vm.HasScanPanel);
+        Assert.Equal(vm.EnabledCount, vm.ScanCompletedCount);
+        Assert.Equal(vm.EnabledCount, vm.ScanTotalCount);
+        Assert.Equal(100.0, vm.ScanProgressPercent);
+        Assert.Equal(vm.EnabledCount, vm.ScanLogs.Count);
+        Assert.All(vm.FilteredResolvers, item => Assert.False(item.IsProbing));
+
+        vm.ClearScanLogCommand.Execute(null);
+        Assert.Empty(vm.ScanLogs);
+        Assert.False(vm.HasScanPanel);
+    }
+
+    private sealed class SyncProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
     }
 }

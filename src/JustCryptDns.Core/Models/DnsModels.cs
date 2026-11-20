@@ -106,6 +106,44 @@ public sealed record ResolverHealthStatus
     public string? LastError { get; init; }
 }
 
+public enum ResolverProbeStage
+{
+    Started,
+    Completed,
+    Cancelled,
+}
+
+public sealed record ResolverProbeProgress
+{
+    public required string ResolverId { get; init; }
+
+    public required string ResolverName { get; init; }
+
+    public required string Provider { get; init; }
+
+    public required DnsProtocol Protocol { get; init; }
+
+    public required string Endpoint { get; init; }
+
+    public required ResolverProbeStage Stage { get; init; }
+
+    public int CompletedCount { get; init; }
+
+    public int TotalCount { get; init; }
+
+    public int OnlineCount { get; init; }
+
+    public int OfflineCount { get; init; }
+
+    public bool? IsAvailable { get; init; }
+
+    public double? LatencyMs { get; init; }
+
+    public string? Error { get; init; }
+
+    public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.Now;
+}
+
 public sealed record ResolverValidationResult(bool IsValid, string? ErrorKey = null, string? ErrorMessage = null);
 
 public static class ResolverValidator
@@ -475,9 +513,9 @@ public static class BuiltInResolvers
             Provider = "OpenDNS",
             Protocol = DnsProtocol.DnsOverHttps,
             Endpoint = "https://doh.opendns.com/dns-query",
-            PrimaryIp = "208.67.222.222",
-            SecondaryIp = "208.67.220.220",
-            PrimaryIpv6 = "2620:119:35::35",
+            PrimaryIp = "146.112.41.2",
+            SecondaryIp = "146.112.41.2",
+            PrimaryIpv6 = "2620:119:fc::2",
             Port = 443,
             Filtering = DnsFilteringCapability.Malware,
             SupportsDnssec = true,
