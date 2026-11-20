@@ -46,6 +46,7 @@ public static class ServiceRegistration
         // Network & DNS Engine
         services.AddSingleton<INetworkInfoService, NetworkInfoService>();
         services.AddSingleton<INetworkTelemetryService, NetworkTelemetryService>();
+        services.AddSingleton<IBootRecoveryRegistrar, RegistryBootRecoveryRegistrar>();
         services.AddSingleton<IWindowsDnsManager, WindowsNetworkDnsService>();
         services.AddSingleton<IWindowsProxyManager, WindowsSystemProxyService>();
         services.AddSingleton<IDnsCryptProxyManager, DnsCryptProxyManager>();

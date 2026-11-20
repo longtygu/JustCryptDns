@@ -1,5 +1,7 @@
+using System.IO;
 using System.Net;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using JustCryptDns.App.Composition;
 using JustCryptDns.App.Localization;
@@ -10,8 +12,11 @@ using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.DNS.Proxy;
+using JustCryptDns.Infrastructure.Ipc;
 using JustCryptDns.Infrastructure.Logging;
 using JustCryptDns.Infrastructure.Storage;
+using JustCryptDns.Infrastructure.Windows;
+using JustCryptDns.Network.Monitoring;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,7 +27,11 @@ public partial class App : Application
 {
     private SingleInstanceGuard? _instanceGuard;
     private ServiceProvider? _services;
+    private ILoggerFactory? _recoveryLoggerFactory;
     private ILogger<App> _logger = NullLogger<App>.Instance;
+    private readonly object _shutdownSync = new();
+    private bool _shutdownCleanupCompleted;
+    private bool _servicesDisposed;
     private string? _lastAppearanceJson;
     private string? _lastLanguage;
     private LogLevelSetting? _lastLogLevel;
@@ -45,10 +54,17 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        var isRecoveryMode = e.Args.Any(a =>
+            string.Equals(a, RegistryBootRecoveryRegistrar.RecoveryArgument, StringComparison.OrdinalIgnoreCase));
+
         _instanceGuard = SingleInstanceGuard.Acquire("JustCryptDns");
         if (!_instanceGuard.IsPrimary)
         {
-            _instanceGuard.SignalPrimary();
+            if (!isRecoveryMode)
+            {
+                _instanceGuard.SignalPrimary();
+            }
+
             Shutdown(0);
             return;
         }
@@ -62,6 +78,15 @@ public partial class App : Application
         var loggerFactory = LoggingSetup.CreateLoggerFactory(
             paths, "ui", initial.Settings.Performance.LogLevel, initial.Settings.Performance.LogRetentionDays);
         _logger = loggerFactory.CreateLogger<App>();
+
+        if (isRecoveryMode)
+        {
+            _recoveryLoggerFactory = loggerFactory;
+            var exitCode = RunHeadlessBootRecovery(paths, loggerFactory);
+            Shutdown(exitCode);
+            return;
+        }
+
         _logger.LogInformation("JustCryptDns UI starting. Version {Version}", typeof(App).Assembly.GetName().Version);
 
         RegisterExceptionHandlers();
@@ -133,28 +158,206 @@ public partial class App : Application
         _instanceGuard.ListenForActivation(() => Dispatcher.BeginInvoke(ActivateMainWindow));
     }
 
+    protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
+    {
+        e.Cancel = false;
+        _logger.LogWarning("Windows session ending ({Reason}); restoring original DNS and proxy settings.", e.ReasonSessionEnding);
+
+        nint hwnd = 0;
+        if (MainWindow is { } mainWindow)
+        {
+            try
+            {
+                hwnd = new WindowInteropHelper(mainWindow).Handle;
+            }
+            catch (InvalidOperationException)
+            {
+                hwnd = 0;
+            }
+        }
+
+        _ = RegistryBootRecoveryRegistrar.TryCreateShutdownBlockReason(
+            hwnd,
+            "Restoring original Windows DNS and proxy settings...");
+        try
+        {
+            RunSafeShutdownCleanupSync(timeoutMs: 4500, source: $"SessionEnding:{e.ReasonSessionEnding}");
+        }
+        finally
+        {
+            RegistryBootRecoveryRegistrar.TryDestroyShutdownBlockReason(hwnd);
+        }
+
+        base.OnSessionEnding(e);
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
         _logger.LogInformation("JustCryptDns UI exiting with code {Code}.", e.ApplicationExitCode);
-        if (_services?.GetService<IBypassEngineService>() is { } bypassEngine)
+        RunSafeShutdownCleanupSync(timeoutMs: 6000, source: "OnExit");
+
+        Volatile.Write(ref _servicesDisposed, true);
+        if (_services is { } services)
         {
-            bypassEngine.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            try
+            {
+                if (services.GetService<IBypassEngineService>() is { } bypassEngine)
+                {
+                    Task.Run(() => bypassEngine.DisposeAsync().AsTask()).Wait(1500);
+                }
+
+                if (services.GetService<IDnsEngine>() is { } dnsEngine)
+                {
+                    Task.Run(() => dnsEngine.DisposeAsync().AsTask()).Wait(1500);
+                }
+            }
+            catch (Exception ex) when (ex is AggregateException or OperationCanceledException or ObjectDisposedException)
+            {
+                _logger.LogWarning(ex, "Engine async disposal during exit did not finish cleanly.");
+            }
+
+            services.Dispose();
+            _services = null;
         }
 
-        if (_services?.GetService<IDnsEngine>() is { } dnsEngine)
-        {
-            dnsEngine.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        }
-
-        if (_services?.GetService<ISettingsService>() is { } settings)
-        {
-            settings.FlushAsync().GetAwaiter().GetResult();
-        }
-
-        _services?.Dispose();
         _instanceGuard?.Dispose();
+        _instanceGuard = null;
+        _recoveryLoggerFactory?.Dispose();
+        _recoveryLoggerFactory = null;
         LoggingSetup.Shutdown();
         base.OnExit(e);
+    }
+
+    private int RunHeadlessBootRecovery(AppPaths paths, ILoggerFactory loggerFactory)
+    {
+        _logger.LogInformation("Running headless boot recovery ({Arg}).", RegistryBootRecoveryRegistrar.RecoveryArgument);
+        try
+        {
+            return Task.Run(async () =>
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                var bootRecovery = new RegistryBootRecoveryRegistrar(
+                    loggerFactory.CreateLogger<RegistryBootRecoveryRegistrar>());
+                using var windowsDns = new WindowsNetworkDnsService(
+                    paths,
+                    new NetworkInfoService(loggerFactory.CreateLogger<NetworkInfoService>()),
+                    loggerFactory.CreateLogger<WindowsNetworkDnsService>(),
+                    bootRecovery: bootRecovery);
+                using var windowsProxy = new WindowsSystemProxyService(
+                    paths,
+                    loggerFactory.CreateLogger<WindowsSystemProxyService>(),
+                    bootRecovery: bootRecovery);
+                var serviceClient = new NamedPipeServiceClient(
+                    loggerFactory.CreateLogger<NamedPipeServiceClient>());
+
+                using (var probeCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token))
+                {
+                    probeCts.CancelAfter(TimeSpan.FromMilliseconds(1200));
+                    await serviceClient.RefreshStatusAsync(probeCts.Token).ConfigureAwait(false);
+                }
+
+                await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false, cts.Token).ConfigureAwait(false);
+
+                if (serviceClient.ConnectionState != ServiceConnectionState.Connected)
+                {
+                    await windowsDns.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false, cts.Token).ConfigureAwait(false);
+                }
+
+                var dnsRemaining = windowsDns.HasActiveBackup();
+                var proxyRemaining = windowsProxy.HasActiveBackup();
+                if (dnsRemaining)
+                {
+                    bootRecovery.Arm("dns");
+                }
+
+                if (proxyRemaining)
+                {
+                    bootRecovery.Arm("proxy");
+                }
+
+                if (!dnsRemaining && !proxyRemaining)
+                {
+                    bootRecovery.ClearAll();
+                }
+
+                return dnsRemaining || proxyRemaining ? 1 : 0;
+            }).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Headless boot recovery encountered an error.");
+            return 1;
+        }
+    }
+
+    private void RunSafeShutdownCleanupSync(int timeoutMs, string source)
+    {
+        var services = _services;
+        if (services is null || Volatile.Read(ref _servicesDisposed))
+        {
+            return;
+        }
+
+        if (!Monitor.TryEnter(_shutdownSync, Math.Min(timeoutMs, 500)))
+        {
+            return;
+        }
+
+        try
+        {
+            if (_shutdownCleanupCompleted || Volatile.Read(ref _servicesDisposed))
+            {
+                return;
+            }
+
+            using var cts = new CancellationTokenSource(timeoutMs);
+            var cleanupTask = Task.Run(async () =>
+            {
+                if (services.GetService<IBypassEngineService>() is { } bypassEngine)
+                {
+                    await bypassEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                }
+
+                if (services.GetService<IDnsEngine>() is { } dnsEngine)
+                {
+                    await dnsEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                }
+
+                if (services.GetService<ISettingsService>() is { } settings)
+                {
+                    await settings.FlushAsync(cts.Token).ConfigureAwait(false);
+                }
+
+                var hasDnsBackup = services.GetService<IWindowsDnsManager>()?.HasActiveBackup() == true;
+                var hasProxyBackup = services.GetService<IWindowsProxyManager>()?.HasActiveBackup() == true;
+                if (!hasDnsBackup && !hasProxyBackup)
+                {
+                    services.GetService<IBootRecoveryRegistrar>()?.ClearAll();
+                }
+            });
+
+            if (cleanupTask.Wait(timeoutMs))
+            {
+                _shutdownCleanupCompleted = true;
+                _logger.LogInformation("Shutdown cleanup ({Source}) completed cleanly.", source);
+            }
+            else
+            {
+                cts.Cancel();
+                _logger.LogWarning(
+                    "Shutdown cleanup ({Source}) timed out after {TimeoutMs} ms; RunOnce recovery remains armed if backups remain active.",
+                    source,
+                    timeoutMs);
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or AggregateException or ObjectDisposedException or IOException)
+        {
+            _logger.LogWarning(ex, "Shutdown cleanup ({Source}) did not complete cleanly.", source);
+        }
+        finally
+        {
+            Monitor.Exit(_shutdownSync);
+        }
     }
 
     private static async Task InitializeStandaloneEnginesAsync(ServiceProvider services, ILogger<App> logger)
@@ -271,6 +474,8 @@ public partial class App : Application
     private void RegisterExceptionHandlers()
     {
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            RunSafeShutdownCleanupSync(timeoutMs: 2000, source: "ProcessExit");
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             _logger.LogCritical(args.ExceptionObject as Exception, "Unhandled domain exception (terminating={Terminating}).", args.IsTerminating);
         TaskScheduler.UnobservedTaskException += (_, args) =>

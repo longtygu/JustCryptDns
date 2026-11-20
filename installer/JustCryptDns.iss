@@ -2,12 +2,15 @@
 ; Builds a signed-ready installer with Windows Service registration (LocalSystem) and clean uninstall.
 
 #define MyAppName "JustCryptDns"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define MyAppPublisher "JustCryptDns Project"
 #define MyAppURL "https://github.com/justcryptdns/JustCryptDns"
 #define MyAppExeName "JustCryptDns.exe"
 #define MyServiceExeName "JustCryptDns.Service.exe"
 #define MyServiceName "JustCryptDnsService"
+#ifndef PublishDir
+#define PublishDir "..\dist\publish\win-x64"
+#endif
 
 [Setup]
 AppId={{8D6E4A2F-59C1-4B3D-9E6A-42B17C80F3E5}
@@ -40,7 +43,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "installservice"; Description: "Install and start JustCryptDns background Windows Service (recommended)"; GroupDescription: "Background Protection:"
 
 [Files]
-Source: "..\dist\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion

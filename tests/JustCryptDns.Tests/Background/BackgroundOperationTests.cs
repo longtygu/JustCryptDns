@@ -1,12 +1,16 @@
 using System.Buffers.Binary;
 using System.Windows.Controls;
 using JustCryptDns.App;
+using JustCryptDns.App.Composition;
 using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
+using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Infrastructure.Ipc;
+using JustCryptDns.Infrastructure.Storage;
 using JustCryptDns.Infrastructure.Windows;
 using JustCryptDns.Service;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Win32;
 
@@ -190,6 +194,78 @@ public sealed class BackgroundOperationTests : IDisposable
 
         Assert.Null(error);
         Assert.Equal(7, itemCount);
+    }
+
+    [Fact]
+    public void RegistryBootRecoveryRegistrar_ArmsAndDisarmsPerComponentOnRunOnce()
+    {
+        var testSubKey = $@"Software\JustCryptDns-Tests\RunOnce-{Guid.NewGuid():N}";
+        var exePath = @"C:\Program Files\JustCryptDns\JustCryptDns.exe";
+        var registrar = new RegistryBootRecoveryRegistrar(
+            NullLogger<RegistryBootRecoveryRegistrar>.Instance,
+            runOnceSubKeyOverride: testSubKey,
+            executablePathOverride: exePath);
+
+        try
+        {
+            Assert.False(registrar.IsArmed);
+            Assert.Null(registrar.ReadRegisteredCommand());
+
+            registrar.Arm("dns");
+            Assert.True(registrar.IsArmed);
+            Assert.Equal($"\"{exePath}\" --recover-and-exit", registrar.ReadRegisteredCommand());
+
+            registrar.Arm("proxy");
+            Assert.True(registrar.IsArmed);
+
+            registrar.Disarm("dns");
+            Assert.True(registrar.IsArmed);
+
+            registrar.Disarm("proxy");
+            Assert.False(registrar.IsArmed);
+            Assert.Null(registrar.ReadRegisteredCommand());
+
+            registrar.Arm("dns");
+            registrar.Arm("proxy");
+            Assert.True(registrar.IsArmed);
+
+            registrar.ClearAll();
+            Assert.False(registrar.IsArmed);
+            Assert.Null(registrar.ReadRegisteredCommand());
+        }
+        finally
+        {
+            Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(testSubKey, throwOnMissingSubKey: false);
+        }
+    }
+
+    [Fact]
+    public void ServiceRegistration_BuildsAndResolvesRecoveryDependencies()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "jcd-di-test", Guid.NewGuid().ToString("N"));
+        var paths = new AppPaths(tempRoot);
+        paths.EnsureCreated();
+        try
+        {
+            var settings = new AppSettings();
+            var initial = new SettingsLoadResult(settings, SettingsLoadOutcome.Loaded);
+            var store = new MemorySettingsStore(settings);
+            using var provider = ServiceRegistration.Build(paths, NullLoggerFactory.Instance, store, initial);
+
+            var bootRecovery = provider.GetRequiredService<IBootRecoveryRegistrar>();
+            var winDns = provider.GetRequiredService<IWindowsDnsManager>();
+            var winProxy = provider.GetRequiredService<IWindowsProxyManager>();
+            Assert.NotNull(bootRecovery);
+            Assert.NotNull(winDns);
+            Assert.NotNull(winProxy);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
     }
 
     private sealed class MemorySettingsStore(AppSettings settings) : ISettingsStore

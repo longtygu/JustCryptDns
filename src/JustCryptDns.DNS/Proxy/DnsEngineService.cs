@@ -272,6 +272,11 @@ public sealed class DnsEngineService : IDnsEngine
         {
             if (_state == DnsEngineState.Stopped)
             {
+                if (_windowsDns.HasActiveBackup())
+                {
+                    await _windowsDns.RestoreOriginalDnsAsync(_settings.Current.Dns.TargetAdapterId, cancellationToken).ConfigureAwait(false);
+                }
+
                 return;
             }
 

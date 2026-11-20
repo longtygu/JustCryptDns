@@ -5,7 +5,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = "1.2.0",
+    [string]$Version = "1.2.1",
     [switch]$SkipTests
 )
 
@@ -25,8 +25,25 @@ try {
 
     $DistDir = Join-Path $RepoRoot "dist"
     $PublishDir = Join-Path $DistDir "publish\win-x64"
+    $LockedExe = Join-Path $PublishDir "JustCryptDns.exe"
+    $InUse = $false
+    if (Test-Path $LockedExe) {
+        try {
+            $stream = [System.IO.File]::Open($LockedExe, [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+            $stream.Dispose()
+        }
+        catch {
+            $InUse = $true
+        }
+    }
+
+    if ($InUse) {
+        Write-Warning "Default publish directory '$PublishDir' is in use by a running instance; publishing to '$DistDir\publish\win-x64-$Version' instead."
+        $PublishDir = Join-Path $DistDir "publish\win-x64-$Version"
+    }
+
     if (Test-Path $PublishDir) {
-        Remove-Item -Recurse -Force $PublishDir
+        Remove-Item -Recurse -Force $PublishDir -ErrorAction Stop
     }
     New-Item -ItemType Directory -Path $PublishDir -Force | Out-Null
 
@@ -63,7 +80,7 @@ try {
 
     if ($Iscc) {
         Write-Host "==> Compiling Inno Setup installer..." -ForegroundColor Cyan
-        & $Iscc (Join-Path $RepoRoot "installer\JustCryptDns.iss")
+        & $Iscc "/DPublishDir=$PublishDir" (Join-Path $RepoRoot "installer\JustCryptDns.iss")
         if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
     } else {
         Write-Host "    Note: Inno Setup (ISCC.exe) not installed locally; installer\JustCryptDns.iss is ready for CI or local Inno Setup 6 compilation." -ForegroundColor Yellow

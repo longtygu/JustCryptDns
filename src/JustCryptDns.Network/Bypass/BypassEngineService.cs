@@ -208,6 +208,12 @@ public sealed class BypassEngineService : IBypassEngineService
         {
             if (_state == BypassEngineState.Stopped && _proxy is null && _pacServer is null)
             {
+                if (_windowsProxyApplied || _windowsProxy.HasActiveBackup())
+                {
+                    await _windowsProxy.RestoreOriginalProxyAsync(cancellationToken).ConfigureAwait(false);
+                    _windowsProxyApplied = false;
+                }
+
                 return;
             }
 

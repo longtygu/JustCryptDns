@@ -161,16 +161,19 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
     private readonly IAppPaths _paths;
     private readonly ISystemProxyConfigurator _configurator;
     private readonly ILogger<WindowsSystemProxyService> _logger;
+    private readonly IBootRecoveryRegistrar? _bootRecovery;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public WindowsSystemProxyService(
         IAppPaths paths,
         ILogger<WindowsSystemProxyService> logger,
-        ISystemProxyConfigurator? configurator = null)
+        ISystemProxyConfigurator? configurator = null,
+        IBootRecoveryRegistrar? bootRecovery = null)
     {
         _paths = paths;
         _logger = logger;
         _configurator = configurator ?? new WinInetSystemProxyConfigurator();
+        _bootRecovery = bootRecovery;
     }
 
     public bool HasActiveBackup()
@@ -275,6 +278,8 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
                 existing = verified;
             }
 
+            _bootRecovery?.Arm("proxy");
+
             var targetState = buildTargetState(current);
             var (ok, err) = _configurator.Write(targetState);
             if (!ok)
@@ -331,11 +336,21 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
                     AutoConfigUrl: isOurPac ? null : current.AutoConfigUrl,
                     AutoDetect: current.AutoDetect);
                 var (ok, err) = _configurator.Write(cleaned);
-                TryDeleteBackupFile();
+                if (ok)
+                {
+                    TryDeleteBackupFile();
+                    _bootRecovery?.Disarm("proxy");
+                }
+                else
+                {
+                    _bootRecovery?.Arm("proxy");
+                }
+
                 return new WindowsProxyOperationResult(ok, err);
             }
 
             TryDeleteBackupFile();
+            _bootRecovery?.Disarm("proxy");
             return new WindowsProxyOperationResult(true);
         }
         finally
@@ -367,10 +382,12 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
         if (ok)
         {
             TryDeleteBackupFile();
+            _bootRecovery?.Disarm("proxy");
             _logger.LogInformation("Restored original Windows system proxy settings from verified backup.");
             return Task.FromResult<string?>(null);
         }
 
+        _bootRecovery?.Arm("proxy");
         return Task.FromResult<string?>(err ?? "Failed to restore original Windows proxy settings.");
     }
 
