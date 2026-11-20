@@ -268,14 +268,15 @@ public sealed class BypassEngineService : IBypassEngineService
 
     public async Task<BypassTestResult> TestDomainBypassAsync(string host, CancellationToken cancellationToken = default)
     {
-        var cleanHost = BypassRuleMatcher.NormalizeHost(host);
+        var (cleanHost, targetPort, hasExplicitPort) = BypassRuleMatcher.ParseHostAndPort(host, 443);
         if (string.IsNullOrWhiteSpace(cleanHost))
         {
             return new BypassTestResult
             {
                 Host = host ?? string.Empty,
+                TestedPort = targetPort,
                 RecommendedMode = BypassMode.AutoHybrid,
-                Summary = "Enter a valid hostname (e.g. store.steampowered.com).",
+                Summary = "Enter a valid hostname (e.g. store.steampowered.com or host:port).",
             };
         }
 
@@ -287,20 +288,170 @@ public sealed class BypassEngineService : IBypassEngineService
             return new BypassTestResult
             {
                 Host = cleanHost,
+                TestedPort = targetPort,
                 RecommendedMode = BypassMode.AutoHybrid,
                 Summary = $"DNS resolution failed for {cleanHost}.",
             };
         }
 
+        var osDnsPoisoned = !IPAddress.TryParse(cleanHost, out _)
+            && !IsAllLoopbackOrUnspecified(ips)
+            && await DetectOsDnsPoisoningAsync(cleanHost, cancellationToken).ConfigureAwait(false);
+        var poisonPrefix = osDnsPoisoned
+            ? "[Warning: Windows OS DNS poisoned this domain to loopback while encrypted DNS is healthy] "
+            : string.Empty;
+
         var bypass = _settings.Current.Bypass;
+        var upstreamEnabled = bypass.Upstream.Enabled && bypass.Upstream.Kind != UpstreamTunnelKind.None;
+
+        // Explicit non-443 TCP port (e.g. PUBG Zakynthos zk-ga-pcprod-*.acs.pubg.com:40002)
+        if (hasExplicitPort && targetPort != 443)
+        {
+            var (tcpOk, selectedIp, tcpMs, tcpErr) = await ProbeTcpConnectAsync(ips, targetPort, 3000, cancellationToken).ConfigureAwait(false);
+            if (tcpOk)
+            {
+                var (httpsOk, httpsMs, _, _) = await ProbeHttpsDirectAsync(cleanHost, selectedIp, cancellationToken, targetPort, timeoutMs: 2000).ConfigureAwait(false);
+                var nonHttps = !httpsOk;
+                var latency = httpsOk ? httpsMs : tcpMs;
+                var summaryText = httpsOk
+                    ? $"{poisonPrefix}{cleanHost}:{targetPort} ({selectedIp}) HTTPS succeeded directly ({latency:0.#} ms). No bypass required."
+                    : $"{poisonPrefix}TCP port {targetPort} on {cleanHost} ({selectedIp}) is OPEN ({tcpMs:0.#} ms, non-HTTPS protocol). Raw game/anti-cheat sockets bypass HTTP/Auto-PAC proxy; if blocked on another ISP or CGNAT, use a Layer-3 tunnel (e.g. Cloudflare WARP TUN).";
+
+                return new BypassTestResult
+                {
+                    Host = cleanHost,
+                    TestedPort = targetPort,
+                    ResolvedIp = selectedIp.ToString(),
+                    OsDnsPoisoned = osDnsPoisoned,
+                    IsNonHttpsPort = nonHttps,
+                    DirectSucceeded = true,
+                    DirectLatencyMs = latency,
+                    RecommendedMode = BypassMode.Direct,
+                    Summary = summaryText,
+                };
+            }
+
+            var non443TunnelOk = false;
+            double? non443TunnelMs = null;
+            string? non443TunnelErr = null;
+            if (upstreamEnabled)
+            {
+                (non443TunnelOk, non443TunnelMs, non443TunnelErr) = await ProbeTcpViaUpstreamAsync(cleanHost, targetPort, bypass.Upstream, cancellationToken).ConfigureAwait(false);
+            }
+
+            var failSummary = non443TunnelOk
+                ? $"{poisonPrefix}Direct TCP {cleanHost}:{targetPort} ({selectedIp}) failed ({tcpErr}), while upstream tunnel connected in {non443TunnelMs:0.#} ms. Note: raw non-HTTPS sockets bypass Auto-PAC unless routed via an L3 tunnel."
+                : $"{poisonPrefix}TCP connect to {cleanHost}:{targetPort} ({selectedIp}) failed: {tcpErr} ({tcpMs:0.#} ms). Non-HTTPS game/service ports bypass HTTP/Auto-PAC and TLS DPI fragmentation; if blocked by your ISP/CGNAT, enable a Layer-3 tunnel (e.g. Cloudflare WARP TUN).";
+
+            return new BypassTestResult
+            {
+                Host = cleanHost,
+                TestedPort = targetPort,
+                ResolvedIp = selectedIp.ToString(),
+                OsDnsPoisoned = osDnsPoisoned,
+                IsNonHttpsPort = true,
+                DirectSucceeded = false,
+                DirectLatencyMs = tcpMs,
+                DirectError = tcpErr,
+                TunnelSucceeded = non443TunnelOk,
+                TunnelLatencyMs = non443TunnelMs,
+                TunnelError = non443TunnelErr,
+                RecommendedMode = non443TunnelOk ? BypassMode.UpstreamTunnel : BypassMode.AutoHybrid,
+                Summary = failSummary,
+            };
+        }
+
+        // Standard HTTPS port 443: check raw TCP reachability before wasting time on TLS SNI fragmentation.
+        var (tcp443Ok, tcp443Ip, tcp443Ms, tcp443Err) = await ProbeTcpConnectAsync(ips, 443, 2500, cancellationToken).ConfigureAwait(false);
+        if (!tcp443Ok)
+        {
+            if (cleanHost.EndsWith(".acs.pubg.com", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var pubgPort in new[] { 40002, 40003 })
+                {
+                    var (openOk, openIp, openMs, _) = await ProbeTcpConnectAsync(ips, pubgPort, 1500, cancellationToken).ConfigureAwait(false);
+                    if (openOk)
+                    {
+                        return new BypassTestResult
+                        {
+                            Host = cleanHost,
+                            TestedPort = pubgPort,
+                            ResolvedIp = openIp.ToString(),
+                            OsDnsPoisoned = osDnsPoisoned,
+                            IsNonHttpsPort = true,
+                            DirectSucceeded = true,
+                            DirectLatencyMs = openMs,
+                            DirectError = tcp443Err,
+                            RecommendedMode = BypassMode.Direct,
+                            Summary = $"{poisonPrefix}Port 443 is not used by PUBG Anti-Cheat (Zakynthos); raw game port TCP {pubgPort} on {openIp} is OPEN ({openMs:0.#} ms). Raw game sockets bypass HTTP/Auto-PAC proxy; if blocked on VTVcab/CGNAT, use a Layer-3 tunnel (e.g. Cloudflare WARP TUN).",
+                        };
+                    }
+                }
+
+                var pubgTunnelOk = false;
+                double? pubgTunnelMs = null;
+                string? pubgTunnelErr = null;
+                if (upstreamEnabled)
+                {
+                    (pubgTunnelOk, pubgTunnelMs, pubgTunnelErr) = await ProbeTcpViaUpstreamAsync(cleanHost, 40002, bypass.Upstream, cancellationToken).ConfigureAwait(false);
+                }
+
+                return new BypassTestResult
+                {
+                    Host = cleanHost,
+                    TestedPort = 40002,
+                    ResolvedIp = tcp443Ip.ToString(),
+                    OsDnsPoisoned = osDnsPoisoned,
+                    IsNonHttpsPort = true,
+                    DirectSucceeded = false,
+                    DirectLatencyMs = tcp443Ms,
+                    DirectError = tcp443Err,
+                    TunnelSucceeded = pubgTunnelOk,
+                    TunnelLatencyMs = pubgTunnelMs,
+                    TunnelError = pubgTunnelErr,
+                    RecommendedMode = pubgTunnelOk ? BypassMode.UpstreamTunnel : BypassMode.AutoHybrid,
+                    Summary = $"{poisonPrefix}TCP :443 and PUBG Anti-Cheat ports (40002/40003) on {cleanHost} ({tcp443Ip}) all failed ({tcp443Err}). Confirmed ISP IP/port block or routing drop to AWS Global Accelerator — HTTP/TLS DPI fragmentation cannot bypass this; enable a Layer-3 tunnel (Cloudflare WARP TUN) or contact your ISP about CGNAT.",
+                };
+            }
+
+            var blockedTunnelOk = false;
+            double? blockedTunnelMs = null;
+            string? blockedTunnelErr = null;
+            if (upstreamEnabled)
+            {
+                (blockedTunnelOk, blockedTunnelMs, blockedTunnelErr) = await ProbeHttpsViaUpstreamAsync(cleanHost, bypass.Upstream, cancellationToken).ConfigureAwait(false);
+            }
+
+            var blockedSummary = blockedTunnelOk
+                ? $"{poisonPrefix}TCP :443 to {cleanHost} ({tcp443Ip}) was blocked ({tcp443Err}), but upstream tunnel ({bypass.Upstream.Kind}) succeeded in {blockedTunnelMs:0.#} ms. Recommend Upstream Tunnel."
+                : $"{poisonPrefix}TCP :443 connect to {cleanHost} ({tcp443Ip}) failed: {tcp443Err} ({tcp443Ms:0.#} ms). This is an IP/routing block rather than SNI DPI, so TLS fragmentation was skipped; enable a Tier-2 Split-Tunnel or L3 VPN.";
+
+            return new BypassTestResult
+            {
+                Host = cleanHost,
+                TestedPort = 443,
+                ResolvedIp = tcp443Ip.ToString(),
+                OsDnsPoisoned = osDnsPoisoned,
+                DirectSucceeded = false,
+                DirectLatencyMs = tcp443Ms,
+                DirectError = tcp443Err,
+                DpiBypassSucceeded = false,
+                DpiBypassError = "Skipped (TCP :443 unreachable)",
+                TunnelSucceeded = blockedTunnelOk,
+                TunnelLatencyMs = blockedTunnelMs,
+                TunnelError = blockedTunnelErr,
+                RecommendedMode = blockedTunnelOk ? BypassMode.UpstreamTunnel : BypassMode.AutoHybrid,
+                Summary = blockedSummary,
+            };
+        }
 
         // 1. Direct HTTPS probe (explicitly bypassing any system proxy)
-        var (directOk, directMs, _, directErr) = await ProbeHttpsDirectAsync(cleanHost, primaryIp, cancellationToken).ConfigureAwait(false);
+        var (directOk, directMs, _, directErr) = await ProbeHttpsDirectAsync(cleanHost, tcp443Ip, cancellationToken).ConfigureAwait(false);
 
         // 2. TLS Record Fragmentation DPI bypass probe
         var (dpiOk, dpiMs, dpiCode, dpiErr) = await ProbeHttpsWithTlsFragmentationAsync(
             cleanHost,
-            primaryIp,
+            tcp443Ip,
             bypass.FragmentationStrategy,
             bypass.FragmentSizeBytes,
             cancellationToken).ConfigureAwait(false);
@@ -309,7 +460,7 @@ public sealed class BypassEngineService : IBypassEngineService
         bool tunnelOk = false;
         double? tunnelMs = null;
         string? tunnelErr = null;
-        if (bypass.Upstream.Enabled && bypass.Upstream.Kind != UpstreamTunnelKind.None)
+        if (upstreamEnabled)
         {
             (tunnelOk, tunnelMs, tunnelErr) = await ProbeHttpsViaUpstreamAsync(cleanHost, bypass.Upstream, cancellationToken).ConfigureAwait(false);
         }
@@ -319,30 +470,32 @@ public sealed class BypassEngineService : IBypassEngineService
         if (directOk)
         {
             recommended = BypassMode.Direct;
-            summary = $"{cleanHost} ({primaryIp}) is accessible directly ({directMs:0.#} ms). No bypass required.";
+            summary = $"{poisonPrefix}{cleanHost} ({tcp443Ip}) is accessible directly ({directMs:0.#} ms). No bypass required.";
         }
         else if (dpiOk)
         {
             recommended = BypassMode.AutoHybrid;
-            summary = $"Direct HTTPS blocked/timed out ({directErr}), but TLS Fragmentation succeeded (HTTP {dpiCode} in {dpiMs:0.#} ms)! Recommend AutoHybrid / DPI Fragment.";
+            summary = $"{poisonPrefix}Direct HTTPS blocked/timed out ({directErr}), but TLS Fragmentation succeeded (HTTP {dpiCode} in {dpiMs:0.#} ms)! Recommend AutoHybrid / DPI Fragment.";
         }
         else if (tunnelOk)
         {
             recommended = BypassMode.UpstreamTunnel;
-            summary = $"Direct & DPI blocked; upstream tunnel ({bypass.Upstream.Kind}) succeeded in {tunnelMs:0.#} ms. Recommend Upstream Tunnel.";
+            summary = $"{poisonPrefix}Direct & DPI blocked; upstream tunnel ({bypass.Upstream.Kind}) succeeded in {tunnelMs:0.#} ms. Recommend Upstream Tunnel.";
         }
         else
         {
             recommended = BypassMode.AutoHybrid;
-            summary = bypass.Upstream.Enabled
-                ? $"Direct ({directErr}), DPI ({dpiErr}), and Tunnel ({tunnelErr}) all failed."
-                : $"Direct ({directErr}) and DPI ({dpiErr}) failed. Enable Tier 2 Split-Tunnel upstream (e.g. Cloudflare WARP) if this host is IP/geo-blocked.";
+            summary = upstreamEnabled
+                ? $"{poisonPrefix}Direct ({directErr}), DPI ({dpiErr}), and Tunnel ({tunnelErr}) all failed."
+                : $"{poisonPrefix}Direct ({directErr}) and DPI ({dpiErr}) failed. Enable Tier 2 Split-Tunnel upstream (e.g. Cloudflare WARP) if this host is IP/geo-blocked.";
         }
 
         return new BypassTestResult
         {
             Host = cleanHost,
-            ResolvedIp = primaryIp.ToString(),
+            TestedPort = 443,
+            ResolvedIp = tcp443Ip.ToString(),
+            OsDnsPoisoned = osDnsPoisoned,
             DirectSucceeded = directOk,
             DirectLatencyMs = directMs,
             DirectError = directErr,
@@ -608,18 +761,127 @@ public sealed class BypassEngineService : IBypassEngineService
         return await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    private static async Task<(bool Ok, double LatencyMs, int? StatusCode, string? Error)> ProbeHttpsDirectAsync(
+    private static bool IsAllLoopbackOrUnspecified(IEnumerable<IPAddress> ips) =>
+        ips.Any() && ips.All(IsLoopbackOrUnspecified);
+
+    private static bool IsLoopbackOrUnspecified(IPAddress ip) =>
+        IPAddress.IsLoopback(ip) || ip.Equals(IPAddress.Any) || ip.Equals(IPAddress.IPv6Any);
+
+    private static async Task<bool> DetectOsDnsPoisoningAsync(string host, CancellationToken ct)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(1000);
+        try
+        {
+            var osIps = await Dns.GetHostAddressesAsync(host, cts.Token).ConfigureAwait(false);
+            return osIps.Length > 0 && osIps.All(IsLoopbackOrUnspecified);
+        }
+        catch (Exception ex) when (ex is SocketException or OperationCanceledException or ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private static async Task<(bool Connected, IPAddress SelectedIp, double LatencyMs, string? Error)> ProbeTcpConnectAsync(
+        IReadOnlyList<IPAddress> ips,
+        int port,
+        int timeoutMs,
+        CancellationToken ct)
+    {
+        var maxTry = Math.Min(ips.Count, 2);
+        var perTryTimeoutMs = maxTry > 1 ? Math.Max(1200, timeoutMs / maxTry) : timeoutMs;
+        double lastMs = 0;
+        string? lastErr = null;
+        var selectedIp = ips[0];
+
+        for (var i = 0; i < maxTry; i++)
+        {
+            var ip = ips[i];
+            selectedIp = ip;
+            var sw = Stopwatch.StartNew();
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(perTryTimeoutMs);
+            try
+            {
+                using var tcp = new TcpClient(ip.AddressFamily) { NoDelay = true };
+                await tcp.ConnectAsync(ip, port, cts.Token).ConfigureAwait(false);
+                sw.Stop();
+                return (true, ip, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                sw.Stop();
+                lastMs = Math.Round(sw.Elapsed.TotalMilliseconds, 1);
+                lastErr = FormatProbeError(ex, cts.IsCancellationRequested, $"TCP :{port} connect timed out");
+            }
+        }
+
+        return (false, selectedIp, lastMs, lastErr ?? $"TCP :{port} connect timed out");
+    }
+
+    private static async Task<(bool Ok, double? LatencyMs, string? Error)> ProbeTcpViaUpstreamAsync(
         string host,
-        IPAddress ip,
+        int port,
+        UpstreamTunnelSettings upstream,
         CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(3000);
+        cts.CancelAfter(5000);
+        try
+        {
+            using var tcp = await UpstreamTunnelConnector.ConnectViaUpstreamAsync(host, port, upstream, 4500, cts.Token).ConfigureAwait(false);
+            sw.Stop();
+            return (true, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            sw.Stop();
+            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), FormatProbeError(ex, cts.IsCancellationRequested, $"Tunnel TCP :{port} timed out"));
+        }
+    }
+
+    private static string FormatProbeError(Exception ex, bool timedOut, string timeoutFallback)
+    {
+        if (timedOut)
+        {
+            return timeoutFallback;
+        }
+
+        if (ex is SocketException se)
+        {
+            return se.SocketErrorCode switch
+            {
+                SocketError.ConnectionReset => "Connection reset by peer (DPI RST)",
+                SocketError.ConnectionRefused => "Connection refused by remote host",
+                SocketError.TimedOut => timeoutFallback,
+                SocketError.NetworkUnreachable or SocketError.HostUnreachable => "Network or host unreachable",
+                _ => se.Message,
+            };
+        }
+
+        if (ex.InnerException is SocketException innerSe)
+        {
+            return FormatProbeError(innerSe, timedOut: false, timeoutFallback);
+        }
+
+        return ex.Message;
+    }
+
+    private static async Task<(bool Ok, double LatencyMs, int? StatusCode, string? Error)> ProbeHttpsDirectAsync(
+        string host,
+        IPAddress ip,
+        CancellationToken ct,
+        int port = 443,
+        int timeoutMs = 3000)
+    {
+        var sw = Stopwatch.StartNew();
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(timeoutMs);
         try
         {
             using var tcp = new TcpClient(ip.AddressFamily) { NoDelay = true };
-            await tcp.ConnectAsync(ip, 443, cts.Token).ConfigureAwait(false);
+            await tcp.ConnectAsync(ip, port, cts.Token).ConfigureAwait(false);
             using var ssl = new SslStream(tcp.GetStream(), leaveInnerStreamOpen: false);
             await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions { TargetHost = host }, cts.Token).ConfigureAwait(false);
             var code = await SendHeadRequestAsync(ssl, host, cts.Token).ConfigureAwait(false);
@@ -629,7 +891,7 @@ public sealed class BypassEngineService : IBypassEngineService
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             sw.Stop();
-            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null, ex.Message);
+            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null, FormatProbeError(ex, cts.IsCancellationRequested, "TLS/HTTPS timed out (DPI SNI drop)"));
         }
     }
 
@@ -657,7 +919,7 @@ public sealed class BypassEngineService : IBypassEngineService
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             sw.Stop();
-            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null, ex.Message);
+            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null, FormatProbeError(ex, cts.IsCancellationRequested, "TLS fragmented handshake timed out"));
         }
     }
 
@@ -681,13 +943,13 @@ public sealed class BypassEngineService : IBypassEngineService
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             sw.Stop();
-            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
+            return (false, Math.Round(sw.Elapsed.TotalMilliseconds, 1), FormatProbeError(ex, cts.IsCancellationRequested, "Upstream tunnel TLS timed out"));
         }
     }
 
     private static async Task<int> SendHeadRequestAsync(SslStream ssl, string host, CancellationToken ct)
     {
-        var req = Encoding.ASCII.GetBytes($"HEAD / HTTP/1.1\r\nHost: {host}\r\nUser-Agent: JustCryptDns/1.1\r\nConnection: close\r\n\r\n");
+        var req = Encoding.ASCII.GetBytes($"HEAD / HTTP/1.1\r\nHost: {host}\r\nUser-Agent: JustCryptDns/1.5.2\r\nConnection: close\r\n\r\n");
         await ssl.WriteAsync(req, ct).ConfigureAwait(false);
         await ssl.FlushAsync(ct).ConfigureAwait(false);
 

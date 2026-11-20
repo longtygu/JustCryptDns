@@ -107,32 +107,31 @@ public sealed class DnsEngineService : IDnsEngine
         string? port53Owner = null;
         string? port53Service = null;
         string? suggestedLoopback = null;
+        IReadOnlyList<string>? leakingIpv6Dns = null;
+        var isIpv6LoopbackBound = _proxy?.IsIpv6Bound == true;
         if (_state is DnsEngineState.Running or DnsEngineState.Degraded)
         {
             if (boundPort != 53)
             {
                 trafficStatus = SystemTrafficStatus.NonStandardPort;
-                var (procName, pid, svcName) = PortConflictDetector.TryFindPortOwnerDetails(53);
-                if (procName is not null && pid.HasValue)
-                {
-                    port53Owner = $"{procName} (PID {pid.Value})";
-                }
-
-                port53Service = svcName;
+                (port53Owner, port53Service) = ReadPort53ConflictOwner();
                 suggestedLoopback = PortConflictDetector.FindAvailableLoopbackForPort53(IPAddress.Loopback);
             }
             else if (_networkInfo is not null)
             {
                 var snap = _networkInfo.GetSnapshot();
-                var adapterDns = snap.PrimaryAdapter?.DnsServers;
                 var listenIp = IPAddress.TryParse(dns.ListenAddress, out var parsedListen)
                     ? parsedListen
                     : IPAddress.Loopback;
-                var matchesOurProxy = adapterDns is { Count: > 0 }
-                    && adapterDns.Any(ip => ip.Equals(listenIp) || (dns.EnableIpv6 && ip.Equals(IPAddress.IPv6Loopback)));
-                trafficStatus = matchesOurProxy
-                    ? SystemTrafficStatus.InterceptingSystemTraffic
-                    : SystemTrafficStatus.AdapterNotConfigured;
+                (trafficStatus, leakingIpv6Dns) = EvaluateAdapterTrafficStatus(
+                    snap.PrimaryAdapter?.DnsServers,
+                    listenIp,
+                    dns.EnableIpv6 || isIpv6LoopbackBound);
+
+                if (trafficStatus == SystemTrafficStatus.Ipv6DnsLeakDetected)
+                {
+                    (port53Owner, port53Service) = ReadPort53ConflictOwner();
+                }
             }
             else
             {
@@ -152,6 +151,8 @@ public sealed class DnsEngineService : IDnsEngine
             Port53OwnerDescription = port53Owner,
             Port53ServiceName = port53Service,
             SuggestedLoopbackIp = suggestedLoopback,
+            LeakingIpv6DnsServers = leakingIpv6Dns,
+            IsIpv6LoopbackBound = _proxy?.IsIpv6Bound == true,
             TotalQueries = Interlocked.Read(ref _totalQueries),
             SuccessfulQueries = Interlocked.Read(ref _successfulQueries),
             FailedQueries = Interlocked.Read(ref _failedQueries),
@@ -215,7 +216,8 @@ public sealed class DnsEngineService : IDnsEngine
                 }
             }
 
-            var proxy = new LocalDnsProxy(listenIp, dns.ListenPort, dns.EnableIpv6, HandleClientQueryAsync, _logger);
+            var autoBindIpv6IfFree = dns.ConfigureWindowsAdapter && dns.ListenPort == DnsSettings.DefaultListenPort;
+            var proxy = new LocalDnsProxy(listenIp, dns.ListenPort, dns.EnableIpv6, HandleClientQueryAsync, _logger, autoBindIpv6IfFree);
             try
             {
                 proxy.Start();
@@ -242,7 +244,7 @@ public sealed class DnsEngineService : IDnsEngine
                 var adapterResult = await _windowsDns.ApplyLocalProxyDnsAsync(
                     dns.TargetAdapterId,
                     listenIp.ToString(),
-                    dns.EnableIpv6 ? "::1" : null,
+                    proxy.IsIpv6Bound ? "::1" : null,
                     async ct =>
                     {
                         var probe = await ProbeActiveResolverAsync(ct).ConfigureAwait(false);
@@ -792,4 +794,58 @@ public sealed class DnsEngineService : IDnsEngine
             : BuiltInResolvers.GetByIdOrDefault(resolverId);
 
     private void RaiseStateChanged() => StateChanged?.Invoke(this, GetStats());
+
+    public static bool IsExternalIpv6Dns(IPAddress ip)
+    {
+        ArgumentNullException.ThrowIfNull(ip);
+        if (ip.AddressFamily != AddressFamily.InterNetworkV6 || IPAddress.IsLoopback(ip))
+        {
+            return false;
+        }
+
+        // Ignore Windows default site-local DNS placeholder addresses (fec0:0:0:ffff::1..3).
+        Span<byte> bytes = stackalloc byte[16];
+        if (!ip.TryWriteBytes(bytes, out _))
+        {
+            return false;
+        }
+
+        var isWindowsSiteLocalPlaceholder = bytes[0] == 0xFE
+            && bytes[1] == 0xC0
+            && bytes[2] == 0x00 && bytes[3] == 0x00 && bytes[4] == 0x00 && bytes[5] == 0x00
+            && bytes[6] == 0xFF && bytes[7] == 0xFF;
+        return !isWindowsSiteLocalPlaceholder;
+    }
+
+    public static (SystemTrafficStatus Status, IReadOnlyList<string>? LeakingIpv6) EvaluateAdapterTrafficStatus(
+        IReadOnlyList<IPAddress>? adapterDns,
+        IPAddress listenIp,
+        bool allowIpv6Loopback)
+    {
+        ArgumentNullException.ThrowIfNull(listenIp);
+        var matchesOurProxy = adapterDns is { Count: > 0 }
+            && adapterDns.Any(ip => ip.Equals(listenIp) || (allowIpv6Loopback && ip.Equals(IPAddress.IPv6Loopback)));
+
+        if (!matchesOurProxy)
+        {
+            return (SystemTrafficStatus.AdapterNotConfigured, null);
+        }
+
+        var extV6 = adapterDns!
+            .Where(IsExternalIpv6Dns)
+            .Select(ip => ip.ToString())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return extV6.Count > 0
+            ? (SystemTrafficStatus.Ipv6DnsLeakDetected, extV6)
+            : (SystemTrafficStatus.InterceptingSystemTraffic, null);
+    }
+
+    private static (string? OwnerDescription, string? ServiceName) ReadPort53ConflictOwner()
+    {
+        var (procName, pid, svcName) = PortConflictDetector.TryFindPortOwnerDetails(53, excludeSelf: true);
+        var owner = procName is not null && pid.HasValue ? $"{procName} (PID {pid.Value})" : null;
+        return (owner, svcName);
+    }
 }

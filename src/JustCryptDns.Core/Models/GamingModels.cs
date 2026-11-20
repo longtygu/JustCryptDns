@@ -146,6 +146,13 @@ public static class BuiltInGamingProfiles
         },
         new GamingPlatformProfile
         {
+            Id = "gaming-pubg",
+            Name = "PUBG: Battlegrounds",
+            Domains = ["pubg.com", "playbattlegrounds.com", "krafton.com", "acs.pubg.com", "battlegrounds.com"],
+            IsBuiltIn = true,
+        },
+        new GamingPlatformProfile
+        {
             Id = GeneralGamingId,
             Name = "General Gaming",
             Domains =
@@ -157,6 +164,7 @@ public static class BuiltInGamingProfiles
                 "ea.com",
                 "ubisoft.com",
                 "battle.net",
+                "playbattlegrounds.com",
                 "xboxlive.com",
                 "playstation.net",
             ],

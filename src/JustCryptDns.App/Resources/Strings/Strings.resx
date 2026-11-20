@@ -1296,6 +1296,15 @@
   <data name="TrafficWarn_AdapterNotConfigured" xml:space="preserve">
     <value>Engine is running on port 53, but your active Windows network adapter DNS is not pointing to 127.0.0.1 yet. Enable 'Configure Windows adapter automatically' in DNS Manager (run as Administrator) so Windows sends DNS queries through JustCryptDns.</value>
   </data>
+  <data name="TrafficWarn_Ipv6DnsLeak" xml:space="preserve">
+    <value>IPv6 DNS leak detected: your network adapter still uses ISP IPv6 DNS ({0}), which Windows may prefer over JustCryptDns and poison game/blocked domains. {1}</value>
+  </data>
+  <data name="TrafficWarn_Ipv6DnsLeak_HintConflict" xml:space="preserve">
+    <value>Stop the conflicting service on port 53 ({0}) or enable DNS Leak Guard in Connection Monitor.</value>
+  </data>
+  <data name="TrafficWarn_Ipv6DnsLeak_HintGeneral" xml:space="preserve">
+    <value>Restart the DNS engine or enable DNS Leak Guard in Connection Monitor to block IPv6 ISP DNS.</value>
+  </data>
   <data name="DnsMgr_TestLocalProxy" xml:space="preserve">
     <value>Test local proxy</value>
   </data>

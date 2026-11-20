@@ -15,8 +15,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v14: Previous schemas. v15: Connection Monitor &amp; IP Blocker. v16: Security Shield &amp; App Block policies.</summary>
-    public const int CurrentSchemaVersion = 16;
+    /// <summary>v1–v14: Previous schemas. v15: Connection Monitor &amp; IP Blocker. v16: Security Shield &amp; App Block policies. v17: PUBG/Krafton built-in bypass defaults.</summary>
+    public const int CurrentSchemaVersion = 17;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 

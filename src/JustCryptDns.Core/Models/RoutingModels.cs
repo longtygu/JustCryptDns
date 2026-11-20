@@ -271,6 +271,26 @@ public static class BuiltInRoutingProfiles
         },
         new DnsRoutingRule
         {
+            Id = "rule-gaming-pubg",
+            ProfileId = GamingProfileId,
+            Name = "PUBG Lobby",
+            Pattern = "playbattlegrounds.com",
+            MatchKind = RoutingMatchKind.DomainSuffix,
+            ResolverId = "cloudflare-doh",
+            Priority = 25,
+        },
+        new DnsRoutingRule
+        {
+            Id = "rule-gaming-pubg-core",
+            ProfileId = GamingProfileId,
+            Name = "PUBG Core",
+            Pattern = "pubg.com",
+            MatchKind = RoutingMatchKind.DomainSuffix,
+            ResolverId = "cloudflare-doh",
+            Priority = 25,
+        },
+        new DnsRoutingRule
+        {
             Id = "rule-gaming-ads",
             ProfileId = GamingProfileId,
             Name = "Telemetry & Ads Filter",

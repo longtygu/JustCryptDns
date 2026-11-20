@@ -462,6 +462,25 @@ public partial class App : Application
                     logger.LogWarning("Standalone DPI bypass auto-start did not succeed: {Error}", bypassErr);
                 }
             }
+
+            if (settings.Current.Connections.EnableDnsLeakGuard
+                && services.GetService<IFirewallBlocklistCoordinator>() is { } fwCoordinator)
+            {
+                try
+                {
+                    var conn = settings.Current.Connections;
+                    var fwRes = await fwCoordinator.SyncSecurityAsync(new Core.Models.FirewallSyncRequestPayload(
+                        conn.BlockedRules,
+                        conn.BlockedApps,
+                        EnableDnsLeakGuard: true,
+                        EnableEmergencyLockdown: false)).ConfigureAwait(false);
+                    logger.LogInformation("Standalone DNS Leak Guard auto-sync: success={Success}, msg={Msg}", fwRes.Success, fwRes.Message);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Standalone DNS Leak Guard auto-sync skipped.");
+                }
+            }
         }
         catch (Exception ex)
         {

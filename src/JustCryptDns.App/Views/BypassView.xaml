@@ -240,7 +240,9 @@
                         <Button Style="{StaticResource Button.Subtle}" Command="{Binding SelectPresetTestDomainCommand}" CommandParameter="discord.com"
                                 Content="discord.com" Margin="0,0,8,4" />
                         <Button Style="{StaticResource Button.Subtle}" Command="{Binding SelectPresetTestDomainCommand}" CommandParameter="medium.com"
-                                Content="medium.com" Margin="0,0,0,4" />
+                                Content="medium.com" Margin="0,0,8,4" />
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding SelectPresetTestDomainCommand}" CommandParameter="prod-live-front.playbattlegrounds.com"
+                                Content="prod-live-front.playbattlegrounds.com" Margin="0,0,0,4" />
                     </WrapPanel>
 
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="8" Padding="14,12"

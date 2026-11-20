@@ -54,7 +54,7 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         _networkInfo = networkInfo;
         _resolverLibrary = resolverLibrary;
         _version = typeof(ServiceStateManager).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.1.0";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.5.2";
     }
 
     public async Task InitializeFromSettingsAsync(CancellationToken cancellationToken = default)
@@ -74,9 +74,10 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         await _windowsDns.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation(
-            "Service initialized from settings (autoStartDns={AutoStart}, autoBypass={AutoBypass}, gamingOnStartup={Gaming})",
+            "Service initialized from settings (autoStartDns={AutoStart}, autoBypass={AutoBypass}, leakGuard={LeakGuard}, gamingOnStartup={Gaming})",
             current.General.AutoStartDnsEngine,
             current.Bypass.IsBypassEnabled && current.Bypass.AutoStartWithDnsEngine,
+            current.Connections.EnableDnsLeakGuard,
             current.General.EnableGamingModeOnStartup);
 
         if (current.General.AutoStartDnsEngine)
@@ -86,15 +87,71 @@ public sealed class ServiceStateManager : IServiceIpcHandler
             {
                 _logger.LogWarning("Auto-start DNS engine did not succeed: {Error}", err);
             }
-            else if (current.Bypass.IsBypassEnabled && current.Bypass.AutoStartWithDnsEngine && _bypassEngine is not null)
+            else
             {
-                var (bypassOk, bypassErr) = await _bypassEngine.StartAsync(cancellationToken).ConfigureAwait(false);
-                if (!bypassOk)
+                if (current.Bypass.IsBypassEnabled && current.Bypass.AutoStartWithDnsEngine && _bypassEngine is not null)
                 {
-                    _logger.LogWarning("Auto-start Bypass engine did not succeed: {Error}", bypassErr);
+                    var (bypassOk, bypassErr) = await _bypassEngine.StartAsync(cancellationToken).ConfigureAwait(false);
+                    if (!bypassOk)
+                    {
+                        _logger.LogWarning("Auto-start Bypass engine did not succeed: {Error}", bypassErr);
+                    }
                 }
+
+                await ReapplySecurityShieldOnStartupAsync(current, cancellationToken).ConfigureAwait(false);
             }
         }
+    }
+
+    private async Task ReapplySecurityShieldOnStartupAsync(AppSettings current, CancellationToken cancellationToken)
+    {
+        var conn = current.Connections;
+        if (_firewallManager is null || !conn.EnableDnsLeakGuard)
+        {
+            return;
+        }
+
+        try
+        {
+            var allowedIps = BuildAllowedResolverIps();
+            var protectedContext = ProtectedIpContext.Build(
+                _networkInfo?.GetSnapshot(),
+                _resolverLibrary?.GetAll(),
+                current.Dns,
+                current.Bypass,
+                _reverseLookupCache);
+            var payload = new FirewallSyncRequestPayload(
+                conn.BlockedRules,
+                conn.BlockedApps,
+                EnableDnsLeakGuard: true,
+                EnableEmergencyLockdown: false,
+                AllowedDnsResolverIps: allowedIps);
+            var result = await _firewallManager.SyncSecurityPoliciesAsync(payload, protectedContext, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation(
+                "Startup Security Shield sync (LeakGuard=true): success={Success}, message={Message}",
+                result.Success,
+                result.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Startup Security Shield auto-sync failed safely.");
+        }
+    }
+
+    private List<string> BuildAllowedResolverIps()
+    {
+        var ips = new List<string>();
+        if (_resolverLibrary is not null)
+        {
+            foreach (var r in new[] { _resolverLibrary.GetPrimaryResolver(), _resolverLibrary.GetSecondaryResolver() })
+            {
+                if (!string.IsNullOrWhiteSpace(r.PrimaryIp)) ips.Add(r.PrimaryIp);
+                if (!string.IsNullOrWhiteSpace(r.SecondaryIp)) ips.Add(r.SecondaryIp);
+                if (!string.IsNullOrWhiteSpace(r.PrimaryIpv6)) ips.Add(r.PrimaryIpv6);
+            }
+        }
+
+        return ips;
     }
 
     public ServiceStatusSnapshot GetSnapshot()

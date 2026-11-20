@@ -1296,6 +1296,15 @@
   <data name="TrafficWarn_AdapterNotConfigured" xml:space="preserve">
     <value>Engine đang chạy trên cổng 53, nhưng DNS của bộ điều hợp mạng Windows chưa trỏ về 127.0.0.1. Hãy bật 'Tự động cấu hình DNS cho bộ điều hợp Windows' trong Quản lý DNS (chạy với quyền Quản trị viên) để Windows gửi truy vấn qua JustCryptDns.</value>
   </data>
+  <data name="TrafficWarn_Ipv6DnsLeak" xml:space="preserve">
+    <value>Phát hiện rò rỉ DNS IPv6: card mạng vẫn còn DNS IPv6 của nhà mạng ({0}), Windows có thể ưu tiên hỏi DNS này và bị chặn/đầu độc tên miền game hoặc web. {1}</value>
+  </data>
+  <data name="TrafficWarn_Ipv6DnsLeak_HintConflict" xml:space="preserve">
+    <value>Hãy dừng dịch vụ đang chiếm cổng 53 ({0}) hoặc bật Chống rò rỉ DNS trong Giám sát kết nối.</value>
+  </data>
+  <data name="TrafficWarn_Ipv6DnsLeak_HintGeneral" xml:space="preserve">
+    <value>Hãy khởi động lại DNS Engine hoặc bật Chống rò rỉ DNS trong Giám sát kết nối để chặn DNS IPv6 nhà mạng.</value>
+  </data>
   <data name="DnsMgr_TestLocalProxy" xml:space="preserve">
     <value>Kiểm tra proxy cục bộ</value>
   </data>

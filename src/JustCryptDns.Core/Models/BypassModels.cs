@@ -215,7 +215,13 @@ public sealed record BypassTestResult
 {
     public required string Host { get; init; }
 
+    public int TestedPort { get; init; } = 443;
+
     public string? ResolvedIp { get; init; }
+
+    public bool OsDnsPoisoned { get; init; }
+
+    public bool IsNonHttpsPort { get; init; }
 
     public bool DirectSucceeded { get; init; }
 
@@ -312,6 +318,9 @@ public static class BuiltInBypassRules
         Rule("gaming-battlenet", "Battle.net", "battle.net", RoutingMatchKind.DomainSuffix, BypassMode.AutoHybrid, CategoryGaming, enabled: false),
         Rule("gaming-gog", "GOG", "gog.com", RoutingMatchKind.DomainSuffix, BypassMode.AutoHybrid, CategoryGaming, enabled: false),
         Rule("gaming-itch", "itch.io", "itch.io", RoutingMatchKind.DomainSuffix, BypassMode.AutoHybrid, CategoryGaming, enabled: false),
+        Rule("gaming-pubg", "PUBG", "pubg.com", RoutingMatchKind.DomainSuffix, BypassMode.AutoHybrid, CategoryGaming, enabled: true),
+        Rule("gaming-playbattlegrounds", "PUBG Lobby", "playbattlegrounds.com", RoutingMatchKind.DomainSuffix, BypassMode.AutoHybrid, CategoryGaming, enabled: true),
+        Rule("gaming-krafton", "Krafton Accounts", "krafton.com", RoutingMatchKind.DomainSuffix, BypassMode.AutoHybrid, CategoryGaming, enabled: true),
 
         // Blocked Web & Media (enabled by default)
         Rule("web-medium", "Medium", "medium.com", RoutingMatchKind.DomainSuffix, BypassMode.AutoHybrid, CategoryWeb, enabled: true),

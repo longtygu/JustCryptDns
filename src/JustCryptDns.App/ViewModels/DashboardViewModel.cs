@@ -443,6 +443,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         {
             s.Dns.ListenAddress = DnsSettings.DefaultListenAddress;
             s.Dns.ListenPort = 53;
+            s.Dns.ConfigureWindowsAdapter = true;
         });
 
         var (ok, err) = await _dnsEngine.RestartAsync();
@@ -551,17 +552,31 @@ public sealed partial class DashboardViewModel : PageViewModel
         TrafficStatus = stats.TrafficStatus;
         SuggestedLoopbackIp = stats.SuggestedLoopbackIp;
         ConflictingServiceName = stats.Port53ServiceName;
-        TrafficWarningBanner = stats.TrafficStatus switch
-        {
-            SystemTrafficStatus.NonStandardPort => Localization.LocalizationManager.Instance.Format(
-                "TrafficWarn_NonStandardPort",
-                stats.BoundPort,
-                stats.Port53OwnerDescription ?? Localization.LocalizationManager.Instance["Common_Unknown"]),
-            SystemTrafficStatus.AdapterNotConfigured => Localization.LocalizationManager.Instance["TrafficWarn_AdapterNotConfigured"],
-            _ => null,
-        };
+        TrafficWarningBanner = FormatTrafficWarning(stats);
         EngineError = stats.LastError;
         UpdateTelemetryTargets();
+    }
+
+    internal static string? FormatTrafficWarning(DnsEngineRuntimeStats stats)
+    {
+        var loc = Localization.LocalizationManager.Instance;
+        return stats.TrafficStatus switch
+        {
+            SystemTrafficStatus.NonStandardPort => loc.Format(
+                "TrafficWarn_NonStandardPort",
+                stats.BoundPort,
+                stats.Port53OwnerDescription ?? loc["Common_Unknown"]),
+            SystemTrafficStatus.AdapterNotConfigured => loc["TrafficWarn_AdapterNotConfigured"],
+            SystemTrafficStatus.Ipv6DnsLeakDetected => loc.Format(
+                "TrafficWarn_Ipv6DnsLeak",
+                stats.LeakingIpv6DnsServers is { Count: > 0 } servers
+                    ? string.Join(", ", servers)
+                    : loc["Common_Unknown"],
+                !string.IsNullOrWhiteSpace(stats.Port53OwnerDescription) || !string.IsNullOrWhiteSpace(stats.Port53ServiceName)
+                    ? loc.Format("TrafficWarn_Ipv6DnsLeak_HintConflict", stats.Port53OwnerDescription ?? stats.Port53ServiceName!)
+                    : loc["TrafficWarn_Ipv6DnsLeak_HintGeneral"]),
+            _ => null,
+        };
     }
 
     internal static IpFamilyStatus EvaluateIPv4(NetworkAdapterInfo? adapter)

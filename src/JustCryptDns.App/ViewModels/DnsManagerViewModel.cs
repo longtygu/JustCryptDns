@@ -300,6 +300,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
             {
                 s.Dns.ListenAddress = DnsSettings.DefaultListenAddress;
                 s.Dns.ListenPort = 53;
+                s.Dns.ConfigureWindowsAdapter = true;
             });
 
             _loading = true;
@@ -457,15 +458,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         IsNonStandardPort = stats.TrafficStatus == SystemTrafficStatus.NonStandardPort;
         SuggestedLoopbackIp = stats.SuggestedLoopbackIp ?? stats.PortConflict?.SuggestedLoopbackIp;
         ConflictingServiceName = stats.Port53ServiceName ?? stats.PortConflict?.ConflictingServiceName;
-        TrafficWarningBanner = stats.TrafficStatus switch
-        {
-            SystemTrafficStatus.NonStandardPort => LocalizationManager.Instance.Format(
-                "TrafficWarn_NonStandardPort",
-                stats.BoundPort,
-                stats.Port53OwnerDescription ?? LocalizationManager.Instance["Common_Unknown"]),
-            SystemTrafficStatus.AdapterNotConfigured => LocalizationManager.Instance["TrafficWarn_AdapterNotConfigured"],
-            _ => null,
-        };
+        TrafficWarningBanner = DashboardViewModel.FormatTrafficWarning(stats);
         PortConflict = stats.PortConflict;
         ErrorMessage = stats.PortConflict is null ? stats.LastError : null;
         HasAdapterBackup = stats.HasAdapterBackup;

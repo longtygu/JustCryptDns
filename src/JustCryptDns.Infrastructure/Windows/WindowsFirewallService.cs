@@ -261,7 +261,7 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
                     NetFwRuleDirOut,
                     NetFwIpProtocolUdp,
                     v4Ranges,
-                    "53",
+                    "53,853",
                     null);
 
                 desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Tcp53_853_V4"] = new DesiredRuleSpec(
@@ -279,7 +279,7 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
                     NetFwRuleDirOut,
                     NetFwIpProtocolUdp,
                     v6Ranges,
-                    "53",
+                    "53,853",
                     null);
 
                 desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Tcp53_853_V6"] = new DesiredRuleSpec(

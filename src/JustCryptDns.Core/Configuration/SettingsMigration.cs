@@ -243,6 +243,53 @@ internal sealed class MigrationV15ToV16 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v17 appends built-in PUBG / Krafton smart bypass rules to existing user bypass rule lists.
+/// </summary>
+internal sealed class MigrationV16ToV17 : ISettingsMigration
+{
+    private static readonly string[] PubgRuleIds = ["gaming-pubg", "gaming-playbattlegrounds", "gaming-krafton"];
+
+    public int FromVersion => 16;
+
+    public void Apply(JsonObject document)
+    {
+        if (document["bypass"] is not JsonObject bypass || bypass["rules"] is not JsonArray rules)
+        {
+            return;
+        }
+
+        var existingIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var node in rules)
+        {
+            if (node is JsonObject obj && obj["id"] is JsonValue idVal && idVal.TryGetValue<string>(out var id))
+            {
+                existingIds.Add(id);
+            }
+        }
+
+        foreach (var targetId in PubgRuleIds)
+        {
+            if (existingIds.Contains(targetId))
+            {
+                continue;
+            }
+
+            var rule = Models.BuiltInBypassRules.All.FirstOrDefault(r => string.Equals(r.Id, targetId, StringComparison.OrdinalIgnoreCase));
+            if (rule is null)
+            {
+                continue;
+            }
+
+            var serialized = JsonSerializer.SerializeToNode(rule, SettingsJson.Options);
+            if (serialized is not null)
+            {
+                rules.Add(serialized);
+            }
+        }
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -256,7 +303,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12(), new MigrationV12ToV13(), new MigrationV13ToV14(), new MigrationV14ToV15(), new MigrationV15ToV16()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12(), new MigrationV12ToV13(), new MigrationV13ToV14(), new MigrationV14ToV15(), new MigrationV15ToV16(), new MigrationV16ToV17()];
 
     public static int ReadVersion(JsonObject document)
     {

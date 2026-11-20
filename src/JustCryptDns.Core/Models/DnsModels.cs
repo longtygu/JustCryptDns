@@ -812,6 +812,7 @@ public enum SystemTrafficStatus
     InterceptingSystemTraffic,
     NonStandardPort,
     AdapterNotConfigured,
+    Ipv6DnsLeakDetected,
 }
 
 public sealed record AdapterDnsBackupEntry
@@ -881,6 +882,10 @@ public sealed record DnsEngineRuntimeStats
     public string? Port53ServiceName { get; init; }
 
     public string? SuggestedLoopbackIp { get; init; }
+
+    public IReadOnlyList<string>? LeakingIpv6DnsServers { get; init; }
+
+    public bool IsIpv6LoopbackBound { get; init; }
 
     public long TotalQueries { get; init; }
 

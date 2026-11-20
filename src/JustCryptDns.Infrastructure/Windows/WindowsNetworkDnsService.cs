@@ -480,6 +480,8 @@ public sealed class WindowsNetworkDnsService : IWindowsDnsManager, IDisposable
             var hasStaleIpv6Loopback = verified.Adapters.FirstOrDefault(a => a.AdapterId == adapter.Id) is { WasIpv6Dhcp: false } v6Entry
                 && v6Entry.Ipv6DnsServers.Any(s => string.Equals(s, "::1", StringComparison.OrdinalIgnoreCase));
             var hasExplicitIpv6 = !string.IsNullOrWhiteSpace(ipv6Dns);
+            var adapterHasIpv6 = adapter.IPv6Addresses.Count > 0
+                || adapter.DnsServers.Any(d => d.AddressFamily == AddressFamily.InterNetworkV6);
             var target = new AdapterDnsTarget(
                 AdapterName: adapter.Name,
                 ApplyIpv4: true,
@@ -488,7 +490,7 @@ public sealed class WindowsNetworkDnsService : IWindowsDnsManager, IDisposable
                 ApplyIpv6: hasExplicitIpv6 || hasStaleIpv6Loopback,
                 IsIpv6Dhcp: !hasExplicitIpv6,
                 Ipv6Servers: hasExplicitIpv6 ? [ipv6Dns!] : [],
-                IgnoreIpv6Errors: !hasExplicitIpv6);
+                IgnoreIpv6Errors: !hasExplicitIpv6 || !adapterHasIpv6);
 
             var applyResult = await _configurator.ApplyBatchAsync([target], cancellationToken).ConfigureAwait(false);
             if (!applyResult.Success)

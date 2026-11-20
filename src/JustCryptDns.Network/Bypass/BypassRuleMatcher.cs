@@ -176,6 +176,64 @@ public sealed class BypassRuleMatcher
         return false;
     }
 
+    public static (string Host, int Port, bool HasExplicitPort) ParseHostAndPort(string? input, int defaultPort = 443)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return (string.Empty, defaultPort, false);
+        }
+
+        var text = input.Trim();
+        var schemeIdx = text.IndexOf("://", StringComparison.Ordinal);
+        if (schemeIdx >= 0)
+        {
+            if (Uri.TryCreate(text, UriKind.Absolute, out var uri) && !string.IsNullOrWhiteSpace(uri.Host))
+            {
+                var explicitPort = !uri.IsDefaultPort && uri.Port > 0;
+                return (NormalizeHost(uri.Host), explicitPort ? uri.Port : defaultPort, explicitPort);
+            }
+
+            text = text[(schemeIdx + 3)..];
+        }
+
+        var slashIdx = text.IndexOfAny(['/', '?', '#']);
+        if (slashIdx >= 0)
+        {
+            text = text[..slashIdx];
+        }
+
+        if (text.StartsWith('['))
+        {
+            var closeBracket = text.IndexOf(']');
+            if (closeBracket > 1)
+            {
+                var hostPart = NormalizeHost(text[..(closeBracket + 1)]);
+                if (closeBracket + 1 < text.Length && text[closeBracket + 1] == ':'
+                    && int.TryParse(text[(closeBracket + 2)..], out var v6Port)
+                    && v6Port is > 0 and <= 65535)
+                {
+                    return (hostPart, v6Port, true);
+                }
+
+                return (hostPart, defaultPort, false);
+            }
+        }
+
+        var colonCount = text.Count(c => c == ':');
+        if (colonCount == 1)
+        {
+            var colonIdx = text.IndexOf(':');
+            if (int.TryParse(text[(colonIdx + 1)..], out var parsedPort) && parsedPort is > 0 and <= 65535)
+            {
+                return (NormalizeHost(text[..colonIdx]), parsedPort, true);
+            }
+
+            return (NormalizeHost(text[..colonIdx]), defaultPort, false);
+        }
+
+        return (NormalizeHost(text), defaultPort, false);
+    }
+
     public static string NormalizeHost(string? host)
     {
         if (string.IsNullOrWhiteSpace(host))

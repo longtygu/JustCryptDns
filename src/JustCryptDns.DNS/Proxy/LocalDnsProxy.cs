@@ -139,7 +139,7 @@ public static class PortConflictDetector
         return (proc, pid);
     }
 
-    public static (string? ProcessName, int? Pid, string? ServiceName) TryFindPortOwnerDetails(int port)
+    public static (string? ProcessName, int? Pid, string? ServiceName) TryFindPortOwnerDetails(int port, bool excludeSelf = false)
     {
         if (!OperatingSystem.IsWindows() || port <= 0)
         {
@@ -148,7 +148,11 @@ public static class PortConflictDetector
 
         try
         {
-            var pid = FindUdpOwnerPid(port) ?? FindTcpOwnerPid(port);
+            var selfPid = excludeSelf ? Environment.ProcessId : -1;
+            var pid = FindUdpOwnerPid(port, addressFamily: 2, selfPid)
+                ?? FindTcpOwnerPid(port, addressFamily: 2, selfPid)
+                ?? FindUdpOwnerPid(port, addressFamily: 23, selfPid)
+                ?? FindTcpOwnerPid(port, addressFamily: 23, selfPid);
             if (pid is > 4)
             {
                 string? procName = null;
@@ -330,10 +334,10 @@ public static class PortConflictDetector
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CloseServiceHandle(nint hSCObject);
 
-    private static int? FindUdpOwnerPid(int targetPort)
+    private static int? FindUdpOwnerPid(int targetPort, int addressFamily, int excludePid)
     {
         var bufferSize = 0;
-        _ = GetExtendedUdpTable(nint.Zero, ref bufferSize, false, 2 /* AF_INET */, 1 /* UDP_TABLE_OWNER_PID */, 0);
+        _ = GetExtendedUdpTable(nint.Zero, ref bufferSize, false, addressFamily, 1 /* UDP_TABLE_OWNER_PID */, 0);
         if (bufferSize <= 0)
         {
             return null;
@@ -342,21 +346,25 @@ public static class PortConflictDetector
         var buffer = Marshal.AllocHGlobal(bufferSize);
         try
         {
-            if (GetExtendedUdpTable(buffer, ref bufferSize, false, 2, 1, 0) != 0)
+            if (GetExtendedUdpTable(buffer, ref bufferSize, false, addressFamily, 1, 0) != 0)
             {
                 return null;
             }
 
             var count = Marshal.ReadInt32(buffer);
             var rowPtr = buffer + 4;
-            const int rowSize = 12; // localAddr (4) + localPort (4) + owningPid (4)
+            var isIpv6 = addressFamily == 23;
+            var rowSize = isIpv6 ? 28 : 12;
+            var portOffset = isIpv6 ? 20 : 4;
+            var pidOffset = isIpv6 ? 24 : 8;
             for (var i = 0; i < count; i++)
             {
-                var rawPort = Marshal.ReadInt32(rowPtr + 4);
+                var rawPort = Marshal.ReadInt32(rowPtr + portOffset);
                 var port = ((rawPort & 0xFF) << 8) | ((rawPort >> 8) & 0xFF);
-                if (port == targetPort)
+                var pid = Marshal.ReadInt32(rowPtr + pidOffset);
+                if (port == targetPort && pid > 4 && pid != excludePid)
                 {
-                    return Marshal.ReadInt32(rowPtr + 8);
+                    return pid;
                 }
 
                 rowPtr += rowSize;
@@ -370,10 +378,10 @@ public static class PortConflictDetector
         return null;
     }
 
-    private static int? FindTcpOwnerPid(int targetPort)
+    private static int? FindTcpOwnerPid(int targetPort, int addressFamily, int excludePid)
     {
         var bufferSize = 0;
-        _ = GetExtendedTcpTable(nint.Zero, ref bufferSize, false, 2 /* AF_INET */, 5 /* TCP_TABLE_OWNER_PID_ALL */, 0);
+        _ = GetExtendedTcpTable(nint.Zero, ref bufferSize, false, addressFamily, 5 /* TCP_TABLE_OWNER_PID_ALL */, 0);
         if (bufferSize <= 0)
         {
             return null;
@@ -382,22 +390,27 @@ public static class PortConflictDetector
         var buffer = Marshal.AllocHGlobal(bufferSize);
         try
         {
-            if (GetExtendedTcpTable(buffer, ref bufferSize, false, 2, 5, 0) != 0)
+            if (GetExtendedTcpTable(buffer, ref bufferSize, false, addressFamily, 5, 0) != 0)
             {
                 return null;
             }
 
             var count = Marshal.ReadInt32(buffer);
             var rowPtr = buffer + 4;
-            const int rowSize = 24; // state(4)+localAddr(4)+localPort(4)+remoteAddr(4)+remotePort(4)+pid(4)
+            var isIpv6 = addressFamily == 23;
+            var rowSize = isIpv6 ? 56 : 24;
+            var stateOffset = isIpv6 ? 48 : 0;
+            var portOffset = isIpv6 ? 20 : 8;
+            var pidOffset = isIpv6 ? 52 : 20;
             for (var i = 0; i < count; i++)
             {
-                var state = Marshal.ReadInt32(rowPtr);
-                var rawPort = Marshal.ReadInt32(rowPtr + 8);
+                var state = Marshal.ReadInt32(rowPtr + stateOffset);
+                var rawPort = Marshal.ReadInt32(rowPtr + portOffset);
                 var port = ((rawPort & 0xFF) << 8) | ((rawPort >> 8) & 0xFF);
-                if (state == 2 /* LISTEN */ && port == targetPort)
+                var pid = Marshal.ReadInt32(rowPtr + pidOffset);
+                if (state == 2 /* LISTEN */ && port == targetPort && pid > 4 && pid != excludePid)
                 {
-                    return Marshal.ReadInt32(rowPtr + 20);
+                    return pid;
                 }
 
                 rowPtr += rowSize;
@@ -491,6 +504,7 @@ public sealed class LocalDnsProxy : IAsyncDisposable
     private readonly IPAddress _listenAddress;
     private readonly int _port;
     private readonly bool _enableIpv6;
+    private readonly bool _autoBindIpv6IfFree;
     private readonly Func<ReadOnlyMemory<byte>, CancellationToken, Task<byte[]>> _queryHandler;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _concurrency = new(MaxConcurrentQueries, MaxConcurrentQueries);
@@ -504,16 +518,20 @@ public sealed class LocalDnsProxy : IAsyncDisposable
         int port,
         bool enableIpv6,
         Func<ReadOnlyMemory<byte>, CancellationToken, Task<byte[]>> queryHandler,
-        ILogger logger)
+        ILogger logger,
+        bool autoBindIpv6IfFree = false)
     {
         _listenAddress = listenAddress;
         _port = port;
         _enableIpv6 = enableIpv6;
+        _autoBindIpv6IfFree = autoBindIpv6IfFree;
         _queryHandler = queryHandler;
         _logger = logger;
     }
 
     public int BoundPort { get; private set; }
+
+    public bool IsIpv6Bound { get; private set; }
 
     public void Start()
     {
@@ -522,13 +540,30 @@ public sealed class LocalDnsProxy : IAsyncDisposable
             return;
         }
 
+        IsIpv6Bound = false;
         _cts = new CancellationTokenSource();
         try
         {
             BindEndpoint(_listenAddress, _port, _cts.Token);
-            if (_enableIpv6 && _listenAddress.AddressFamily == AddressFamily.InterNetwork)
+            if (_listenAddress.AddressFamily == AddressFamily.InterNetwork)
             {
-                BindEndpoint(IPAddress.IPv6Loopback, BoundPort, _cts.Token);
+                if (_enableIpv6)
+                {
+                    BindEndpoint(IPAddress.IPv6Loopback, BoundPort, _cts.Token);
+                    IsIpv6Bound = true;
+                }
+                else if (_autoBindIpv6IfFree && BoundPort == 53 && PortConflictDetector.CanBindUdpAndTcp(IPAddress.IPv6Loopback, 53))
+                {
+                    try
+                    {
+                        BindEndpoint(IPAddress.IPv6Loopback, 53, _cts.Token);
+                        IsIpv6Bound = true;
+                    }
+                    catch (SocketException ex)
+                    {
+                        _logger.LogDebug(ex, "Optional IPv6 loopback auto-bind on [::1]:53 skipped.");
+                    }
+                }
             }
         }
         catch
