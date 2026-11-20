@@ -12,6 +12,8 @@ namespace JustCryptDns.App.Controls;
 /// </summary>
 public static class CopyTextBehavior
 {
+    private sealed record SavedButtonState(object? Content, object LocalForeground);
+
     public static readonly DependencyProperty CopyTextProperty = DependencyProperty.RegisterAttached(
         "CopyText",
         typeof(string),
@@ -24,17 +26,11 @@ public static class CopyTextBehavior
         typeof(CopyTextBehavior),
         new PropertyMetadata(null));
 
-    private static readonly DependencyProperty SavedContentProperty = DependencyProperty.RegisterAttached(
-        "SavedContent",
-        typeof(object),
+    private static readonly DependencyProperty SavedStateProperty = DependencyProperty.RegisterAttached(
+        "SavedState",
+        typeof(SavedButtonState),
         typeof(CopyTextBehavior),
-        new PropertyMetadata(DependencyProperty.UnsetValue));
-
-    private static readonly DependencyProperty SavedForegroundProperty = DependencyProperty.RegisterAttached(
-        "SavedForeground",
-        typeof(object),
-        typeof(CopyTextBehavior),
-        new PropertyMetadata(DependencyProperty.UnsetValue));
+        new PropertyMetadata(null));
 
     public static string? GetCopyText(DependencyObject obj) => (string?)obj.GetValue(CopyTextProperty);
 
@@ -98,9 +94,9 @@ public static class CopyTextBehavior
         }
         else
         {
-            button.SetValue(SavedContentProperty, button.Content);
-            var localFg = button.ReadLocalValue(Control.ForegroundProperty);
-            button.SetValue(SavedForegroundProperty, localFg);
+            button.SetValue(
+                SavedStateProperty,
+                new SavedButtonState(button.Content, button.ReadLocalValue(Control.ForegroundProperty)));
         }
 
         button.Content = "\uE73E";
@@ -122,25 +118,21 @@ public static class CopyTextBehavior
 
     private static void RestoreVisualState(Button button)
     {
-        var savedContent = button.GetValue(SavedContentProperty);
-        if (!Equals(savedContent, DependencyProperty.UnsetValue))
+        if (button.GetValue(SavedStateProperty) is SavedButtonState saved)
         {
-            button.Content = savedContent;
-        }
-
-        var savedFg = button.GetValue(SavedForegroundProperty);
-        if (Equals(savedFg, DependencyProperty.UnsetValue))
-        {
-            button.ClearValue(Control.ForegroundProperty);
-        }
-        else
-        {
-            button.SetValue(Control.ForegroundProperty, savedFg);
+            button.Content = saved.Content;
+            if (Equals(saved.LocalForeground, DependencyProperty.UnsetValue))
+            {
+                button.ClearValue(Control.ForegroundProperty);
+            }
+            else
+            {
+                button.SetValue(Control.ForegroundProperty, saved.LocalForeground);
+            }
         }
 
         button.ToolTip = LocalizationManager.Instance["Common_Copy"];
         button.ClearValue(ResetTimerProperty);
-        button.ClearValue(SavedContentProperty);
-        button.ClearValue(SavedForegroundProperty);
+        button.ClearValue(SavedStateProperty);
     }
 }

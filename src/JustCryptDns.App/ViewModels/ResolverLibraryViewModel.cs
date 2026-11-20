@@ -600,7 +600,7 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
     private void StartScanElapsedTimer()
     {
         StopScanElapsedTimer();
-        if (System.Windows.Application.Current?.Dispatcher is not { } dispatcher)
+        if (System.Windows.Application.Current?.Dispatcher is not { HasShutdownStarted: false, HasShutdownFinished: false } dispatcher)
         {
             return;
         }
@@ -697,7 +697,7 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
             }
         }
 
-        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        if (System.Windows.Application.Current?.Dispatcher is { HasShutdownStarted: false, HasShutdownFinished: false } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(Apply);
         }
@@ -873,7 +873,7 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
 
     private void OnLibraryChanged(object? sender, EventArgs e)
     {
-        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        if (System.Windows.Application.Current?.Dispatcher is { HasShutdownStarted: false, HasShutdownFinished: false } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(RefreshCatalog);
         }
@@ -891,7 +891,7 @@ public sealed partial class ResolverLibraryViewModel : PageViewModel
             match?.ApplyHealth(health);
         }
 
-        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        if (System.Windows.Application.Current?.Dispatcher is { HasShutdownStarted: false, HasShutdownFinished: false } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(Apply);
         }

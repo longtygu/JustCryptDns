@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JustCryptDns.Tests.DNS;
 
+[Collection("WpfApplication")]
 public sealed class ResolverLibraryPhase5Tests
 {
     private sealed class MemorySettingsStore : ISettingsStore

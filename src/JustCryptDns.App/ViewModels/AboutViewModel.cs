@@ -115,7 +115,7 @@ public sealed partial class AboutViewModel : ObservableObject, IDisposable
 
     public string FacebookUrl => BugReportBuilder.AuthorFacebookUrl;
 
-    public string AvatarPackUri => "pack://application:,,,/Resources/AuthorAvatar.jpg";
+    public string AvatarPackUri => "pack://application:,,,/JustCryptDns;component/Resources/AuthorAvatar.jpg";
 
     public string Version { get; }
 
