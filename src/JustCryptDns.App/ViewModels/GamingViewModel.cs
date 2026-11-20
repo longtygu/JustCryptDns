@@ -1,5 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text;
+using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Localization;
@@ -8,12 +11,27 @@ using JustCryptDns.Core.Models;
 
 namespace JustCryptDns.App.ViewModels;
 
+public sealed record GamingBenchmarkLogEntry(
+    DateTimeOffset Timestamp,
+    string Outcome,
+    string OutcomeKey,
+    string ProtocolBadge,
+    string ResolverName,
+    string Domain,
+    string LatencyText,
+    string DetailText);
+
 public sealed partial class GamingViewModel : PageViewModel
 {
+    private const int MaxBenchmarkLogEntries = 300;
+
     private readonly IGamingEngineService _gaming;
     private readonly IResolverLibraryService _resolvers;
     private readonly IDnsEngine _dnsEngine;
     private readonly IBypassEngineService? _bypassEngine;
+    private readonly DispatcherTimer? _benchmarkElapsedTimer;
+    private CancellationTokenSource? _benchmarkCts;
+    private DateTimeOffset _benchmarkStartedAt;
     private bool _loading;
 
     [ObservableProperty] private bool _isGamingModeEnabled;
@@ -27,6 +45,17 @@ public sealed partial class GamingViewModel : PageViewModel
     [ObservableProperty] private string _liveCacheHitText = "0%";
     [ObservableProperty] private long _liveTotalQueries;
     [ObservableProperty] private bool _isBenchmarking;
+    [ObservableProperty] private bool _hasBenchmarkPanel;
+    [ObservableProperty] private bool _benchmarkWasCancelled;
+    [ObservableProperty] private double _benchmarkProgressPercent;
+    [ObservableProperty] private string _benchmarkCounterText = "0 / 0";
+    [ObservableProperty] private string _benchmarkQueryCounterText = "0 / 0";
+    [ObservableProperty] private string _benchmarkCurrentTarget = "—";
+    [ObservableProperty] private string _benchmarkElapsedDisplay = "0.0s";
+    [ObservableProperty] private string _benchmarkHeaderKey = "Gaming_Bench_Header_Running";
+    [ObservableProperty] private int _benchmarkSuccessQueries;
+    [ObservableProperty] private int _benchmarkFailedQueries;
+    [ObservableProperty] private string? _benchmarkLogClipboardText;
     [ObservableProperty] private string? _benchmarkProgressText;
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private string? _errorMessage;
@@ -47,6 +76,23 @@ public sealed partial class GamingViewModel : PageViewModel
         _dnsEngine = dnsEngine;
         _bypassEngine = bypassEngine;
 
+        if (Application.Current?.Dispatcher is { } dispatcher)
+        {
+            _benchmarkElapsedTimer = new DispatcherTimer(DispatcherPriority.Normal, dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(200),
+            };
+            _benchmarkElapsedTimer.Tick += (_, _) =>
+            {
+                if (IsBenchmarking)
+                {
+                    BenchmarkElapsedDisplay = string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{Math.Max(0.0, (DateTimeOffset.Now - _benchmarkStartedAt).TotalSeconds):0.0}s");
+                }
+            };
+        }
+
         _loading = true;
         _isGamingModeEnabled = _gaming.IsGamingModeEnabled;
         _selectedOptimizationProfile = _gaming.SelectionProfile;
@@ -59,6 +105,8 @@ public sealed partial class GamingViewModel : PageViewModel
     public ObservableCollection<GamingPlatformProfile> GamingProfiles { get; } = [];
 
     public ObservableCollection<ResolverBenchmarkResult> BenchmarkResults { get; } = [];
+
+    public ObservableCollection<GamingBenchmarkLogEntry> BenchmarkLogs { get; } = [];
 
     public IReadOnlyList<GamingSelectionProfile> OptimizationProfiles { get; } = Enum.GetValues<GamingSelectionProfile>();
 
@@ -90,6 +138,9 @@ public sealed partial class GamingViewModel : PageViewModel
     {
         if (disposing)
         {
+            _benchmarkElapsedTimer?.Stop();
+            _benchmarkCts?.Cancel();
+            _benchmarkCts?.Dispose();
             _gaming.GamingStateChanged -= OnGamingStateChanged;
             _dnsEngine.StateChanged -= OnEngineStateChanged;
             if (_bypassEngine is not null)
@@ -148,44 +199,97 @@ public sealed partial class GamingViewModel : PageViewModel
         RefreshAll();
     }
 
+    [RelayCommand]
+    private void CancelBenchmark()
+    {
+        _benchmarkCts?.Cancel();
+    }
+
+    [RelayCommand]
+    private void ClearBenchmarkLog()
+    {
+        if (IsBenchmarking)
+        {
+            return;
+        }
+
+        BenchmarkLogs.Clear();
+        BenchmarkLogClipboardText = null;
+        HasBenchmarkPanel = false;
+    }
+
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task RunBenchmarkAsync()
     {
+        _benchmarkCts?.Dispose();
+        _benchmarkCts = new CancellationTokenSource();
+
         IsBenchmarking = true;
+        HasBenchmarkPanel = true;
+        BenchmarkWasCancelled = false;
         ErrorMessage = null;
+        StatusMessage = null;
+        BenchmarkLogs.Clear();
+        BenchmarkLogClipboardText = null;
+        BenchmarkProgressPercent = 0;
+        BenchmarkCounterText = "0 / 0";
+        BenchmarkQueryCounterText = "0 / 0";
+        BenchmarkCurrentTarget = "—";
+        BenchmarkElapsedDisplay = "0.0s";
+        BenchmarkSuccessQueries = 0;
+        BenchmarkFailedQueries = 0;
+        BenchmarkHeaderKey = "Gaming_Bench_Header_Running";
         BenchmarkProgressText = LocalizationManager.Instance["Gaming_Bench_Running"];
+        _benchmarkStartedAt = DateTimeOffset.Now;
+        _benchmarkElapsedTimer?.Start();
+
         try
         {
-            var progress = new Progress<(int Completed, int Total, string CurrentResolver)>(p =>
-            {
-                BenchmarkProgressText = LocalizationManager.Instance.Format("Gaming_Bench_Progress", p.Completed, p.Total, p.CurrentResolver);
-            });
+            var progress = new Progress<GamingBenchmarkProgress>(HandleBenchmarkProgress);
+            var results = await _gaming.RunBenchmarkAsync(roundsPerDomain: 2, detailedProgress: progress, _benchmarkCts.Token);
 
-            var results = await _gaming.RunBenchmarkAsync(roundsPerDomain: 2, progress: progress);
             BenchmarkResults.Clear();
             foreach (var r in results)
             {
                 BenchmarkResults.Add(r);
             }
 
-            var best = _gaming.SelectBestBenchmarkResult(results, SelectedOptimizationProfile);
-            if (best is not null)
+            if (BenchmarkWasCancelled)
             {
-                StatusMessage = LocalizationManager.Instance.Format("Gaming_Bench_Recommended", best.ResolverName, best.AverageLatencyMs, best.P95LatencyMs, best.ReliabilityScore);
+                BenchmarkHeaderKey = "Gaming_Bench_Header_Cancelled";
+                StatusMessage = LocalizationManager.Instance.Format("Gaming_Bench_CancelledSummary", results.Count);
             }
             else
             {
-                StatusMessage = LocalizationManager.Instance["Gaming_Bench_Done"];
+                BenchmarkHeaderKey = "Gaming_Bench_Header_Done";
+                BenchmarkProgressPercent = 100;
+                var best = _gaming.SelectBestBenchmarkResult(results, SelectedOptimizationProfile);
+                StatusMessage = best is not null
+                    ? LocalizationManager.Instance.Format("Gaming_Bench_Recommended", best.ResolverName, best.AverageLatencyMs, best.P95LatencyMs, best.ReliabilityScore)
+                    : LocalizationManager.Instance["Gaming_Bench_Done"];
             }
 
+            BenchmarkLogClipboardText = BuildBenchmarkClipboardText();
             RefreshAll();
+        }
+        catch (OperationCanceledException)
+        {
+            BenchmarkWasCancelled = true;
+            BenchmarkHeaderKey = "Gaming_Bench_Header_Cancelled";
+            BenchmarkLogClipboardText = BuildBenchmarkClipboardText();
         }
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
+            BenchmarkHeaderKey = "Gaming_Bench_Header_Done";
+            BenchmarkLogClipboardText = BuildBenchmarkClipboardText();
         }
         finally
         {
+            _benchmarkElapsedTimer?.Stop();
+            BenchmarkElapsedDisplay = string.Create(
+                CultureInfo.InvariantCulture,
+                $"{Math.Max(0.0, (DateTimeOffset.Now - _benchmarkStartedAt).TotalSeconds):0.0}s");
             BenchmarkProgressText = null;
             IsBenchmarking = false;
         }
@@ -273,6 +377,101 @@ public sealed partial class GamingViewModel : PageViewModel
         }
     }
 
+    private void HandleBenchmarkProgress(GamingBenchmarkProgress p)
+    {
+        BenchmarkCounterText = string.Create(CultureInfo.InvariantCulture, $"{p.CompletedResolvers} / {p.TotalResolvers}");
+        BenchmarkQueryCounterText = string.Create(CultureInfo.InvariantCulture, $"{p.CompletedQueries} / {p.TotalQueries}");
+        if (p.TotalQueries > 0)
+        {
+            BenchmarkProgressPercent = Math.Clamp(p.CompletedQueries * 100.0 / p.TotalQueries, 0, 100);
+        }
+
+        switch (p.Stage)
+        {
+            case GamingBenchmarkProgressStage.ResolverStarted:
+                BenchmarkCurrentTarget = $"{p.ResolverName} ({FormatProtocolBadge(p.Protocol)})";
+                break;
+
+            case GamingBenchmarkProgressStage.DomainProbed:
+                BenchmarkCurrentTarget = $"{p.ResolverName} · {p.Domain} (R{p.Round}/{p.TotalRounds})";
+                if (p.Success)
+                {
+                    BenchmarkSuccessQueries++;
+                }
+                else
+                {
+                    BenchmarkFailedQueries++;
+                }
+
+                var outcome = p.Success ? "Ok" : p.TimedOut ? "Timeout" : "Failed";
+                var outcomeKey = p.Success
+                    ? "Gaming_Bench_Outcome_Ok"
+                    : p.TimedOut ? "Gaming_Bench_Outcome_Timeout" : "Gaming_Bench_Outcome_Failed";
+                var latencyText = p.LatencyMs > 0
+                    ? string.Create(CultureInfo.InvariantCulture, $"{p.LatencyMs:0.0} ms")
+                    : "—";
+                var detail = p.Success
+                    ? string.Create(CultureInfo.InvariantCulture, $"R{p.Round}/{p.TotalRounds} · OK")
+                    : (string.IsNullOrWhiteSpace(p.Error) ? "Failed" : p.Error);
+
+                AddBenchmarkLogEntry(new GamingBenchmarkLogEntry(
+                    p.Timestamp,
+                    outcome,
+                    outcomeKey,
+                    FormatProtocolBadge(p.Protocol),
+                    p.ResolverName,
+                    p.Domain,
+                    latencyText,
+                    detail));
+                break;
+
+            case GamingBenchmarkProgressStage.ResolverCompleted:
+                AddBenchmarkLogEntry(new GamingBenchmarkLogEntry(
+                    p.Timestamp,
+                    p.Success ? "Summary" : "Failed",
+                    p.Success ? "Gaming_Bench_Outcome_Summary" : "Gaming_Bench_Outcome_Failed",
+                    FormatProtocolBadge(p.Protocol),
+                    p.ResolverName,
+                    "AVG / SCORE",
+                    p.Success ? string.Create(CultureInfo.InvariantCulture, $"{p.AverageLatencyMs:0.0} ms") : "—",
+                    string.Create(CultureInfo.InvariantCulture, $"Score {p.ReliabilityScore:0.0} · {p.CompletedResolvers}/{p.TotalResolvers}")));
+                break;
+
+            case GamingBenchmarkProgressStage.Cancelled:
+                BenchmarkWasCancelled = true;
+                break;
+        }
+    }
+
+    private void AddBenchmarkLogEntry(GamingBenchmarkLogEntry entry)
+    {
+        BenchmarkLogs.Insert(0, entry);
+        while (BenchmarkLogs.Count > MaxBenchmarkLogEntries)
+        {
+            BenchmarkLogs.RemoveAt(BenchmarkLogs.Count - 1);
+        }
+    }
+
+    private string BuildBenchmarkClipboardText()
+    {
+        var sb = new StringBuilder();
+        foreach (var e in BenchmarkLogs.Reverse())
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"[{e.Timestamp:HH:mm:ss}] [{e.Outcome}] [{e.ProtocolBadge}] {e.ResolverName} | {e.Domain} | {e.LatencyText} | {e.DetailText}");
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static string FormatProtocolBadge(DnsProtocol protocol) => protocol switch
+    {
+        DnsProtocol.DnsOverHttps => "DoH",
+        DnsProtocol.DnsOverTls => "DoT",
+        DnsProtocol.DnsCrypt => "DNSCrypt",
+        _ => "UDP/TCP",
+    };
+
     private void ApplyBypassSynergy()
     {
         if (_bypassEngine is null)
@@ -291,7 +490,7 @@ public sealed partial class GamingViewModel : PageViewModel
 
     private void OnBypassStateChanged(object? sender, BypassRuntimeStats stats)
     {
-        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        if (Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(ApplyBypassSynergy);
         }
@@ -323,7 +522,7 @@ public sealed partial class GamingViewModel : PageViewModel
 
     private void OnGamingStateChanged(object? sender, EventArgs e)
     {
-        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        if (Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(RefreshAll);
         }
@@ -335,7 +534,7 @@ public sealed partial class GamingViewModel : PageViewModel
 
     private void OnEngineStateChanged(object? sender, DnsEngineRuntimeStats stats)
     {
-        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        if (Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(() => ApplyEngineStats(stats));
         }

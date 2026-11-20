@@ -66,6 +66,39 @@ public sealed record DnsLeakTestReport
     public required string Summary { get; init; }
 }
 
+public enum DiagnosticTestCategory
+{
+    None,
+    Lookup,
+    Dnssec,
+    Doh,
+    DnsCrypt,
+    Leak,
+    Restrictions,
+    Compare,
+    Propagation,
+}
+
+public enum DiagnosticStepOutcome
+{
+    Running,
+    Pass,
+    Warning,
+    Fail,
+    Info,
+}
+
+public sealed record DiagnosticStepProgress(
+    DiagnosticTestCategory Category,
+    string StepTitle,
+    string Target,
+    DiagnosticStepOutcome Outcome,
+    double? LatencyMs,
+    string Detail,
+    int CompletedSteps,
+    int TotalSteps,
+    DateTimeOffset Timestamp);
+
 public sealed record LiveQueryMonitorEntry
 {
     public required DateTimeOffset Timestamp { get; init; }

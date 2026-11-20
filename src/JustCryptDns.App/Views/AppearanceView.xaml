@@ -6,6 +6,7 @@
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:svc="clr-namespace:JustCryptDns.App.Services"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="1400"
              d:DataContext="{d:DesignInstance Type=vm:AppearanceViewModel}">
     <UserControl.Resources>
@@ -44,7 +45,11 @@
 
             <!-- Theme -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_Theme}" Margin="0,0,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Appearance_Theme_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Appearance_Theme_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Appearance_Theme_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -106,7 +111,11 @@
             </Border>
 
             <!-- Accent color -->
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Appearance_Accent_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Appearance_Accent_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Appearance_Accent_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -151,7 +160,11 @@
 
             <!-- Transparency -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Appearance_Transparency}" Margin="0,16,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Appearance_Transparency_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Appearance_Transparency_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Appearance_Transparency_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -248,7 +261,11 @@
             </Border>
 
             <!-- Background -->
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Appearance_Background_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Appearance_Background_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Appearance_Background_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -273,7 +290,11 @@
 
             <!-- Layout -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Appearance_Layout}" Margin="0,16,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Appearance_Layout_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Appearance_Layout_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Appearance_Layout_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -344,7 +365,11 @@
             </Border>
 
             <!-- Scaling and text -->
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Appearance_Scaling_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Appearance_Scaling_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Appearance_Scaling_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>

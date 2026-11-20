@@ -128,8 +128,28 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         }
 
         var query = DnsPacket.CreateQuery(normDomain, qType, dnssecOk: true);
-        var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
-        var result = await upstream.QueryAsync(query, resolver, timeout, cancellationToken).ConfigureAwait(false);
+        var timeoutMs = Math.Clamp(_settings.Current.Dns.QueryTimeoutMs, 800, 5000);
+        var timeout = TimeSpan.FromMilliseconds(timeoutMs);
+        DnsQueryResult result;
+        try
+        {
+            result = await upstream
+                .QueryAsync(query, resolver, timeout, cancellationToken)
+                .WaitAsync(timeout + TimeSpan.FromMilliseconds(400), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (TimeoutException)
+        {
+            result = new DnsQueryResult(false, [], timeoutMs, resolver.Id, resolver.Protocol, $"Timed out after {timeoutMs} ms");
+        }
+        catch (Exception ex)
+        {
+            result = new DnsQueryResult(false, [], 0, resolver.Id, resolver.Protocol, ex.Message);
+        }
 
         if (!result.Success || !DnsPacket.TryParse(result.ResponseBytes, out var parsed) || parsed is null)
         {
@@ -263,9 +283,16 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         }
     }
 
-    public async Task<IReadOnlyList<ResolverComparisonEntry>> CompareResolversAsync(
+    public Task<IReadOnlyList<ResolverComparisonEntry>> CompareResolversAsync(
         string domain,
         string recordType = "A",
+        CancellationToken cancellationToken = default) =>
+        CompareResolversAsync(domain, recordType, progress: null, cancellationToken);
+
+    public async Task<IReadOnlyList<ResolverComparisonEntry>> CompareResolversAsync(
+        string domain,
+        string recordType,
+        IProgress<DiagnosticStepProgress>? progress,
         CancellationToken cancellationToken = default)
     {
         var candidates = _resolverLibrary.GetEnabled()
@@ -273,12 +300,19 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
             .Take(8)
             .ToList();
 
-        return await QueryMultipleResolversAsync(candidates, domain, recordType, cancellationToken).ConfigureAwait(false);
+        return await QueryMultipleResolversCoreAsync(DiagnosticTestCategory.Compare, candidates, domain, recordType, progress, cancellationToken).ConfigureAwait(false);
     }
+
+    public Task<IReadOnlyList<ResolverComparisonEntry>> CheckPropagationAsync(
+        string domain,
+        string recordType = "A",
+        CancellationToken cancellationToken = default) =>
+        CheckPropagationAsync(domain, recordType, progress: null, cancellationToken);
 
     public async Task<IReadOnlyList<ResolverComparisonEntry>> CheckPropagationAsync(
         string domain,
-        string recordType = "A",
+        string recordType,
+        IProgress<DiagnosticStepProgress>? progress,
         CancellationToken cancellationToken = default)
     {
         string[] globalIds =
@@ -299,7 +333,7 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
             .Where(r => _upstreams.ContainsKey(r.Protocol))
             .ToList();
 
-        return await QueryMultipleResolversAsync(candidates, domain, recordType, cancellationToken).ConfigureAwait(false);
+        return await QueryMultipleResolversCoreAsync(DiagnosticTestCategory.Propagation, candidates, domain, recordType, progress, cancellationToken).ConfigureAwait(false);
     }
 
     public Task<DnsLeakTestReport> RunDnsLeakTestAsync(CancellationToken cancellationToken = default)
@@ -350,30 +384,87 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         _defaultDoh.Dispose();
     }
 
-    private async Task<IReadOnlyList<ResolverComparisonEntry>> QueryMultipleResolversAsync(
-        IReadOnlyList<DnsResolverEndpoint> resolvers,
+    private async Task<IReadOnlyList<ResolverComparisonEntry>> QueryMultipleResolversCoreAsync(
+        DiagnosticTestCategory category,
+        List<DnsResolverEndpoint> resolvers,
         string domain,
         string recordType,
+        IProgress<DiagnosticStepProgress>? progress,
         CancellationToken cancellationToken)
     {
+        var total = resolvers.Count;
+        var completed = 0;
+        var bag = new List<ResolverComparisonEntry>(total);
+        var bagLock = new object();
+        using var throttle = new SemaphoreSlim(6, 6);
+
         var tasks = resolvers.Select(async r =>
         {
-            var report = await LookupAsync(domain, recordType, r.Id, cancellationToken).ConfigureAwait(false);
-            var primaryAnswer = report.Records.Count > 0
-                ? string.Join(", ", report.Records.Select(x => x.Value).Take(2))
-                : (report.ErrorMessage ?? report.ResponseCode);
-            return new ResolverComparisonEntry(
-                r.Name,
-                r.Provider,
-                r.Protocol,
-                report.Success,
-                report.LatencyMs,
-                report.ResponseCode,
-                primaryAnswer);
-        });
+            var acquired = false;
+            try
+            {
+                await throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+                acquired = true;
+                cancellationToken.ThrowIfCancellationRequested();
 
-        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-        return results
+                progress?.Report(new DiagnosticStepProgress(
+                    category,
+                    "Probing",
+                    $"{r.Name} ({r.Protocol})",
+                    DiagnosticStepOutcome.Running,
+                    null,
+                    $"Querying {domain} ({recordType})...",
+                    Volatile.Read(ref completed),
+                    total,
+                    DateTimeOffset.Now));
+
+                var report = await LookupAsync(domain, recordType, r.Id, cancellationToken).ConfigureAwait(false);
+                var primaryAnswer = report.Records.Count > 0
+                    ? string.Join(", ", report.Records.Select(x => x.Value).Take(2))
+                    : (report.ErrorMessage ?? report.ResponseCode);
+
+                var entry = new ResolverComparisonEntry(
+                    r.Name,
+                    r.Provider,
+                    r.Protocol,
+                    report.Success,
+                    report.LatencyMs,
+                    report.ResponseCode,
+                    primaryAnswer);
+
+                lock (bagLock)
+                {
+                    bag.Add(entry);
+                }
+
+                var doneNow = Interlocked.Increment(ref completed);
+                progress?.Report(new DiagnosticStepProgress(
+                    category,
+                    r.Provider,
+                    $"{r.Name} ({r.Protocol})",
+                    report.Success ? DiagnosticStepOutcome.Pass : DiagnosticStepOutcome.Fail,
+                    report.LatencyMs,
+                    report.Success ? $"{report.ResponseCode}: {primaryAnswer}" : (report.ErrorMessage ?? report.ResponseCode),
+                    doneNow,
+                    total,
+                    DateTimeOffset.Now));
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Partial results returned to caller when cancelled.
+            }
+            finally
+            {
+                if (acquired)
+                {
+                    throttle.Release();
+                }
+            }
+        }).ToList();
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        return bag
             .OrderByDescending(x => x.Success)
             .ThenBy(x => x.LatencyMs)
             .ToList();

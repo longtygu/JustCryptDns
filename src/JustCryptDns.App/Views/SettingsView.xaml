@@ -45,19 +45,30 @@
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="{Binding SaveError, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}">
-                    <TextBlock.Text>
-                        <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Settings_SaveError">
-                            <Binding Path="SaveError" />
-                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
-                        </MultiBinding>
-                    </TextBlock.Text>
-                </TextBlock>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <TextBox.Text>
+                            <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Settings_SaveError" Mode="OneWay">
+                                <Binding Path="SaveError" />
+                                <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                            </MultiBinding>
+                        </TextBox.Text>
+                    </TextBox>
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding SaveError}" />
+                </Grid>
             </Border>
 
             <!-- General & Startup -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_General}" Margin="0,8,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Settings_General_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Settings_General_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Settings_General_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -115,7 +126,11 @@
 
             <!-- Software Updates (GitHub) -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_Updates_Section}" Margin="0,16,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Settings_Updates_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Settings_Updates_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Settings_Updates_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -166,7 +181,18 @@
                                     </TextBlock>
                                 </Border>
                             </StackPanel>
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding UpdateStatusMessage}" Margin="0,4,0,0" />
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontSize="{DynamicResource Font.Size.Caption}"
+                                         Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding UpdateStatusMessage, Mode=OneWay}"
+                                         Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" Width="22" Height="22"
+                                        controls:CopyTextBehavior.CopyText="{Binding UpdateStatusMessage}"
+                                        Visibility="{Binding UpdateStatusMessage, Converter={StaticResource NullToVisibility}}" />
+                            </Grid>
                             <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextTertiary}" Margin="0,2,0,0">
                                 <Run Text="{l:Loc Settings_Updates_LastChecked}" />
                                 <Run Text=": " />
@@ -224,8 +250,8 @@
                             <Border Background="{DynamicResource Brush.ControlFill}" BorderBrush="{DynamicResource Brush.ControlBorder}"
                                     BorderThickness="1" CornerRadius="6" Padding="10,8" MaxHeight="150" Margin="0,0,0,12">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <TextBlock Style="{StaticResource Text.Body}" FontSize="{DynamicResource Font.Size.Caption}"
-                                               Text="{Binding ReleaseNotesDisplay}" />
+                                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontSize="{DynamicResource Font.Size.Caption}"
+                                             Text="{Binding ReleaseNotesDisplay, Mode=OneWay}" />
                                 </ScrollViewer>
                             </Border>
 
@@ -277,12 +303,23 @@
                                                                  SecondaryTextBrush="{DynamicResource Brush.TextSecondary}"
                                                                  ProgressPercent="{Binding DownloadPercent}" />
 
-                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Success}" Margin="0,8,0,0"
-                                       Text="{Binding ChecksumStatusText}"
-                                       Visibility="{Binding ChecksumStatusText, Converter={StaticResource NullToVisibility}}" />
-                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}" Margin="0,8,0,0"
-                                       Text="{Binding DownloadError}"
-                                       Visibility="{Binding DownloadError, Converter={StaticResource NullToVisibility}}" />
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontSize="{DynamicResource Font.Size.Caption}"
+                                     Foreground="{DynamicResource Brush.Success}" Margin="0,8,0,0"
+                                     Text="{Binding ChecksumStatusText, Mode=OneWay}"
+                                     Visibility="{Binding ChecksumStatusText, Converter={StaticResource NullToVisibility}}" />
+                            <Border Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                                    BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,8,0,0"
+                                    Visibility="{Binding DownloadError, Converter={StaticResource NullToVisibility}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontSize="{DynamicResource Font.Size.Caption}"
+                                             Text="{Binding DownloadError, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding DownloadError}" />
+                                </Grid>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -290,7 +327,11 @@
 
             <!-- Background & Startup -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_Startup_Section}" Margin="0,16,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Settings_Startup_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Settings_Startup_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Settings_Startup_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -412,7 +453,11 @@
 
             <!-- Appearance -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_Appearance}" Margin="0,16,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Settings_Appearance_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Settings_Appearance_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Settings_Appearance_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -461,7 +506,11 @@
 
             <!-- Performance & Resource Optimization -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_Performance_Section}" Margin="0,16,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Settings_Perf_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Settings_Perf_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Settings_Perf_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -539,7 +588,11 @@
 
             <!-- About -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Settings_About}" Margin="0,16,0,10" />
-            <Border Style="{StaticResource SettingCard}">
+            <Border Style="{StaticResource SettingCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Settings_About_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Settings_About_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Settings_About_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="170" />
@@ -556,20 +609,26 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_Version}" Margin="0,0,0,12" />
-                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding Version}" />
+                    <TextBox Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding Version, Mode=OneWay}" Margin="0,0,0,12" />
 
                     <TextBlock Grid.Row="1" Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_OS}" Margin="0,0,0,12" />
-                    <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding OperatingSystemName}" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding OperatingSystemName, Mode=OneWay}" Margin="0,0,0,12" />
 
                     <TextBlock Grid.Row="2" Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_DataFolder}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource Text.Mono}" Text="{Binding DataFolder}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                    <Button Grid.Row="2" Grid.Column="2" Content="{l:Loc Common_Open}" Margin="12,0,0,8"
-                            Command="{Binding OpenFolderCommand}" CommandParameter="{Binding DataFolder}" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding DataFolder, Mode=OneWay}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                    <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Margin="12,0,0,8">
+                        <Button Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding DataFolder}" Margin="0,0,6,0" />
+                        <Button Content="{l:Loc Common_Open}"
+                                Command="{Binding OpenFolderCommand}" CommandParameter="{Binding DataFolder}" />
+                    </StackPanel>
 
                     <TextBlock Grid.Row="3" Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_LogsFolder}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource Text.Mono}" Text="{Binding LogsFolder}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                    <Button Grid.Row="3" Grid.Column="2" Content="{l:Loc Common_Open}" Margin="12,0,0,8"
-                            Command="{Binding OpenFolderCommand}" CommandParameter="{Binding LogsFolder}" />
+                    <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding LogsFolder, Mode=OneWay}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                    <StackPanel Grid.Row="3" Grid.Column="2" Orientation="Horizontal" Margin="12,0,0,8">
+                        <Button Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding LogsFolder}" Margin="0,0,6,0" />
+                        <Button Content="{l:Loc Common_Open}"
+                                Command="{Binding OpenFolderCommand}" CommandParameter="{Binding LogsFolder}" />
+                    </StackPanel>
 
                     <StackPanel Grid.Row="4" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,10,0,0">
                         <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72E;" FontSize="14" Foreground="{DynamicResource Brush.Success}" Margin="0,0,10,0" />

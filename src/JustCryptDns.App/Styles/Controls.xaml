@@ -615,6 +615,54 @@
         </Setter>
     </Style>
 
+    <!-- Selectable, copyable read-only text & inline copy button -->
+    <Style x:Key="TextBox.SelectableReadOnly" TargetType="TextBox">
+        <Setter Property="IsReadOnly" Value="True" />
+        <Setter Property="IsReadOnlyCaretVisible" Value="False" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CaretBrush" Value="Transparent" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.UI}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.Size.Body}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="Height" Value="Auto" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="IBeam" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <ScrollViewer x:Name="PART_ContentHost" Focusable="False" Padding="{TemplateBinding Padding}" Margin="0"
+                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="TextBox.SelectableReadOnlyMono" TargetType="TextBox" BasedOn="{StaticResource TextBox.SelectableReadOnly}">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Mono}" />
+        <Setter Property="FontSize" Value="{DynamicResource Font.Size.Mono}" />
+    </Style>
+
+    <Style x:Key="Button.CopyInline" TargetType="Button" BasedOn="{StaticResource Button.Subtle}">
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Icons}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Content" Value="&#xE8C8;" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+
     <!-- Color swatch: Button bound to a ColorSwatch item (Brush, IsSelected). -->
     <Style x:Key="Button.Swatch" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual.Accent}" />

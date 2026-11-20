@@ -6,6 +6,7 @@
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1550"
              d:DataContext="{d:DesignInstance Type=vm:BypassViewModel}">
     <UserControl.Resources>
@@ -57,16 +58,34 @@
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ErrorMessage, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding ErrorMessage}" />
+                </Grid>
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding StatusMessage, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding StatusMessage}" />
+                </Grid>
             </Border>
 
             <!-- Hero Status & KPI Cards -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Bypass_Status_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Bypass_Status_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Bypass_Status_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -119,11 +138,23 @@
                     <UniformGrid Rows="1" Columns="4" Margin="0,0,0,12">
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_ProxyEndpoint}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding ProxyEndpoint}" Margin="0,4,0,0" />
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding ProxyEndpoint, Mode=OneWay}" VerticalAlignment="Center" />
+                                <Button Style="{StaticResource Button.CopyInline}" Width="22" Height="22" Margin="4,0,0,0"
+                                        controls:CopyTextBehavior.CopyText="{Binding ProxyEndpoint}" />
+                            </StackPanel>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,12,0">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_PacUrl}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PacUrl}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding PacUrl, Mode=OneWay}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" Width="22" Height="22" Margin="4,0,0,0"
+                                        controls:CopyTextBehavior.CopyText="{Binding PacUrl}" />
+                            </Grid>
                         </StackPanel>
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Bypass_Metric_DpiBypassed}" />
@@ -169,7 +200,11 @@
 
             <!-- Live Domain Bypass Tester -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Tester_Title}" Margin="0,8,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Bypass_Tester_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Bypass_Tester_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Bypass_Tester_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
@@ -186,7 +221,15 @@
 
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,8" Margin="0,0,0,10"
                             Visibility="{Binding BatchTestSummary, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Caption}" FontFamily="{StaticResource Font.Mono}" Text="{Binding BatchTestSummary}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                     Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding BatchTestSummary, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding BatchTestSummary}" />
+                        </Grid>
                     </Border>
 
                     <WrapPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -207,9 +250,11 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding LastTestResult.Summary}" />
-                                <Button Grid.Column="1" Command="{Binding AddTestedDomainRuleCommand}" Content="{l:Loc Bypass_Tester_AddRule}" Margin="12,0,0,0" />
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontWeight="SemiBold" Text="{Binding LastTestResult.Summary, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding LastTestResult.Summary}" />
+                                <Button Grid.Column="2" Command="{Binding AddTestedDomainRuleCommand}" Content="{l:Loc Bypass_Tester_AddRule}" Margin="8,0,0,0" />
                             </Grid>
                             <UniformGrid Rows="1" Columns="4">
                                 <StackPanel>
@@ -239,7 +284,11 @@
 
             <!-- DPI Engine & Windows Integration Settings -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Settings_Title}" Margin="0,8,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Bypass_Settings_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Bypass_Settings_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Bypass_Settings_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <UniformGrid Columns="2" Rows="1" Margin="0,0,0,12">
                         <StackPanel Margin="0,0,12,0">
@@ -337,7 +386,11 @@
 
             <!-- Tier 2 Split-Tunnel Upstream -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Upstream_Title}" Margin="0,8,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Bypass_Upstream_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Bypass_Upstream_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Bypass_Upstream_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -394,7 +447,15 @@
 
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,8" Margin="0,10,0,0"
                             Visibility="{Binding UpstreamFeedback, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding UpstreamFeedback}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontSize="{DynamicResource Font.Size.Caption}"
+                                     Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding UpstreamFeedback, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding UpstreamFeedback}" />
+                        </Grid>
                     </Border>
                 </StackPanel>
             </Border>
@@ -413,7 +474,11 @@
                 </WrapPanel>
             </Grid>
 
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Bypass_Rules_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Bypass_Rules_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Bypass_Rules_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -472,7 +537,11 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Direct Exclusions (Banks / Intranet / Local) -->
-                <Border Style="{StaticResource SectionCard}" Margin="0">
+                <Border Style="{StaticResource SectionCard}" Margin="0"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Bypass_Exclusions_Title}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Bypass_Exclusions_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Bypass_Exclusions_Meaning}"
+                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Bypass_Exclusions_Title}" />
                         <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Bypass_Exclusions_Desc}" Margin="0,2,0,10" />
@@ -508,7 +577,11 @@
                 </Border>
 
                 <!-- Auto-Learned Self-Healing Hosts -->
-                <Border Grid.Column="2" Style="{StaticResource SectionCard}" Margin="0">
+                <Border Grid.Column="2" Style="{StaticResource SectionCard}" Margin="0"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Bypass_Learned_Title}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Bypass_Learned_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Bypass_Learned_Meaning}"
+                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                     <StackPanel>
                         <Grid Margin="0,0,0,2">
                             <Grid.ColumnDefinitions>
@@ -562,7 +635,11 @@
                 <Button Grid.Column="1" Command="{Binding ClearEventsCommand}" Content="{l:Loc Routing_Log_Clear}" />
             </Grid>
 
-            <Border Style="{StaticResource SectionCard}" Margin="0">
+            <Border Style="{StaticResource SectionCard}" Margin="0"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Bypass_Activity_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Bypass_Activity_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Bypass_Activity_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <ListBox ItemsSource="{Binding RecentEvents}" Height="220" Background="Transparent" BorderThickness="0"
                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">

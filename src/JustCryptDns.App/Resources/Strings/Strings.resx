@@ -700,7 +700,7 @@
     <value>Starting…</value>
   </data>
   <data name="EngineState_Running" xml:space="preserve">
-    <value>Protected (Running)</value>
+    <value>Running</value>
   </data>
   <data name="EngineState_Degraded" xml:space="preserve">
     <value>Degraded</value>
@@ -2213,5 +2213,701 @@
   </data>
   <data name="Dash_Explain_LiveLog_Metrics" xml:space="preserve">
     <value>Shows time, outcome badge (Allowed/Cached/Blocked/Routed/Failed), record type, domain name, resolver used, and upstream latency.</value>
+  </data>
+  <data name="Common_Copy" xml:space="preserve">
+    <value>Copy to clipboard</value>
+  </data>
+  <data name="Common_Copied" xml:space="preserve">
+    <value>Copied!</value>
+  </data>
+  <data name="BugReport_Attach_Title" xml:space="preserve">
+    <value>ERROR SCREENSHOTS (OPTIONAL · UP TO 6 IMAGES)</value>
+  </data>
+  <data name="BugReport_Attach_Subtitle" xml:space="preserve">
+    <value>Attach or paste screenshots from Clipboard, then click 'Copy Images (Ctrl+V)' to paste straight into GitHub or Messenger.</value>
+  </data>
+  <data name="BugReport_Attach_Browse" xml:space="preserve">
+    <value>Attach Images…</value>
+  </data>
+  <data name="BugReport_Attach_Paste" xml:space="preserve">
+    <value>Paste Screenshot</value>
+  </data>
+  <data name="BugReport_Attach_CopyImages" xml:space="preserve">
+    <value>Copy Images (Ctrl+V)</value>
+  </data>
+  <data name="BugReport_Attach_OpenFolder" xml:space="preserve">
+    <value>Open Image Folder</value>
+  </data>
+  <data name="BugReport_Attach_DialogTitle" xml:space="preserve">
+    <value>Select error screenshot images</value>
+  </data>
+  <data name="BugReport_Attach_Added" xml:space="preserve">
+    <value>Attached {0} screenshot(s). Click 'Copy Images (Ctrl+V)' after opening GitHub or Messenger to paste them directly.</value>
+  </data>
+  <data name="BugReport_Attach_PastedOne" xml:space="preserve">
+    <value>Captured clipboard image '{0}' and attached to your report.</value>
+  </data>
+  <data name="BugReport_Attach_LimitOrSize" xml:space="preserve">
+    <value>Maximum 6 images (under 15 MB each) allowed per bug report.</value>
+  </data>
+  <data name="BugReport_Attach_NoClipboardImage" xml:space="preserve">
+    <value>No image found on Clipboard. Press PrintScreen or Win+Shift+S first, or click 'Attach Images…'.</value>
+  </data>
+  <data name="BugReport_Attach_NoValidFiles" xml:space="preserve">
+    <value>No valid attached image files found on disk.</value>
+  </data>
+  <data name="BugReport_Attach_CopiedForPaste" xml:space="preserve">
+    <value>Copied {0} screenshot(s) to Clipboard — switch to GitHub Issue or Messenger and press Ctrl+V!</value>
+  </data>
+  <data name="BugReport_DirectLinkLabel" xml:space="preserve">
+    <value>Direct GitHub URL:</value>
+  </data>
+  <data name="BugReport_Btn_CleanGitHub" xml:space="preserve">
+    <value>Open GitHub Issues (Clean Link)</value>
+  </data>
+  <data name="BugReport_GitHubNonOwnerTip" xml:space="preserve">
+    <value>Signed-in non-owner GitHub accounts work cleanly with compact links; if your browser blocks long query links, click 'Open GitHub Issues (Clean Link)' and press Ctrl+V.</value>
+  </data>
+  <data name="BugReport_GitHubOpenedWithImages" xml:space="preserve">
+    <value>Opened GitHub Issue &amp; copied report ({0} image(s) attached — click 'Copy Images (Ctrl+V)' or 'Open Image Folder' to add screenshots to GitHub).</value>
+  </data>
+  <data name="BugReport_GitHubCleanOpened" xml:space="preserve">
+    <value>Opened clean GitHub Issues page and copied full Markdown report to Clipboard — press Ctrl+V inside the issue box.</value>
+  </data>
+  <data name="BugReport_GitHubCleanOpenedWithImages" xml:space="preserve">
+    <value>Opened clean GitHub Issues page &amp; copied full report ({0} image(s) attached — press Ctrl+V text first, then click 'Copy Images' to paste screenshots).</value>
+  </data>
+  <data name="BugReport_FacebookOpenedWithImages" xml:space="preserve">
+    <value>Copied report &amp; opened Longtygu's Facebook ({0} image(s) attached — press Ctrl+V text, then click 'Copy Images' to send screenshots).</value>
+  </data>
+  <data name="Gaming_Bench_Header_Running" xml:space="preserve">
+    <value>Multi-domain benchmark running…</value>
+  </data>
+  <data name="Gaming_Bench_Header_Done" xml:space="preserve">
+    <value>Multi-domain benchmark complete</value>
+  </data>
+  <data name="Gaming_Bench_Header_Cancelled" xml:space="preserve">
+    <value>Multi-domain benchmark cancelled</value>
+  </data>
+  <data name="Gaming_Bench_OkCount" xml:space="preserve">
+    <value>{0} OK</value>
+  </data>
+  <data name="Gaming_Bench_FailCount" xml:space="preserve">
+    <value>{0} fail</value>
+  </data>
+  <data name="Gaming_Bench_CancelledSummary" xml:space="preserve">
+    <value>Benchmark stopped early — showing partial results for {0} tested resolver(s).</value>
+  </data>
+  <data name="Gaming_Bench_Outcome_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Gaming_Bench_Outcome_Timeout" xml:space="preserve">
+    <value>Timeout</value>
+  </data>
+  <data name="Gaming_Bench_Outcome_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Gaming_Bench_Outcome_Summary" xml:space="preserve">
+    <value>Result</value>
+  </data>
+  <data name="Diag_Scan_Header_Idle" xml:space="preserve">
+    <value>Diagnostic activity log</value>
+  </data>
+  <data name="Diag_Scan_Header_Running" xml:space="preserve">
+    <value>Running network diagnostic scan…</value>
+  </data>
+  <data name="Diag_Scan_Header_Done" xml:space="preserve">
+    <value>Diagnostic check complete</value>
+  </data>
+  <data name="Diag_Scan_Header_Cancelled" xml:space="preserve">
+    <value>Diagnostic check stopped</value>
+  </data>
+  <data name="Diag_Scan_PassCount" xml:space="preserve">
+    <value>{0} pass</value>
+  </data>
+  <data name="Diag_Scan_FailCount" xml:space="preserve">
+    <value>{0} fail</value>
+  </data>
+  <data name="Diag_Cat_None" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Diag_Cat_Lookup" xml:space="preserve">
+    <value>Lookup</value>
+  </data>
+  <data name="Diag_Cat_Dnssec" xml:space="preserve">
+    <value>DNSSEC</value>
+  </data>
+  <data name="Diag_Cat_Doh" xml:space="preserve">
+    <value>DoH</value>
+  </data>
+  <data name="Diag_Cat_DnsCrypt" xml:space="preserve">
+    <value>DNSCrypt</value>
+  </data>
+  <data name="Diag_Cat_Leak" xml:space="preserve">
+    <value>DNS Leak</value>
+  </data>
+  <data name="Diag_Cat_Restrictions" xml:space="preserve">
+    <value>Port Scan</value>
+  </data>
+  <data name="Diag_Cat_Compare" xml:space="preserve">
+    <value>Compare</value>
+  </data>
+  <data name="Diag_Cat_Propagation" xml:space="preserve">
+    <value>Propagation</value>
+  </data>
+  <data name="Diag_Outcome_Running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Diag_Outcome_Pass" xml:space="preserve">
+    <value>Pass</value>
+  </data>
+  <data name="Diag_Outcome_Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="Diag_Outcome_Fail" xml:space="preserve">
+    <value>Fail</value>
+  </data>
+  <data name="Diag_Outcome_Info" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="Info_About_Identity_Title" xml:space="preserve">
+    <value>Author &amp; Application Identity</value>
+  </data>
+  <data name="Info_About_Identity_Desc" xml:space="preserve">
+    <value>Displays the author profile, installed build version, and quick shortcuts to GitHub, Facebook, bug reporting, and built-in updater.</value>
+  </data>
+  <data name="Info_About_Identity_Meaning" xml:space="preserve">
+    <value>Ensure your build version matches GitHub Releases before reporting issues or testing new fixes.</value>
+  </data>
+  <data name="Info_About_Links_Title" xml:space="preserve">
+    <value>System Environment &amp; Contact Links</value>
+  </data>
+  <data name="Info_About_Links_Desc" xml:space="preserve">
+    <value>Selectable and 1-click copyable version, Windows OS build, GitHub repository URL, and Facebook contact link.</value>
+  </data>
+  <data name="Info_About_Links_Meaning" xml:space="preserve">
+    <value>Click the copy icon next to any row to copy exact version or repository URLs cleanly.</value>
+  </data>
+  <data name="Info_About_Highlights_Title" xml:space="preserve">
+    <value>Core Design Highlights</value>
+  </data>
+  <data name="Info_About_Highlights_Desc" xml:space="preserve">
+    <value>Summarizes how JustCryptDns combines encrypted DNS, pure-C# DPI fragmentation, Gaming Mode, and boot-safe recovery.</value>
+  </data>
+  <data name="Info_About_Highlights_Meaning" xml:space="preserve">
+    <value>You can select and copy any text in this section for sharing.</value>
+  </data>
+  <data name="Info_About_Arch_Title" xml:space="preserve">
+    <value>Packet &amp; Query Processing Flow</value>
+  </data>
+  <data name="Info_About_Arch_Desc" xml:space="preserve">
+    <value>Illustrates end-to-end traffic flow from local Windows apps through the DNS proxy, encrypted upstream, and Auto-PAC DPI bypass.</value>
+  </data>
+  <data name="Info_About_Arch_Meaning" xml:space="preserve">
+    <value>Step 1–4 shows how game UDP packets stay direct while web DNS &amp; TLS SNI remain protected.</value>
+  </data>
+  <data name="Info_About_BugReport_Title" xml:space="preserve">
+    <value>Bug Report Composer &amp; Screenshots</value>
+  </data>
+  <data name="Info_About_BugReport_Desc" xml:space="preserve">
+    <value>Builds a sanitized report with optional error screenshots and automatically copies full Markdown/message to clipboard.</value>
+  </data>
+  <data name="Info_About_BugReport_Meaning" xml:space="preserve">
+    <value>All user profile paths (C:\Users\&lt;name&gt;) are masked automatically. Non-owner GitHub accounts work via compact URL or clean Issues link + Ctrl+V.</value>
+  </data>
+  <data name="Info_DnsMgr_Engine_Title" xml:space="preserve">
+    <value>DNS Engine Control &amp; Status</value>
+  </data>
+  <data name="Info_DnsMgr_Engine_Desc" xml:space="preserve">
+    <value>Start, stop, restart, or probe the local encrypted DNS listener bound to your system.</value>
+  </data>
+  <data name="Info_DnsMgr_Engine_Meaning" xml:space="preserve">
+    <value>Green 'Running' means encrypted forwarding is active; red 'Stopped' means local proxy is off; check port 53 listener and latency below.</value>
+  </data>
+  <data name="Info_DnsMgr_Resolver_Title" xml:space="preserve">
+    <value>Active Resolver &amp; Automatic Failover</value>
+  </data>
+  <data name="Info_DnsMgr_Resolver_Desc" xml:space="preserve">
+    <value>Selects the primary encrypted upstream endpoint and configures resilient failover policy when upstream timeouts occur.</value>
+  </data>
+  <data name="Info_DnsMgr_Resolver_Meaning" xml:space="preserve">
+    <value>DoH/DoT/DNSCrypt encrypts DNS against ISP snooping and DNS poisoning; auto-failover seamlessly falls back to Secondary resolver.</value>
+  </data>
+  <data name="Info_DnsMgr_Proxy_Title" xml:space="preserve">
+    <value>Local DNS Listener Endpoint</value>
+  </data>
+  <data name="Info_DnsMgr_Proxy_Desc" xml:space="preserve">
+    <value>Configures the local loopback IP, UDP/TCP port (standard port 53), and IPv6 AAAA handling.</value>
+  </data>
+  <data name="Info_DnsMgr_Proxy_Meaning" xml:space="preserve">
+    <value>Port 53 is required for Windows system DNS redirection; alternate 127.0.0.x loopbacks avoid port conflicts with other services.</value>
+  </data>
+  <data name="Info_DnsMgr_Windows_Title" xml:space="preserve">
+    <value>Windows Network Adapter Integration</value>
+  </data>
+  <data name="Info_DnsMgr_Windows_Desc" xml:space="preserve">
+    <value>Manages safe application and emergency restoration of Windows network adapter DNS server bindings.</value>
+  </data>
+  <data name="Info_DnsMgr_Windows_Meaning" xml:space="preserve">
+    <value>Original ISP/DHCP DNS settings are backed up with SHA-256 and restored automatically on exit or reboot.</value>
+  </data>
+  <data name="Info_DnsMgr_DnsCrypt_Title" xml:space="preserve">
+    <value>Embedded dnscrypt-proxy Runtime</value>
+  </data>
+  <data name="Info_DnsMgr_DnsCrypt_Desc" xml:space="preserve">
+    <value>Manages the local dnscrypt-proxy binary used when routing through DNSCrypt v2 or Anonymized DNSCrypt relays.</value>
+  </data>
+  <data name="Info_DnsMgr_DnsCrypt_Meaning" xml:space="preserve">
+    <value>Displays installed version and executable path; copy path with the inline button or click Update/Install if missing.</value>
+  </data>
+  <data name="Info_Resolvers_Scan_Title" xml:space="preserve">
+    <value>Live Resolver Health Scanner</value>
+  </data>
+  <data name="Info_Resolvers_Scan_Desc" xml:space="preserve">
+    <value>Concurrent real-time health prober testing all enabled DoH, DoT, DNSCrypt, and UDP resolvers with hard timeouts.</value>
+  </data>
+  <data name="Info_Resolvers_Scan_Meaning" xml:space="preserve">
+    <value>Shows real-time Online/Timeout/Offline results, measured RTT latency (ms), and allows safe mid-scan cancellation.</value>
+  </data>
+  <data name="Info_Resolvers_Summary_Title" xml:space="preserve">
+    <value>Active Resolvers &amp; Catalog Metrics</value>
+  </data>
+  <data name="Info_Resolvers_Summary_Desc" xml:space="preserve">
+    <value>Highlights your active Primary (green) and backup Secondary (orange) resolvers alongside total catalog statistics.</value>
+  </data>
+  <data name="Info_Resolvers_Summary_Meaning" xml:space="preserve">
+    <value>Encrypted resolvers protect privacy; keep both Primary and Secondary online for instant zero-downtime failover.</value>
+  </data>
+  <data name="Info_Resolvers_Primary_Title" xml:space="preserve">
+    <value>Primary Active Resolver</value>
+  </data>
+  <data name="Info_Resolvers_Primary_Desc" xml:space="preserve">
+    <value>Your main encrypted DNS resolver handling normal and routed lookups first (indicated by the pulsing green beacon).</value>
+  </data>
+  <data name="Info_Resolvers_Primary_Meaning" xml:space="preserve">
+    <value>Green pulsing beacon indicates Primary role; click the Copy button to copy its full DoH/DoT/sdns:// endpoint.</value>
+  </data>
+  <data name="Info_Resolvers_Secondary_Title" xml:space="preserve">
+    <value>Secondary Failover Resolver</value>
+  </data>
+  <data name="Info_Resolvers_Secondary_Desc" xml:space="preserve">
+    <value>Hot-standby resolver automatically promoted when the Primary resolver times out or degrades (orange pulsing beacon).</value>
+  </data>
+  <data name="Info_Resolvers_Secondary_Meaning" xml:space="preserve">
+    <value>Use a different provider from Primary (e.g., Cloudflare Primary + Quad9 Secondary) for maximum resilience.</value>
+  </data>
+  <data name="Info_Resolvers_Editor_Title" xml:space="preserve">
+    <value>Custom Resolver Editor</value>
+  </data>
+  <data name="Info_Resolvers_Editor_Desc" xml:space="preserve">
+    <value>Add or edit your own custom DoH HTTPS URL, DoT hostname, DNSCrypt stamp, or raw IP endpoint.</value>
+  </data>
+  <data name="Info_Resolvers_Editor_Meaning" xml:space="preserve">
+    <value>Bootstrap IPv4/IPv6 addresses let JustCryptDns connect even before DNS is available.</value>
+  </data>
+  <data name="Info_Resolvers_Filter_Title" xml:space="preserve">
+    <value>Catalog Search, Group &amp; Protocol Filter</value>
+  </data>
+  <data name="Info_Resolvers_Filter_Desc" xml:space="preserve">
+    <value>Instantly filter built-in and custom resolvers by name, endpoint, group tag, or encryption protocol, or create custom groups.</value>
+  </data>
+  <data name="Info_Resolvers_Filter_Meaning" xml:space="preserve">
+    <value>Combine text search with Group/Protocol dropdowns to quickly locate Ad-blocking, No-Log, or Gaming-friendly resolvers.</value>
+  </data>
+  <data name="Info_Routing_Profile_Title" xml:space="preserve">
+    <value>Split-Routing Engine &amp; Profiles</value>
+  </data>
+  <data name="Info_Routing_Profile_Desc" xml:space="preserve">
+    <value>Routes specific domain suffixes or exact hosts to dedicated resolvers while all other domains use the Fallback resolver.</value>
+  </data>
+  <data name="Info_Routing_Profile_Meaning" xml:space="preserve">
+    <value>Lower priority numbers evaluate first; create separate profiles for Work, Privacy, or Gaming.</value>
+  </data>
+  <data name="Info_Routing_Editor_Title" xml:space="preserve">
+    <value>Domain Routing Rule Editor</value>
+  </data>
+  <data name="Info_Routing_Editor_Desc" xml:space="preserve">
+    <value>Defines exact, suffix, wildcard, or regex domain patterns bound to a target encrypted resolver.</value>
+  </data>
+  <data name="Info_Routing_Editor_Meaning" xml:space="preserve">
+    <value>Example: suffix rule 'steampowered.com' -> Cloudflare sends all subdomains cleanly through Cloudflare DoH.</value>
+  </data>
+  <data name="Info_Routing_Tester_Title" xml:space="preserve">
+    <value>Interactive Rule Matcher &amp; Dry-Run Tester</value>
+  </data>
+  <data name="Info_Routing_Tester_Desc" xml:space="preserve">
+    <value>Simulates which routing rule and upstream resolver would handle a given domain without affecting live traffic.</value>
+  </data>
+  <data name="Info_Routing_Tester_Meaning" xml:space="preserve">
+    <value>Shows exact rule match priority or confirms Fallback resolver selection.</value>
+  </data>
+  <data name="Info_Routing_Rules_Title" xml:space="preserve">
+    <value>Active Domain Routing Rule</value>
+  </data>
+  <data name="Info_Routing_Rules_Desc" xml:space="preserve">
+    <value>Displays rule priority (#), match type, domain pattern, and assigned upstream resolver with instant toggle/edit controls.</value>
+  </data>
+  <data name="Info_Routing_Rules_Meaning" xml:space="preserve">
+    <value>Disable or remove unused rules anytime; rules evaluate top-down from lowest priority number.</value>
+  </data>
+  <data name="Info_Routing_Log_Title" xml:space="preserve">
+    <value>Recent Routing Decision Log</value>
+  </data>
+  <data name="Info_Routing_Log_Desc" xml:space="preserve">
+    <value>Shows recent live queries matched by split-routing rules and which resolver served each request.</value>
+  </data>
+  <data name="Info_Routing_Log_Meaning" xml:space="preserve">
+    <value>Helps verify your custom domain rules match real application lookups as expected.</value>
+  </data>
+  <data name="Info_Filtering_Summary_Title" xml:space="preserve">
+    <value>DNS Ad-Block &amp; Safety Filter Overview</value>
+  </data>
+  <data name="Info_Filtering_Summary_Desc" xml:space="preserve">
+    <value>Master switch and statistics for domains actively blocked at the DNS layer before connections even open.</value>
+  </data>
+  <data name="Info_Filtering_Summary_Meaning" xml:space="preserve">
+    <value>Blocking via local DNS returns NXDOMAIN / zero-route locally with ~0 ms delay and zero browser extension overhead.</value>
+  </data>
+  <data name="Info_Filtering_Blocklists_Title" xml:space="preserve">
+    <value>Blocklist Subscription Source</value>
+  </data>
+  <data name="Info_Filtering_Blocklists_Desc" xml:space="preserve">
+    <value>Curated domain blocklists for ads, trackers, telemetry, phishing, and malware protection.</value>
+  </data>
+  <data name="Info_Filtering_Blocklists_Meaning" xml:space="preserve">
+    <value>Domain count indicates blocked hostnames in memory; refresh anytime to fetch latest upstream updates.</value>
+  </data>
+  <data name="Info_Filtering_Allowlist_Title" xml:space="preserve">
+    <value>Allowlist &amp; Temporary Exceptions</value>
+  </data>
+  <data name="Info_Filtering_Allowlist_Desc" xml:space="preserve">
+    <value>Exempts specific domains (permanently or temporarily) when a site breaks under a blocklist rule.</value>
+  </data>
+  <data name="Info_Filtering_Allowlist_Meaning" xml:space="preserve">
+    <value>Allowlist rules always override active blocklists immediately.</value>
+  </data>
+  <data name="Info_Filtering_CustomBlock_Title" xml:space="preserve">
+    <value>Custom Blocked Domains</value>
+  </data>
+  <data name="Info_Filtering_CustomBlock_Desc" xml:space="preserve">
+    <value>Manually block extra domains or telemetry hosts locally across all Windows browsers and apps.</value>
+  </data>
+  <data name="Info_Filtering_CustomBlock_Meaning" xml:space="preserve">
+    <value>Applies immediately without restarting JustCryptDns.</value>
+  </data>
+  <data name="Info_Filtering_Inspector_Title" xml:space="preserve">
+    <value>Filter Decision Inspector</value>
+  </data>
+  <data name="Info_Filtering_Inspector_Desc" xml:space="preserve">
+    <value>Tests why any domain is Allowed or Blocked and identifies the exact matching allowlist, custom rule, or blocklist.</value>
+  </data>
+  <data name="Info_Filtering_Inspector_Meaning" xml:space="preserve">
+    <value>Use this before whitelisting when a game launcher or store image fails to load.</value>
+  </data>
+  <data name="Info_Filtering_Cache_Title" xml:space="preserve">
+    <value>TTL-Aware Local DNS RAM Cache</value>
+  </data>
+  <data name="Info_Filtering_Cache_Desc" xml:space="preserve">
+    <value>Stores recent DNS answers in memory according to RFC record TTL (including negative NXDOMAIN caching) for sub-millisecond hits.</value>
+  </data>
+  <data name="Info_Filtering_Cache_Meaning" xml:space="preserve">
+    <value>High cache hit ratio cuts web page load latency dramatically; clear cache when testing DNS record changes.</value>
+  </data>
+  <data name="Info_Gaming_Notice_Title" xml:space="preserve">
+    <value>How Gaming Optimization Works</value>
+  </data>
+  <data name="Info_Gaming_Notice_Desc" xml:space="preserve">
+    <value>Explains clearly that DNS affects server discovery and CDN selection, while in-game ping stays direct over UDP/TCP.</value>
+  </data>
+  <data name="Info_Gaming_Notice_Meaning" xml:space="preserve">
+    <value>No kernel packet drivers are injected, guaranteeing 100% Anti-Cheat safety (VAC, Vanguard, EAC, BattlEye).</value>
+  </data>
+  <data name="Info_Gaming_Synergy_Title" xml:space="preserve">
+    <value>Gaming + DPI Bypass Synergy Status</value>
+  </data>
+  <data name="Info_Gaming_Synergy_Desc" xml:space="preserve">
+    <value>Shows how Gaming Mode cooperates with the Auto-PAC DPI Bypass proxy so Steam Storeloads smoothly while game traffic stays direct.</value>
+  </data>
+  <data name="Info_Gaming_Synergy_Meaning" xml:space="preserve">
+    <value>Green badge means DPI bypass is active on storefronts/launchers with 0 ms overhead on match servers.</value>
+  </data>
+  <data name="Info_Gaming_Scanner_Title" xml:space="preserve">
+    <value>Live Multi-Domain Benchmark Scanner &amp; Log</value>
+  </data>
+  <data name="Info_Gaming_Scanner_Desc" xml:space="preserve">
+    <value>Real-time probe stream across gaming domains (multiple rounds per resolver) showing individual RTT latencies and final reliability scores.</value>
+  </data>
+  <data name="Info_Gaming_Scanner_Meaning" xml:space="preserve">
+    <value>Identifies resolvers with both low average/P95 latency AND zero timeouts/jitter spikes; copy full results or stop early anytime.</value>
+  </data>
+  <data name="Info_Gaming_Control_Title" xml:space="preserve">
+    <value>Gaming Mode Session Pinning &amp; Metrics</value>
+  </data>
+  <data name="Info_Gaming_Control_Desc" xml:space="preserve">
+    <value>Locks the lowest-jitter gaming resolver during play, keeps RAM DNS cache warm, and pins selected platform domains.</value>
+  </data>
+  <data name="Info_Gaming_Control_Meaning" xml:space="preserve">
+    <value>Session pinning prevents sudden mid-match resolver switching unless the upstream fails completely.</value>
+  </data>
+  <data name="Info_Gaming_Profiles_Title" xml:space="preserve">
+    <value>Platform Domain Presets &amp; Selection Profile</value>
+  </data>
+  <data name="Info_Gaming_Profiles_Desc" xml:space="preserve">
+    <value>Choose Steam, Riot, Epic, EA, Ubisoft, Battle.net or custom domains, plus scoring preference (Lowest Latency, Balanced, Max Reliability).</value>
+  </data>
+  <data name="Info_Gaming_Profiles_Meaning" xml:space="preserve">
+    <value>Balanced weights reliability + jitter + latency; Manual Override forces a specific resolver of your choice.</value>
+  </data>
+  <data name="Info_Gaming_Results_Title" xml:space="preserve">
+    <value>Benchmark Score Card</value>
+  </data>
+  <data name="Info_Gaming_Results_Desc" xml:space="preserve">
+    <value>Multi-domain repeated test metrics for a single resolver (Avg, P95, Min/Max, Jitter, Success %, Timeout %) and 1-click Apply.</value>
+  </data>
+  <data name="Info_Gaming_Results_Meaning" xml:space="preserve">
+    <value>Low P95 and low Jitter matter more than Min latency alone for consistent game patcher and login responsiveness.</value>
+  </data>
+  <data name="Info_Bypass_Status_Title" xml:space="preserve">
+    <value>DPI Bypass Engine &amp; Auto-PAC Telemetry</value>
+  </data>
+  <data name="Info_Bypass_Status_Desc" xml:space="preserve">
+    <value>Monitors the local TLS ClientHello fragmentation proxy, Smart Auto-PAC HTTP server, self-healing counters, and Windows proxy status.</value>
+  </data>
+  <data name="Info_Bypass_Status_Meaning" xml:space="preserve">
+    <value>Copy Proxy or Auto-PAC URL directly; counters show how many HTTPS handshakes were unblocked via fragmentation vs tunnel fallback.</value>
+  </data>
+  <data name="Info_Bypass_Tester_Title" xml:space="preserve">
+    <value>Live Site Reachability &amp; DPI Strategy Tester</value>
+  </data>
+  <data name="Info_Bypass_Tester_Desc" xml:space="preserve">
+    <value>Tests Direct TLS vs DPI Fragmentation vs Upstream Tunnel latency against blocked or throttled domains in real time.</value>
+  </data>
+  <data name="Info_Bypass_Tester_Meaning" xml:space="preserve">
+    <value>Compare Direct vs DPI Bypass latency; if direct times out while DPI Bypass succeeds, SNI DPI blocking is active on that site.</value>
+  </data>
+  <data name="Info_Bypass_Settings_Title" xml:space="preserve">
+    <value>TLS Fragmentation &amp; Self-Healing Tuning</value>
+  </data>
+  <data name="Info_Bypass_Settings_Desc" xml:space="preserve">
+    <value>Configures website scope (All Websites Smart Auto-PAC vs Rule List Only), fragment chunk size/delay, and 4-stage self-healing.</value>
+  </data>
+  <data name="Info_Bypass_Settings_Meaning" xml:space="preserve">
+    <value>Smart Self-Healing automatically escalates 16-byte aggressive splits or falls back to direct/tunnel if an ISP or CDN rejects initial chunks.</value>
+  </data>
+  <data name="Info_Bypass_Upstream_Title" xml:space="preserve">
+    <value>Tier 2 Split-Tunnel Fallback (WARP / SOCKS5)</value>
+  </data>
+  <data name="Info_Bypass_Upstream_Desc" xml:space="preserve">
+    <value>Optional local SOCKS5/HTTP upstream (such as Cloudflare WARP on 127.0.0.1:40000) used ONLY for IP-blocked sites where DPI split alone cannot reach.</value>
+  </data>
+  <data name="Info_Bypass_Upstream_Meaning" xml:space="preserve">
+    <value>Auto-Fallback keeps normal websites fast via DPI Bypass while seamlessly rescuing IP-blocked sites through the tunnel.</value>
+  </data>
+  <data name="Info_Bypass_Rules_Title" xml:space="preserve">
+    <value>Domain Bypass Rule Manager</value>
+  </data>
+  <data name="Info_Bypass_Rules_Desc" xml:space="preserve">
+    <value>Controls explicit per-domain handling (Direct, DPI Fragmentation, Upstream Tunnel, Auto-Hybrid) and presets for Steam &amp; gaming platforms.</value>
+  </data>
+  <data name="Info_Bypass_Rules_Meaning" xml:space="preserve">
+    <value>Auto-Hybrid tries lightweight TLS fragmentation first and falls back automatically only if needed.</value>
+  </data>
+  <data name="Info_Bypass_Exclusions_Title" xml:space="preserve">
+    <value>Direct Bypass Exclusions</value>
+  </data>
+  <data name="Info_Bypass_Exclusions_Desc" xml:space="preserve">
+    <value>Domains excluded completely from the local proxy via Auto-PAC DIRECT rules — ideal for online banking, local LAN, and latency-sensitive sites.</value>
+  </data>
+  <data name="Info_Bypass_Exclusions_Meaning" xml:space="preserve">
+    <value>Added domains never touch the Smart Proxy and take full effect immediately in Auto-PAC.</value>
+  </data>
+  <data name="Info_Bypass_Learned_Title" xml:space="preserve">
+    <value>Self-Healing Adaptive Learning Cache</value>
+  </data>
+  <data name="Info_Bypass_Learned_Desc" xml:space="preserve">
+    <value>Remembers for 30 minutes whether a domain prefers Direct TLS, 16-byte escalation, or Upstream Tunnel after auto-recovery.</value>
+  </data>
+  <data name="Info_Bypass_Learned_Meaning" xml:space="preserve">
+    <value>Click 'Pin rule' to promote any learned domain permanently into your saved domain rules.</value>
+  </data>
+  <data name="Info_Bypass_Activity_Title" xml:space="preserve">
+    <value>Recent Bypass Connection Stream</value>
+  </data>
+  <data name="Info_Bypass_Activity_Desc" xml:space="preserve">
+    <value>Live log of proxied domains showing action taken, strategy used, handshake latency, and quick Direct exclusion button.</value>
+  </data>
+  <data name="Info_Bypass_Activity_Meaning" xml:space="preserve">
+    <value>If a domain works slower via proxy, click 'Direct' on its row to exclude it cleanly.</value>
+  </data>
+  <data name="Info_Diag_Scanner_Title" xml:space="preserve">
+    <value>Live Diagnostic Scanner &amp; Step Log</value>
+  </data>
+  <data name="Info_Diag_Scanner_Desc" xml:space="preserve">
+    <value>Streams step-by-step execution progress, active probe animations, per-protocol results, and timings for every diagnostic test.</value>
+  </data>
+  <data name="Info_Diag_Scanner_Meaning" xml:space="preserve">
+    <value>Pass/Warning/Fail pills clearly pinpoint whether an issue is on plain UDP/TCP 53, DoH, DoT, DNSCrypt, or local OS adapter DNS.</value>
+  </data>
+  <data name="Info_Diag_Local_Title" xml:space="preserve">
+    <value>Local Adapter &amp; Proxy Binding Snapshot</value>
+  </data>
+  <data name="Info_Diag_Local_Desc" xml:space="preserve">
+    <value>Reads actual Windows interface IP/Gateway/DNS state alongside JustCryptDns proxy engine status — all fields selectable &amp; copyable.</value>
+  </data>
+  <data name="Info_Diag_Local_Meaning" xml:space="preserve">
+    <value>When running properly, Adapter DNS points to 127.0.0.1 (or alternate loopback) while Gateway stays your router.</value>
+  </data>
+  <data name="Info_Diag_External_Title" xml:space="preserve">
+    <value>Protocol, DNSSEC, Leak &amp; ISP Restriction Probes</value>
+  </data>
+  <data name="Info_Diag_External_Desc" xml:space="preserve">
+    <value>Runs live network checks for DNSSEC AD verification, DoH/443, DNSCrypt relay, local DNS leak risk, and ISP port blocking.</value>
+  </data>
+  <data name="Info_Diag_External_Meaning" xml:space="preserve">
+    <value>Port Scan tests all 5 transport paths individually in the live log and recommends the cleanest protocol for your ISP.</value>
+  </data>
+  <data name="Info_Diag_Lookup_Title" xml:space="preserve">
+    <value>DNS Record Lookup, Compare &amp; Global Propagation</value>
+  </data>
+  <data name="Info_Diag_Lookup_Desc" xml:space="preserve">
+    <value>Queries A/AAAA/CNAME/MX/TXT/NS records, compares enabled resolvers side-by-side, or checks worldwide DNS propagation consistency.</value>
+  </data>
+  <data name="Info_Diag_Lookup_Meaning" xml:space="preserve">
+    <value>Compare highlights the fastest resolver for a domain; Propagation checks whether global DNS providers return identical records.</value>
+  </data>
+  <data name="Info_Monitor_Summary_Title" xml:space="preserve">
+    <value>Live Monitor Totals &amp; Engine State</value>
+  </data>
+  <data name="Info_Monitor_Summary_Desc" xml:space="preserve">
+    <value>Summarizes session query counts, ad-block hits, cache efficiency, and latest upstream latency above the stream.</value>
+  </data>
+  <data name="Info_Monitor_Summary_Meaning" xml:space="preserve">
+    <value>Use Pause Stream when inspecting a specific domain burst or Clear to start a fresh trace.</value>
+  </data>
+  <data name="Info_Monitor_Stream_Title" xml:space="preserve">
+    <value>Virtualized Real-Time DNS Query Stream</value>
+  </data>
+  <data name="Info_Monitor_Stream_Desc" xml:space="preserve">
+    <value>UI-virtualized ring buffer showing every domain resolved through the proxy with outcome badge, record type, resolver, and latency.</value>
+  </data>
+  <data name="Info_Monitor_Stream_Meaning" xml:space="preserve">
+    <value>Allowed/Cached = served cleanly; Blocked = filtered locally; Routed = custom rule applied; Failed = upstream error.</value>
+  </data>
+  <data name="Info_Monitor_Failover_Title" xml:space="preserve">
+    <value>Automatic Failover &amp; Recovery History</value>
+  </data>
+  <data name="Info_Monitor_Failover_Desc" xml:space="preserve">
+    <value>Logs whenever the engine detected an upstream timeout or error and automatically switched to a healthy backup resolver.</value>
+  </data>
+  <data name="Info_Monitor_Failover_Meaning" xml:space="preserve">
+    <value>Frequent failovers indicate an unstable primary resolver on your ISP — consider switching Primary in Resolver Library.</value>
+  </data>
+  <data name="Info_Settings_General_Title" xml:space="preserve">
+    <value>Language &amp; Window Close Behavior</value>
+  </data>
+  <data name="Info_Settings_General_Desc" xml:space="preserve">
+    <value>Switches UI localization instantly and sets what happens when clicking the top-right Close (×) button.</value>
+  </data>
+  <data name="Info_Settings_General_Meaning" xml:space="preserve">
+    <value>'Exit Application' automatically restores your original Windows DNS and proxy before shutting down.</value>
+  </data>
+  <data name="Info_Settings_Updates_Title" xml:space="preserve">
+    <value>GitHub Auto-Updater &amp; Integrity Verification</value>
+  </data>
+  <data name="Info_Settings_Updates_Desc" xml:space="preserve">
+    <value>Checks github.com/longtygu/JustCryptDns Releases, verifies SHA-256 checksums, plots download speed live, and upgrades in-place.</value>
+  </data>
+  <data name="Info_Settings_Updates_Meaning" xml:space="preserve">
+    <value>Settings, custom resolvers, and routing profiles are preserved across automatic upgrades.</value>
+  </data>
+  <data name="Info_Settings_Startup_Title" xml:space="preserve">
+    <value>Windows Startup, Auto-Start &amp; Background Service</value>
+  </data>
+  <data name="Info_Settings_Startup_Desc" xml:space="preserve">
+    <value>Configures auto-launch with Windows, minimized tray startup, auto-starting encrypted DNS, and Windows Service IPC connection status.</value>
+  </data>
+  <data name="Info_Settings_Startup_Meaning" xml:space="preserve">
+    <value>Connected service allows DNS configuration persistence; Admin elevation or service handles adapter DNS cleanly.</value>
+  </data>
+  <data name="Info_Settings_Appearance_Title" xml:space="preserve">
+    <value>Theme Quick Switch &amp; Appearance Studio</value>
+  </data>
+  <data name="Info_Settings_Appearance_Desc" xml:space="preserve">
+    <value>Switch Dark/Light/System/Custom themes immediately or open Appearance for transparency, fonts, colors, and indicator animations.</value>
+  </data>
+  <data name="Info_Settings_Appearance_Meaning" xml:space="preserve">
+    <value>Theme tokens apply instantaneously across all windows without restarting.</value>
+  </data>
+  <data name="Info_Settings_Perf_Title" xml:space="preserve">
+    <value>Memory, CPU &amp; Monitoring Resource Controls</value>
+  </data>
+  <data name="Info_Settings_Perf_Desc" xml:space="preserve">
+    <value>Controls live monitor buffer size and enables developer process memory/thread/handle telemetry with manual Trim Memory.</value>
+  </data>
+  <data name="Info_Settings_Perf_Meaning" xml:space="preserve">
+    <value>Power Saving minimizes ring-buffer overhead and stops chart timers whenever minimized to tray.</value>
+  </data>
+  <data name="Info_Settings_About_Title" xml:space="preserve">
+    <value>Build Metadata, Data Paths &amp; Quick Diagnostics</value>
+  </data>
+  <data name="Info_Settings_About_Desc" xml:space="preserve">
+    <value>Selectable version/OS details and config/log folder paths with 1-click Copy and Explorer shortcuts.</value>
+  </data>
+  <data name="Info_Settings_About_Meaning" xml:space="preserve">
+    <value>Logs never capture browsing history unrequested and user profile names are masked when preparing bug reports.</value>
+  </data>
+  <data name="Info_Appearance_Theme_Title" xml:space="preserve">
+    <value>Theme Mode &amp; Custom Canvas Tint</value>
+  </data>
+  <data name="Info_Appearance_Theme_Desc" xml:space="preserve">
+    <value>Switches between Dark, Light, Windows System synchronization, or custom base + color tint palettes.</value>
+  </data>
+  <data name="Info_Appearance_Theme_Meaning" xml:space="preserve">
+    <value>High-contrast readable palette stays clear over Mica/Acrylic glass backdrops.</value>
+  </data>
+  <data name="Info_Appearance_Accent_Title" xml:space="preserve">
+    <value>Accent Color Palette &amp; Custom Hex</value>
+  </data>
+  <data name="Info_Appearance_Accent_Desc" xml:space="preserve">
+    <value>Syncs with Windows DWM accent color or selects any curated swatch or custom #RRGGBB hex code.</value>
+  </data>
+  <data name="Info_Appearance_Accent_Meaning" xml:space="preserve">
+    <value>Accent brush dynamically updates primary buttons, gauges, waveform plots, and active pills.</value>
+  </data>
+  <data name="Info_Appearance_Transparency_Title" xml:space="preserve">
+    <value>Window Transparency &amp; DWM Backdrop Material</value>
+  </data>
+  <data name="Info_Appearance_Transparency_Desc" xml:space="preserve">
+    <value>Controls Mica, Acrylic, or Blur-behind backdrop effects and card opacity slider for Windows 10/11 compositors.</value>
+  </data>
+  <data name="Info_Appearance_Transparency_Meaning" xml:space="preserve">
+    <value>If cards become too translucent over bright wallpapers, lower the slider percentage to keep text sharp.</value>
+  </data>
+  <data name="Info_Appearance_Background_Title" xml:space="preserve">
+    <value>Window Surface Finish</value>
+  </data>
+  <data name="Info_Appearance_Background_Desc" xml:space="preserve">
+    <value>Chooses a clean flat canvas or a subtle radial accent glow behind the main window content.</value>
+  </data>
+  <data name="Info_Appearance_Background_Meaning" xml:space="preserve">
+    <value>Accent Tint uses static GPU/brushes with negligible runtime overhead.</value>
+  </data>
+  <data name="Info_Appearance_Layout_Title" xml:space="preserve">
+    <value>Sidebar, Spacing Density &amp; Corner Style</value>
+  </data>
+  <data name="Info_Appearance_Layout_Desc" xml:space="preserve">
+    <value>Customizes compact/expanded sidebar navigation, card spacing density, and native Windows 11 corner rounding.</value>
+  </data>
+  <data name="Info_Appearance_Layout_Meaning" xml:space="preserve">
+    <value>Compact density fits more diagnostics and metrics on screen at once without extra scrolling.</value>
+  </data>
+  <data name="Info_Appearance_Scaling_Title" xml:space="preserve">
+    <value>UI Zoom Scale, Text Size &amp; Indicator Pulses</value>
+  </data>
+  <data name="Info_Appearance_Scaling_Desc" xml:space="preserve">
+    <value>Adjusts global layout zoom (80%–150%), font sizing, transition smoothness, and DNS engine shield/button blinking styles.</value>
+  </data>
+  <data name="Info_Appearance_Scaling_Meaning" xml:space="preserve">
+    <value>Set Animations to Off or Status Pulse to Off anytime to completely disable ambient pulse effects.</value>
   </data>
 </root>

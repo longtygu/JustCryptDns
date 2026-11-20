@@ -6,6 +6,7 @@
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:ipc="clr-namespace:JustCryptDns.Core.Ipc;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
              mc:Ignorable="d" d:DesignWidth="950" d:DesignHeight="1050"
              d:DataContext="{d:DesignInstance Type=vm:DnsManagerViewModel}">
     <UserControl.Resources>
@@ -36,12 +37,16 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" VerticalAlignment="Top" />
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
                             <TextBlock Style="{StaticResource RowTitle}" FontWeight="SemiBold" Text="{l:Loc DnsMgr_PortConflictTitle}" />
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding PortConflict.Message}" Margin="0,3,0,0" />
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontSize="{DynamicResource Font.Size.Caption}"
+                                     Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding PortConflict.Message, Mode=OneWay}" Margin="0,3,0,0" />
                         </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource Button.CopyInline}"
+                                controls:CopyTextBehavior.CopyText="{Binding PortConflict.Message}" />
                     </Grid>
                     <WrapPanel Orientation="Horizontal" Margin="32,12,0,0">
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding UseAlternateLoopbackPort53Command}" Margin="0,0,8,4"
@@ -89,9 +94,13 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" VerticalAlignment="Top" />
-                        <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding TrafficWarningBanner}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding TrafficWarningBanner, Mode=OneWay}"
+                                 VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <Button Grid.Column="2" Style="{StaticResource Button.CopyInline}"
+                                controls:CopyTextBehavior.CopyText="{Binding TrafficWarningBanner}" />
                     </Grid>
                     <WrapPanel Orientation="Horizontal" Margin="32,12,0,0">
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding UseAlternateLoopbackPort53Command}" Margin="0,0,8,4"
@@ -123,20 +132,42 @@
                 </StackPanel>
             </Border>
 
-            <!-- Error / Info alerts -->
+            <!-- Error / Info alerts (Selectable & Copyable) -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ErrorMessage, Mode=OneWay}"
+                             Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}"
+                            controls:CopyTextBehavior.CopyText="{Binding ErrorMessage}" />
+                </Grid>
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding InfoMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding InfoMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding InfoMessage, Mode=OneWay}"
+                             Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}"
+                            controls:CopyTextBehavior.CopyText="{Binding InfoMessage}" />
+                </Grid>
             </Border>
 
             <!-- Engine Control Card -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_DnsMgr_Engine_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_DnsMgr_Engine_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_DnsMgr_Engine_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -147,8 +178,8 @@
                         <Border Width="52" Height="52" CornerRadius="26" VerticalAlignment="Center">
                             <Border.Style>
                                 <Style TargetType="Border">
-                                    <Setter Property="Background" Value="{DynamicResource Brush.NeutralSubtle}" />
-                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Neutral}" />
+                                    <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Running}">
                                             <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
@@ -157,6 +188,14 @@
                                         <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Degraded}">
                                             <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
                                             <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Starting}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Stopping}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -168,8 +207,39 @@
                         <StackPanel Grid.Column="1" Margin="18,0,20,0" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc DnsMgr_EngineTitle}" VerticalAlignment="Center" />
-                                <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="10,0,0,0">
-                                    <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold">
+                                <Border Margin="10,0,0,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Running}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Degraded}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Warning}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Starting}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding EngineState}" Value="{x:Static ipc:DnsEngineState.Stopping}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
+                                               Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}">
                                         <TextBlock.Text>
                                             <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="EngineState_">
                                                 <Binding Path="EngineState" />
@@ -207,7 +277,11 @@
                     <UniformGrid Rows="1" Columns="4">
                         <StackPanel>
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc DnsMgr_LocalProxy}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding ListenEndpoint}" Margin="0,4,0,0" />
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding ListenEndpoint, Mode=OneWay}" VerticalAlignment="Center" />
+                                <Button Style="{StaticResource Button.CopyInline}" Width="22" Height="22" Margin="4,0,0,0"
+                                        controls:CopyTextBehavior.CopyText="{Binding ListenEndpoint}" />
+                            </StackPanel>
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Latency}" />
@@ -231,7 +305,11 @@
 
             <!-- Active Resolver Selection & Failover Policy -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc DnsMgr_ResolverSection}" Margin="0,12,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_DnsMgr_Resolver_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_DnsMgr_Resolver_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_DnsMgr_Resolver_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -240,7 +318,12 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                             <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc DnsMgr_ActiveResolver}" />
-                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding SelectedResolver.Endpoint}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                         Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding SelectedResolver.Endpoint, Mode=OneWay}" VerticalAlignment="Center" />
+                                <Button Style="{StaticResource Button.CopyInline}" Width="22" Height="22" Margin="4,0,0,0"
+                                        controls:CopyTextBehavior.CopyText="{Binding SelectedResolver.Endpoint}" />
+                            </StackPanel>
                         </StackPanel>
                         <ComboBox Grid.Column="1" ItemsSource="{Binding Resolvers}" SelectedItem="{Binding SelectedResolver}"
                                   DisplayMemberPath="Name" AutomationProperties.Name="{l:Loc DnsMgr_ActiveResolver}" />
@@ -267,7 +350,11 @@
 
             <!-- Local Proxy Configuration -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc DnsMgr_LocalProxy}" Margin="0,12,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_DnsMgr_Proxy_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_DnsMgr_Proxy_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_DnsMgr_Proxy_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -306,7 +393,11 @@
 
             <!-- Windows Network Integration & Safety -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc DnsMgr_WindowsSection}" Margin="0,12,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_DnsMgr_Windows_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_DnsMgr_Windows_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_DnsMgr_Windows_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -338,7 +429,11 @@
 
             <!-- DNSCrypt Engine Management -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc DnsMgr_DnsCryptSection}" Margin="0,12,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_DnsMgr_DnsCrypt_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_DnsMgr_DnsCrypt_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_DnsMgr_DnsCrypt_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -351,8 +446,16 @@
                                 <TextBlock FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding DnsCryptVersion}" />
                             </Border>
                         </StackPanel>
-                        <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding DnsCryptPath}" Margin="0,4,0,0"
-                                   Foreground="{DynamicResource Brush.TextSecondary}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding DnsCryptPath, Mode=OneWay}"
+                                     Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" Width="24" Height="24" Margin="4,0,0,0"
+                                    controls:CopyTextBehavior.CopyText="{Binding DnsCryptPath}" />
+                        </Grid>
                     </StackPanel>
                     <Button Grid.Column="1" Command="{Binding InstallOrUpdateDnsCryptCommand}" Content="{l:Loc DnsMgr_InstallUpdateDnsCrypt}" VerticalAlignment="Center" />
                 </Grid>

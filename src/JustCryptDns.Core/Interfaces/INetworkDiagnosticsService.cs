@@ -42,11 +42,23 @@ public interface INetworkDiagnosticsService
         string recordType = "A",
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ResolverComparisonEntry>> CompareResolversAsync(
+        string domain,
+        string recordType,
+        IProgress<DiagnosticStepProgress>? progress,
+        CancellationToken cancellationToken = default);
+
     Task<DnsLeakTestReport> RunDnsLeakTestAsync(
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ResolverComparisonEntry>> CheckPropagationAsync(
         string domain,
         string recordType = "A",
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ResolverComparisonEntry>> CheckPropagationAsync(
+        string domain,
+        string recordType,
+        IProgress<DiagnosticStepProgress>? progress,
         CancellationToken cancellationToken = default);
 }

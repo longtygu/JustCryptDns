@@ -199,4 +199,34 @@ public sealed class DiagnosticsAndMonitorPhase10Tests
             Assert.Empty(diag.GetMonitorEntries());
         }
     }
+
+    [Fact]
+    public async Task CompareAndPropagation_WithStepProgress_StreamsPerResolverSteps()
+    {
+        var (diag, res) = CreateDiagnostics(IPAddress.Loopback);
+        using (diag)
+        using (res)
+        {
+            var compareSteps = new List<DiagnosticStepProgress>();
+            var compareResults = await diag.CompareResolversAsync("example.com", "A", new SyncDiagnosticProgress(compareSteps));
+            Assert.NotEmpty(compareResults);
+            Assert.Equal(compareResults.Count, compareSteps.Count(s => s.Category == DiagnosticTestCategory.Compare && s.Outcome == DiagnosticStepOutcome.Pass));
+
+            var propagationSteps = new List<DiagnosticStepProgress>();
+            var propagationResults = await diag.CheckPropagationAsync("example.com", "A", new SyncDiagnosticProgress(propagationSteps));
+            Assert.NotEmpty(propagationResults);
+            Assert.Equal(propagationResults.Count, propagationSteps.Count(s => s.Category == DiagnosticTestCategory.Propagation && s.Outcome == DiagnosticStepOutcome.Pass));
+        }
+    }
+
+    private sealed class SyncDiagnosticProgress(List<DiagnosticStepProgress> target) : IProgress<DiagnosticStepProgress>
+    {
+        public void Report(DiagnosticStepProgress value)
+        {
+            lock (target)
+            {
+                target.Add(value);
+            }
+        }
+    }
 }

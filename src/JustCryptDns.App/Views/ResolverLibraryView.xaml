@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1100"
              d:DataContext="{d:DesignInstance Type=vm:ResolverLibraryViewModel}">
     <UserControl.Resources>
@@ -41,21 +42,43 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Status / Error Banners -->
+            <!-- Status / Error Banners (Selectable & Copyable) -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ErrorMessage, Mode=OneWay}"
+                             Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}"
+                            controls:CopyTextBehavior.CopyText="{Binding ErrorMessage}" />
+                </Grid>
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding StatusMessage, Mode=OneWay}"
+                             Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}"
+                            controls:CopyTextBehavior.CopyText="{Binding StatusMessage}" />
+                </Grid>
             </Border>
 
             <!-- Live Animated Resolver Scan & Detailed Log Card -->
             <Border Style="{StaticResource SectionCard}" BorderBrush="{DynamicResource Brush.Accent}"
-                    Visibility="{Binding HasScanPanel, Converter={StaticResource BoolToVisibility}}">
+                    Visibility="{Binding HasScanPanel, Converter={StaticResource BoolToVisibility}}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Resolvers_Scan_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Resolvers_Scan_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Resolvers_Scan_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -296,41 +319,191 @@
                 </StackPanel>
             </Border>
 
-            <!-- Summary & Active Primary / Secondary Card -->
-            <Border Style="{StaticResource SectionCard}">
+            <!-- Highlighted Primary & Secondary Resolver Cards + Catalog Summary -->
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Resolvers_Summary_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Resolvers_Summary_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Resolvers_Summary_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="14" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Margin="0,0,16,0">
-                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_PrimaryTitle}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding PrimaryResolver.Name}" VerticalAlignment="Center" />
-                                <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="10,0,0,0">
-                                    <TextBlock FontSize="{DynamicResource Font.Size.Small}" Foreground="{DynamicResource Brush.Accent}"
-                                               FontWeight="SemiBold" Text="{Binding PrimaryResolver.Provider}" />
-                                </Border>
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
-                                       Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding PrimaryResolver.Endpoint}"
-                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                        </StackPanel>
 
-                        <StackPanel Grid.Column="1" Margin="16,0,0,0">
-                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Resolvers_SecondaryTitle}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding SecondaryResolver.Name}" VerticalAlignment="Center" />
-                                <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="10,0,0,0">
-                                    <TextBlock FontSize="{DynamicResource Font.Size.Small}" Foreground="{DynamicResource Brush.TextSecondary}"
-                                               FontWeight="SemiBold" Text="{Binding SecondaryResolver.Provider}" />
-                                </Border>
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
-                                       Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding SecondaryResolver.Endpoint}"
-                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                        </StackPanel>
+                        <!-- Primary Resolver Highlight Card (Green Glowing Blinking Dot Top-Right) -->
+                        <Border CornerRadius="10" Padding="16,14" Background="{DynamicResource Brush.SuccessSubtle}"
+                                BorderBrush="{DynamicResource Brush.Success}" BorderThickness="1.5"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Resolvers_Primary_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Resolvers_Primary_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Resolvers_Primary_Meaning}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <Grid>
+                                <!-- Top-right blinking glowing GREEN dot -->
+                                <Grid Width="20" Height="20" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0">
+                                    <Ellipse Width="18" Height="18" Fill="#553DD68C" RenderTransformOrigin="0.5,0.5">
+                                        <Ellipse.RenderTransform>
+                                            <ScaleTransform ScaleX="0.7" ScaleY="0.7" />
+                                        </Ellipse.RenderTransform>
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsVisible" Value="True">
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard x:Name="PrimaryHaloPulse">
+                                                                <Storyboard RepeatBehavior="Forever">
+                                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.85" To="0.0" Duration="0:0:1.4" />
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.65" To="1.55" Duration="0:0:1.4" />
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" From="0.65" To="1.55" Duration="0:0:1.4" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="PrimaryHaloPulse" />
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <Ellipse Width="10" Height="10" Fill="#FF3DD68C" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Ellipse.Effect>
+                                            <DropShadowEffect Color="#FF3DD68C" BlurRadius="10" ShadowDepth="0" Opacity="0.95" />
+                                        </Ellipse.Effect>
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsVisible" Value="True">
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard x:Name="PrimaryDotBlink">
+                                                                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.32" Duration="0:0:0.75" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="PrimaryDotBlink" />
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                </Grid>
+
+                                <StackPanel Margin="0,0,26,0">
+                                    <TextBlock Style="{StaticResource Text.Label}" Foreground="{DynamicResource Brush.Success}"
+                                               Text="{l:Loc Resolvers_PrimaryTitle}" />
+                                    <WrapPanel Orientation="Horizontal" Margin="0,6,0,4">
+                                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding PrimaryResolver.Name}" VerticalAlignment="Center" />
+                                        <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SuccessSubtle}"
+                                                BorderBrush="{DynamicResource Brush.Success}" BorderThickness="1" Margin="8,0,0,0">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" Foreground="{DynamicResource Brush.Success}"
+                                                       FontWeight="SemiBold" Text="{Binding PrimaryResolver.Provider}" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                                 Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding PrimaryResolver.Endpoint, Mode=OneWay}"
+                                                 TextWrapping="NoWrap" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" Width="22" Height="22" Margin="4,0,0,0"
+                                                controls:CopyTextBehavior.CopyText="{Binding PrimaryResolver.Endpoint}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Secondary Resolver Highlight Card (Orange Glowing Blinking Dot Top-Right) -->
+                        <Border Grid.Column="2" CornerRadius="10" Padding="16,14" Background="#18F97316"
+                                BorderBrush="#FFF97316" BorderThickness="1.5"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Resolvers_Secondary_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Resolvers_Secondary_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Resolvers_Secondary_Meaning}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                            <Grid>
+                                <!-- Top-right blinking glowing ORANGE dot -->
+                                <Grid Width="20" Height="20" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0">
+                                    <Ellipse Width="18" Height="18" Fill="#55F97316" RenderTransformOrigin="0.5,0.5">
+                                        <Ellipse.RenderTransform>
+                                            <ScaleTransform ScaleX="0.7" ScaleY="0.7" />
+                                        </Ellipse.RenderTransform>
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsVisible" Value="True">
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard x:Name="SecondaryHaloPulse">
+                                                                <Storyboard RepeatBehavior="Forever">
+                                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.85" To="0.0" Duration="0:0:1.4" />
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.65" To="1.55" Duration="0:0:1.4" />
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" From="0.65" To="1.55" Duration="0:0:1.4" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="SecondaryHaloPulse" />
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <Ellipse Width="10" Height="10" Fill="#FFF97316" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Ellipse.Effect>
+                                            <DropShadowEffect Color="#FFF97316" BlurRadius="10" ShadowDepth="0" Opacity="0.95" />
+                                        </Ellipse.Effect>
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsVisible" Value="True">
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard x:Name="SecondaryDotBlink">
+                                                                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.32" Duration="0:0:0.75" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="SecondaryDotBlink" />
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                </Grid>
+
+                                <StackPanel Margin="0,0,26,0">
+                                    <TextBlock Style="{StaticResource Text.Label}" Foreground="#FFF97316"
+                                               Text="{l:Loc Resolvers_SecondaryTitle}" />
+                                    <WrapPanel Orientation="Horizontal" Margin="0,6,0,4">
+                                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding SecondaryResolver.Name}" VerticalAlignment="Center" />
+                                        <Border Style="{StaticResource Pill}" Background="#24F97316"
+                                                BorderBrush="#FFF97316" BorderThickness="1" Margin="8,0,0,0">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" Foreground="#FFF97316"
+                                                       FontWeight="SemiBold" Text="{Binding SecondaryResolver.Provider}" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                                 Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding SecondaryResolver.Endpoint, Mode=OneWay}"
+                                                 TextWrapping="NoWrap" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" Width="22" Height="22" Margin="4,0,0,0"
+                                                controls:CopyTextBehavior.CopyText="{Binding SecondaryResolver.Endpoint}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </Grid>
 
                     <Border Style="{StaticResource Divider}" />
@@ -357,14 +530,27 @@
 
             <!-- Custom Resolver Editor Card -->
             <Border Style="{StaticResource SectionCard}" BorderBrush="{DynamicResource Brush.Accent}"
-                    Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibility}}">
+                    Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibility}}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Resolvers_Editor_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Resolvers_Editor_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Resolvers_Editor_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Resolvers_Editor_Title}" Margin="0,0,0,14" />
 
                     <Border Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                             BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12"
                             Visibility="{Binding EditorErrorMessage, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding EditorErrorMessage}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding EditorErrorMessage, Mode=OneWay}"
+                                     Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}"
+                                    controls:CopyTextBehavior.CopyText="{Binding EditorErrorMessage}" />
+                        </Grid>
                     </Border>
 
                     <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
@@ -449,7 +635,11 @@
             </Border>
 
             <!-- Search, Group & Protocol Filter Bar -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Resolvers_Filter_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Resolvers_Filter_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Resolvers_Filter_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />

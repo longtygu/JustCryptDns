@@ -10,6 +10,34 @@ public enum GamingSelectionProfile
     MaximumReliability,
 }
 
+public enum GamingBenchmarkProgressStage
+{
+    ResolverStarted,
+    DomainProbed,
+    ResolverCompleted,
+    Cancelled,
+}
+
+public sealed record GamingBenchmarkProgress(
+    GamingBenchmarkProgressStage Stage,
+    string ResolverId,
+    string ResolverName,
+    DnsProtocol Protocol,
+    string Domain,
+    int Round,
+    int TotalRounds,
+    int CompletedResolvers,
+    int TotalResolvers,
+    int CompletedQueries,
+    int TotalQueries,
+    bool Success,
+    bool TimedOut,
+    double LatencyMs,
+    double AverageLatencyMs,
+    double ReliabilityScore,
+    string? Error,
+    DateTimeOffset Timestamp);
+
 public sealed record ResolverBenchmarkResult
 {
     public required string ResolverId { get; init; }

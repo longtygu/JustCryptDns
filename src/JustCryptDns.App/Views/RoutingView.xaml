@@ -6,6 +6,7 @@
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1150"
              d:DataContext="{d:DesignInstance Type=vm:RoutingViewModel}">
     <UserControl.Resources>
@@ -42,16 +43,34 @@
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ErrorMessage, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding ErrorMessage}" />
+                </Grid>
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding StatusMessage, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding StatusMessage}" />
+                </Grid>
             </Border>
 
             <!-- Profile, Master Switch & Fallback Resolver Card -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Routing_Profile_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Routing_Profile_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Routing_Profile_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -105,14 +124,25 @@
 
             <!-- Visual Rule Editor Card -->
             <Border Style="{StaticResource SectionCard}" BorderBrush="{DynamicResource Brush.Accent}"
-                    Visibility="{Binding IsRuleEditorOpen, Converter={StaticResource BoolToVisibility}}">
+                    Visibility="{Binding IsRuleEditorOpen, Converter={StaticResource BoolToVisibility}}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Routing_Editor_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Routing_Editor_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Routing_Editor_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Routing_Editor_Title}" Margin="0,0,0,12" />
 
                     <Border Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                             BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12"
                             Visibility="{Binding RuleEditorError, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding RuleEditorError}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding RuleEditorError, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding RuleEditorError}" />
+                        </Grid>
                     </Border>
 
                     <UniformGrid Columns="3" Rows="1" Margin="0,0,0,12">
@@ -159,7 +189,11 @@
 
             <!-- Interactive Rule Tester -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Routing_Tester_Title}" Margin="0,8,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Routing_Tester_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Routing_Tester_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Routing_Tester_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -173,7 +207,14 @@
                     </Grid>
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,12,0,0"
                             Visibility="{Binding LastTestSummary, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding LastTestSummary}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding LastTestSummary, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding LastTestSummary}" />
+                        </Grid>
                     </Border>
                 </StackPanel>
             </Border>
@@ -183,7 +224,11 @@
             <ItemsControl ItemsSource="{Binding ProfileRules}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:RoutingRuleItemViewModel}">
-                        <Border Style="{StaticResource SectionCard}" Padding="18,14">
+                        <Border Style="{StaticResource SectionCard}" Padding="18,14"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Routing_Rules_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Routing_Rules_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Routing_Rules_Meaning}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -244,7 +289,11 @@
                 <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Routing_Log_Title}" VerticalAlignment="Center" />
                 <Button Grid.Column="1" Command="{Binding ClearLogsCommand}" Content="{l:Loc Routing_Log_Clear}" Padding="10,5" />
             </Grid>
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Routing_Log_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Routing_Log_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Routing_Log_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <ItemsControl ItemsSource="{Binding RecentLogs}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type models:RoutingLogEntry}">

@@ -258,12 +258,13 @@ public static class ChartHoverInfoBehavior
                 _activeController.DismissPopup();
             }
 
+            var isTallElement = _element.ActualHeight > 220;
             _toolTip ??= new ToolTip
             {
-                Placement = PlacementMode.Bottom,
-                VerticalOffset = 6,
                 StaysOpen = true,
             };
+            _toolTip.Placement = isTallElement ? PlacementMode.Mouse : PlacementMode.Bottom;
+            _toolTip.VerticalOffset = isTallElement ? 18 : 6;
             _toolTip.PlacementTarget = _element;
             _toolTip.Content = panel;
 

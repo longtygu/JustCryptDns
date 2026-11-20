@@ -6,6 +6,7 @@
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1200"
              d:DataContext="{d:DesignInstance Type=vm:FilteringViewModel}">
     <UserControl.Resources>
@@ -44,16 +45,34 @@
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ErrorMessage, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding ErrorMessage}" />
+                </Grid>
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding StatusMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding StatusMessage, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding StatusMessage}" />
+                </Grid>
             </Border>
 
             <!-- Filtering Summary & Master Toggle -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Filtering_Summary_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Filtering_Summary_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Filtering_Summary_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -91,7 +110,11 @@
             <ItemsControl ItemsSource="{Binding Blocklists}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:BlocklistItemViewModel}">
-                        <Border Style="{StaticResource SectionCard}" Padding="18,14">
+                        <Border Style="{StaticResource SectionCard}" Padding="18,14"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Filtering_Blocklists_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Filtering_Blocklists_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Filtering_Blocklists_Meaning}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -140,7 +163,11 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Allowlist & Temporary Exceptions -->
-                <Border Style="{StaticResource SectionCard}" Margin="0,0,6,12">
+                <Border Style="{StaticResource SectionCard}" Margin="0,0,6,12"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Filtering_Allowlist_Title}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Filtering_Allowlist_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Filtering_Allowlist_Meaning}"
+                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Filtering_Allowlist_Title}" Margin="0,0,0,10" />
                         <Grid Margin="0,0,0,10">
@@ -178,7 +205,11 @@
                 </Border>
 
                 <!-- Custom Blocked Domains -->
-                <Border Grid.Column="1" Style="{StaticResource SectionCard}" Margin="6,0,0,12">
+                <Border Grid.Column="1" Style="{StaticResource SectionCard}" Margin="6,0,0,12"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Filtering_CustomBlock_Title}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Filtering_CustomBlock_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Filtering_CustomBlock_Meaning}"
+                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Filtering_CustomBlock_Title}" Margin="0,0,0,10" />
                         <Grid Margin="0,0,0,10">
@@ -214,7 +245,11 @@
 
             <!-- Decision Inspector -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Filtering_Inspector_Title}" Margin="0,8,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Filtering_Inspector_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Filtering_Inspector_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Filtering_Inspector_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -228,14 +263,25 @@
                     </Grid>
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,12,0,0"
                             Visibility="{Binding LastInspectSummary, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding LastInspectSummary}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding LastInspectSummary, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding LastInspectSummary}" />
+                        </Grid>
                     </Border>
                 </StackPanel>
             </Border>
 
             <!-- TTL-Aware DNS Cache Section (Part 8) -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Cache_Section_Title}" Margin="0,8,0,10" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Filtering_Cache_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Filtering_Cache_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Filtering_Cache_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>

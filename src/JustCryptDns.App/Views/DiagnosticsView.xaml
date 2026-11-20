@@ -6,7 +6,8 @@
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
-             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1250"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
+             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="1350"
              d:DataContext="{d:DesignInstance Type=vm:DiagnosticsViewModel}">
     <UserControl.Resources>
         <Style x:Key="SectionCard" TargetType="Border" BasedOn="{StaticResource Card}">
@@ -34,34 +35,368 @@
                 <Button Grid.Column="1" Command="{Binding RefreshLocalSnapshotCommand}" Content="{l:Loc Common_Refresh}" VerticalAlignment="Center" />
             </Grid>
 
-            <!-- Error Banner -->
+            <!-- Error Banner (Selectable & Copyable) -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ErrorMessage}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ErrorMessage, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding ErrorMessage}" />
+                </Grid>
+            </Border>
+
+            <!-- Live Animated Diagnostic Scanner & Detailed Step Log Card -->
+            <Border Style="{StaticResource SectionCard}" BorderBrush="{DynamicResource Brush.Accent}"
+                    Visibility="{Binding HasScanPanel, Converter={StaticResource BoolToVisibility}}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Diag_Scanner_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Diag_Scanner_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Diag_Scanner_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Animated Scanner Radar Icon (stops when IsBusy=False) -->
+                        <Grid Width="38" Height="38" VerticalAlignment="Center">
+                            <Border CornerRadius="19" Background="{DynamicResource Brush.AccentSubtle}"
+                                    BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1" />
+                            <Ellipse Width="6" Height="6" Fill="{DynamicResource Brush.Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Grid Width="38" Height="38" RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <RotateTransform Angle="0" />
+                                </Grid.RenderTransform>
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Opacity" Value="0.35" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                                                <Setter Property="Opacity" Value="1.0" />
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard x:Name="DiagRadarStoryboard">
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                             From="0" To="360" Duration="0:0:0.95"
+                                                                             RepeatBehavior="Forever" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.EnterActions>
+                                                <DataTrigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="DiagRadarStoryboard" />
+                                                </DataTrigger.ExitActions>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Path Stroke="{DynamicResource Brush.Accent}" StrokeThickness="2.5"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Data="M 19,5 A 14,14 0 0 1 33,19" />
+                            </Grid>
+                        </Grid>
+
+                        <StackPanel Grid.Column="1" Margin="14,0,14,0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" VerticalAlignment="Center">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                            <Binding Path="ScanHeaderKey" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                                <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="10,0,0,0">
+                                    <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Accent}">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="Diag_Cat_">
+                                                <Binding Path="ActiveTestKind" />
+                                                <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextSecondary}"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="0,2,0,0"
+                                       Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Resolvers_Scan_CurrentTarget">
+                                        <Binding Path="ScanCurrentTarget" />
+                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.ControlFill}" Margin="0,0,6,0">
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                           FontWeight="SemiBold" Text="{Binding ScanStepCounterText}" />
+                            </Border>
+                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SuccessSubtle}" Margin="0,0,6,0">
+                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Success}">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Diag_Scan_PassCount">
+                                            <Binding Path="ScanPassCount" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.DangerSubtle}" Margin="0,0,6,0">
+                                <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Danger}">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource LocFormat}" ConverterParameter="Diag_Scan_FailCount">
+                                            <Binding Path="ScanFailCount" />
+                                            <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+                            <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.SubtleHover}" Margin="0,0,8,0">
+                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                           Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding ScanElapsedDisplay}" />
+                            </Border>
+                            <Button Style="{StaticResource Button.CopyInline}" Width="26" Height="26" Margin="0,0,6,0"
+                                    controls:CopyTextBehavior.CopyText="{Binding DiagnosticLogClipboardText}"
+                                    Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <Button Command="{Binding CancelTestCommand}" Content="{l:Loc Resolvers_Scan_Cancel}"
+                                    Padding="10,4" Margin="0,0,4,0"
+                                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+                            <Button Command="{Binding ClearScanLogCommand}" Content="{l:Loc Resolvers_Scan_ClearLog}"
+                                    Padding="10,4"
+                                    Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolToVisibility}}" />
+                        </WrapPanel>
+                    </Grid>
+
+                    <!-- Dual Mode Animated Progress Bar (Determinate or Smooth Shimmer Sweep while running) -->
+                    <Grid Height="8" Margin="0,12,0,12">
+                        <ProgressBar Minimum="0" Maximum="100" Value="{Binding ScanProgressPercent, Mode=OneWay}" Height="8">
+                            <ProgressBar.Template>
+                                <ControlTemplate TargetType="ProgressBar">
+                                    <Border Background="{DynamicResource Brush.ControlFill}"
+                                            BorderBrush="{DynamicResource Brush.ControlBorder}" BorderThickness="1"
+                                            CornerRadius="4" ClipToBounds="True">
+                                        <Grid x:Name="PART_Track">
+                                            <Border x:Name="PART_Indicator" HorizontalAlignment="Left" CornerRadius="3">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ScanWasCancelled}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource Brush.Warning}" />
+                                                            </DataTrigger>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding IsBusy}" Value="False" />
+                                                                    <Condition Binding="{Binding ScanWasCancelled}" Value="False" />
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Background" Value="{DynamicResource Brush.Success}" />
+                                                            </MultiDataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </ProgressBar.Template>
+                        </ProgressBar>
+
+                        <!-- Indeterminate Scanning Sweep Bar (only runs when IsBusy && ScanIsIndeterminate) -->
+                        <Border CornerRadius="4" ClipToBounds="True" IsHitTestVisible="False">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsBusy}" Value="True" />
+                                                <Condition Binding="{Binding ScanIsIndeterminate}" Value="True" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Border Width="180" Height="8" CornerRadius="4" HorizontalAlignment="Left"
+                                    Background="{DynamicResource Brush.Accent}">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="SweepTransform" X="-180" />
+                                </Border.RenderTransform>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsBusy}" Value="True" />
+                                                    <Condition Binding="{Binding ScanIsIndeterminate}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <MultiDataTrigger.EnterActions>
+                                                    <BeginStoryboard x:Name="DiagSweepStoryboard">
+                                                        <Storyboard RepeatBehavior="Forever">
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                                             From="-180" To="920" Duration="0:0:1.25" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </MultiDataTrigger.EnterActions>
+                                                <MultiDataTrigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="DiagSweepStoryboard" />
+                                                </MultiDataTrigger.ExitActions>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                        </Border>
+                    </Grid>
+
+                    <!-- Live Detailed Diagnostic Step Log -->
+                    <Border Background="{DynamicResource Brush.ControlFill}" BorderBrush="{DynamicResource Brush.ControlBorder}"
+                            BorderThickness="1" CornerRadius="6" Padding="8,6">
+                        <ListBox ItemsSource="{Binding ScanLogs}" MaxHeight="240"
+                                 Background="Transparent" BorderThickness="0"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="6,3" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="ItemRoot" Background="{TemplateBinding Background}"
+                                                        CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource Brush.SubtleHover}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:DiagnosticLogEntry}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="66" />
+                                            <ColumnDefinition Width="100" />
+                                            <ColumnDefinition Width="86" />
+                                            <ColumnDefinition Width="185" />
+                                            <ColumnDefinition Width="68" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                   Foreground="{DynamicResource Brush.TextTertiary}" VerticalAlignment="Center"
+                                                   Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
+
+                                        <Border Grid.Column="1" Style="{StaticResource Pill}" Padding="8,2" Margin="0,0,6,0"
+                                                Background="{DynamicResource Brush.SubtleHover}">
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                                        <Binding Path="CategoryKey" />
+                                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Border>
+
+                                        <Border Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource Pill}">
+                                                    <Setter Property="Padding" Value="8,2" />
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Outcome}" Value="{x:Static models:DiagnosticStepOutcome.Running}">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Outcome}" Value="{x:Static models:DiagnosticStepOutcome.Info}">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Outcome}" Value="{x:Static models:DiagnosticStepOutcome.Warning}">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Outcome}" Value="{x:Static models:DiagnosticStepOutcome.Fail}">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                                            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                                       Foreground="{Binding (TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource LocKey}" ConverterParameter="">
+                                                        <Binding Path="OutcomeKey" />
+                                                        <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Border>
+
+                                        <TextBlock Grid.Column="3" Style="{StaticResource Text.Caption}" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.TextPrimary}"
+                                                   Text="{Binding Target}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                                   Margin="0,0,8,0" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Column="4" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                   Text="{Binding LatencyText}" HorizontalAlignment="Right" Margin="0,0,10,0" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Column="5" Style="{StaticResource Text.Caption}" FontSize="{DynamicResource Font.Size.Small}"
+                                                   Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding DetailText}"
+                                                   ToolTip="{Binding DetailText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </StackPanel>
             </Border>
 
             <!-- Local Diagnostics Section -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Diag_LocalSection}" Margin="0,4,0,8" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Diag_Local_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Diag_Local_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Diag_Local_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dash_Network_LocalNote}" Margin="0,0,0,14" />
                     <UniformGrid Rows="2" Columns="4">
                         <StackPanel Margin="0,0,12,12">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Network_Adapter}" />
-                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding AdapterName}" Margin="0,4,0,0" />
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontWeight="SemiBold" Text="{Binding AdapterName, Mode=OneWay}" Margin="0,4,0,0" />
                         </StackPanel>
                         <StackPanel Margin="0,0,12,12">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Network_LocalIp}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding LocalIp}" Margin="0,4,0,0" />
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding LocalIp, Mode=OneWay}" Margin="0,4,0,0" />
                         </StackPanel>
                         <StackPanel Margin="0,0,12,12">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Network_Gateway}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Gateway}" Margin="0,4,0,0" />
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Gateway, Mode=OneWay}" Margin="0,4,0,0" />
                         </StackPanel>
                         <StackPanel Margin="0,0,0,12">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Network_Dns}" />
-                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding ActiveDnsServers}" Margin="0,4,0,0" />
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding ActiveDnsServers, Mode=OneWay}" Margin="0,4,0,0" />
                         </StackPanel>
 
                         <StackPanel Margin="0,0,12,0">
@@ -77,7 +412,7 @@
                         </StackPanel>
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Resolver}" />
-                            <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ActiveResolverName}" Margin="0,4,0,0" />
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ActiveResolverName, Mode=OneWay}" Margin="0,4,0,0" />
                         </StackPanel>
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Protocol}" />
@@ -99,31 +434,114 @@
 
             <!-- External Connectivity & Security Tests -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Diag_ExternalSection}" Margin="0,10,0,8" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Diag_External_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Diag_External_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Diag_External_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Diag_ExternalNote}" Margin="0,0,0,12" />
                     <WrapPanel Orientation="Horizontal">
-                        <Button Command="{Binding RunDnssecTestCommand}" Content="{l:Loc Diag_Btn_Dnssec}" Margin="0,0,8,8" />
-                        <Button Command="{Binding RunDohTestCommand}" Content="{l:Loc Diag_Btn_Doh}" Margin="0,0,8,8" />
-                        <Button Command="{Binding RunDnsCryptTestCommand}" Content="{l:Loc Diag_Btn_DnsCrypt}" Margin="0,0,8,8" />
-                        <Button Command="{Binding RunLeakTestCommand}" Content="{l:Loc Diag_Btn_Leak}" Margin="0,0,8,8" />
+                        <Button Command="{Binding RunDnssecTestCommand}" Content="{l:Loc Diag_Btn_Dnssec}" Margin="0,0,8,8">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsBusy}" Value="True" />
+                                                <Condition Binding="{Binding ActiveTestKind}" Value="{x:Static models:DiagnosticTestCategory.Dnssec}" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Command="{Binding RunDohTestCommand}" Content="{l:Loc Diag_Btn_Doh}" Margin="0,0,8,8">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsBusy}" Value="True" />
+                                                <Condition Binding="{Binding ActiveTestKind}" Value="{x:Static models:DiagnosticTestCategory.Doh}" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Command="{Binding RunDnsCryptTestCommand}" Content="{l:Loc Diag_Btn_DnsCrypt}" Margin="0,0,8,8">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsBusy}" Value="True" />
+                                                <Condition Binding="{Binding ActiveTestKind}" Value="{x:Static models:DiagnosticTestCategory.DnsCrypt}" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Command="{Binding RunLeakTestCommand}" Content="{l:Loc Diag_Btn_Leak}" Margin="0,0,8,8">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsBusy}" Value="True" />
+                                                <Condition Binding="{Binding ActiveTestKind}" Value="{x:Static models:DiagnosticTestCategory.Leak}" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                            <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding RunRestrictionScanCommand}" Content="{l:Loc Diag_Btn_Restrictions}" Margin="0,0,8,8" />
                     </WrapPanel>
 
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,8,0,0"
                             Visibility="{Binding ExternalTestResult, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding ExternalTestResult}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ExternalTestResult, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding ExternalTestResult}" />
+                        </Grid>
                     </Border>
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,8,0,0"
                             Visibility="{Binding RestrictionSummary, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding RestrictionSummary}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                     Text="{Binding RestrictionSummary, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding RestrictionSummary}" />
+                        </Grid>
                     </Border>
                 </StackPanel>
             </Border>
 
             <!-- DNS Lookup, Comparison & Propagation Tool -->
             <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Diag_LookupSection}" Margin="0,10,0,8" />
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource SectionCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Diag_Lookup_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Diag_Lookup_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Diag_Lookup_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -144,7 +562,14 @@
 
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,12,0,0"
                             Visibility="{Binding LookupSummary, Converter={StaticResource NullToVisibility}}">
-                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding LookupSummary}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding LookupSummary, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding LookupSummary}" />
+                        </Grid>
                     </Border>
 
                     <!-- Lookup Answer Records -->
@@ -158,10 +583,10 @@
                                         <ColumnDefinition Width="80" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold" Text="{Binding RecordType}" />
-                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Ttl, StringFormat=TTL {0}s}" />
-                                    <TextBlock Grid.Column="3" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Value}" TextTrimming="CharacterEllipsis" />
+                                    <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Name, Mode=OneWay}" TextWrapping="NoWrap" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold" Text="{Binding RecordType}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Ttl, StringFormat=TTL {0}s}" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="3" Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Value, Mode=OneWay}" TextWrapping="NoWrap" />
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -178,10 +603,10 @@
                                         <ColumnDefinition Width="85" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding ResolverName}" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding LatencyMs, StringFormat={}{0:0.0} ms}" />
-                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding ResponseCode}" />
-                                    <TextBlock Grid.Column="3" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding PrimaryAnswerSummary}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding ResolverName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding LatencyMs, StringFormat={}{0:0.0} ms}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding ResponseCode}" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="3" Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding PrimaryAnswerSummary, Mode=OneWay}" TextWrapping="NoWrap" />
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

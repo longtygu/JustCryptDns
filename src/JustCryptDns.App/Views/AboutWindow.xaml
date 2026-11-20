@@ -5,10 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
         xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+        xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:AboutViewModel}"
         Title="{l:Loc About_WindowTitle}"
-        Width="900" Height="700" MinWidth="740" MinHeight="560"
+        Width="920" Height="740" MinWidth="760" MinHeight="580"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource Brush.WindowBackground}"
         Foreground="{DynamicResource Brush.TextPrimary}"
@@ -123,76 +124,88 @@
                 <!-- TAB 0: OVERVIEW & AUTHOR -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                               Visibility="{Binding IsOverviewTab, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel Margin="28,22,28,28" MaxWidth="820">
-                        <Border Style="{StaticResource InfoCard}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                    <StackPanel Margin="28,22,28,28" MaxWidth="840">
+                        <Border Style="{StaticResource InfoCard}" Background="Transparent" BorderThickness="0" Padding="0">
+                            <!-- Container for hover info -->
+                            <Border Style="{StaticResource Card}" Margin="0"
+                                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_About_Identity_Title}"
+                                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_About_Identity_Desc}"
+                                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_About_Identity_Meaning}"
+                                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- Author portrait -->
-                                <Border Width="136" Height="168" CornerRadius="14"
-                                        BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="2" Margin="0,0,24,0" VerticalAlignment="Top"
-                                        RenderOptions.BitmapScalingMode="HighQuality">
-                                    <Border.Background>
-                                        <ImageBrush ImageSource="{Binding AvatarPackUri}" Stretch="UniformToFill" AlignmentY="Center" />
-                                    </Border.Background>
-                                </Border>
+                                    <!-- Author portrait -->
+                                    <Border Width="136" Height="168" CornerRadius="14"
+                                            BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="2" Margin="0,0,24,0" VerticalAlignment="Top"
+                                            RenderOptions.BitmapScalingMode="HighQuality">
+                                        <Border.Background>
+                                            <ImageBrush ImageSource="{Binding AvatarPackUri}" Stretch="UniformToFill" AlignmentY="Center" />
+                                        </Border.Background>
+                                    </Border>
 
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                        <Border Background="{DynamicResource Brush.AccentSubtle}" CornerRadius="11" Padding="10,3">
-                                            <TextBlock Text="{l:Loc About_AuthorBadge}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource Brush.Accent}" />
-                                        </Border>
-                                        <Border Background="{DynamicResource Brush.SuccessSubtle}" CornerRadius="11" Padding="10,3" Margin="8,0,0,0">
-                                            <TextBlock Text="{Binding Version, StringFormat=JustCryptDns v{0}}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource Brush.Success}" />
-                                        </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                            <Border Background="{DynamicResource Brush.AccentSubtle}" CornerRadius="11" Padding="10,3">
+                                                <TextBlock Text="{l:Loc About_AuthorBadge}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Brush.Accent}" />
+                                            </Border>
+                                            <Border Background="{DynamicResource Brush.SuccessSubtle}" CornerRadius="11" Padding="10,3" Margin="8,0,0,0">
+                                                <TextBlock Text="{Binding Version, StringFormat=JustCryptDns v{0}}" FontSize="{DynamicResource Font.Size.Caption}" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Brush.Success}" />
+                                            </Border>
+                                        </StackPanel>
+
+                                        <TextBlock Style="{StaticResource Text.PageTitle}" Text="{Binding AuthorName}" Margin="0,2,0,0" />
+                                        <TextBlock Text="{Binding AuthorTagline}" FontSize="{DynamicResource Font.Size.Section}" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Accent}" Margin="0,4,0,10" />
+                                        <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc About_BioDesc}" Margin="0,0,0,14" />
+
+                                        <WrapPanel>
+                                            <Button Style="{StaticResource Button.Primary}" Command="{Binding OpenGitHubRepoCommand}" Margin="0,0,10,8">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE774;" FontSize="14" Margin="0,0,8,0" />
+                                                    <TextBlock Text="{l:Loc About_Btn_GitHub}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding OpenAuthorFacebookCommand}" Margin="0,0,10,8">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8BD;" FontSize="14" Margin="0,0,8,0" />
+                                                    <TextBlock Text="{l:Loc About_Btn_Facebook}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding SelectTabByIndexCommand}" CommandParameter="2" Margin="0,0,10,8">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEBE8;" FontSize="14" Margin="0,0,8,0" />
+                                                    <TextBlock Text="{l:Loc About_Btn_ReportBug}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding OpenUpdatesInSettingsCommand}" Margin="0,0,0,8">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE895;" FontSize="14" Margin="0,0,8,0" />
+                                                    <TextBlock Text="{l:Loc About_Btn_CheckUpdates}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </WrapPanel>
                                     </StackPanel>
-
-                                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="{Binding AuthorName}" Margin="0,2,0,0" />
-                                    <TextBlock Text="{Binding AuthorTagline}" FontSize="{DynamicResource Font.Size.Section}" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource Brush.Accent}" Margin="0,4,0,10" />
-                                    <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc About_BioDesc}" Margin="0,0,0,14" />
-
-                                    <WrapPanel>
-                                        <Button Style="{StaticResource Button.Primary}" Command="{Binding OpenGitHubRepoCommand}" Margin="0,0,10,8">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE774;" FontSize="14" Margin="0,0,8,0" />
-                                                <TextBlock Text="{l:Loc About_Btn_GitHub}" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Command="{Binding OpenAuthorFacebookCommand}" Margin="0,0,10,8">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8BD;" FontSize="14" Margin="0,0,8,0" />
-                                                <TextBlock Text="{l:Loc About_Btn_Facebook}" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Command="{Binding SelectTabByIndexCommand}" CommandParameter="2" Margin="0,0,10,8">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEBE8;" FontSize="14" Margin="0,0,8,0" />
-                                                <TextBlock Text="{l:Loc About_Btn_ReportBug}" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Command="{Binding OpenUpdatesInSettingsCommand}" Margin="0,0,0,8">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE895;" FontSize="14" Margin="0,0,8,0" />
-                                                <TextBlock Text="{l:Loc About_Btn_CheckUpdates}" />
-                                            </StackPanel>
-                                        </Button>
-                                    </WrapPanel>
-                                </StackPanel>
-                            </Grid>
+                                </Grid>
+                            </Border>
                         </Border>
 
-                        <!-- Metadata & Links -->
-                        <Border Style="{StaticResource InfoCard}">
+                        <!-- Metadata & Links (All selectable & copyable) -->
+                        <Border Style="{StaticResource InfoCard}"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_About_Links_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_About_Links_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_About_Links_Meaning}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="170" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -201,25 +214,33 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_Version}" Margin="0,0,0,10" />
-                                <TextBlock Grid.Column="1" Style="{StaticResource Text.Mono}" Text="{Binding Version}" Margin="0,0,0,10" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_Version}" Margin="0,0,0,10" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding Version, Mode=OneWay}" Margin="0,0,8,10" VerticalAlignment="Center" />
+                                <Button Grid.Column="2" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding Version}" Margin="0,0,0,6" />
 
-                                <TextBlock Grid.Row="1" Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_OS}" Margin="0,0,0,10" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding OperatingSystemName}" Margin="0,0,0,10" />
+                                <TextBlock Grid.Row="1" Style="{StaticResource Text.Caption}" Text="{l:Loc Settings_OS}" Margin="0,0,0,10" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding OperatingSystemName, Mode=OneWay}" Margin="0,0,8,10" VerticalAlignment="Center" />
+                                <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding OperatingSystemName}" Margin="0,0,0,6" />
 
-                                <TextBlock Grid.Row="2" Style="{StaticResource Text.Caption}" Text="GitHub Repository" Margin="0,0,0,10" />
-                                <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource Text.Mono}" Text="{Binding GitHubUrl}" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,0,10" />
+                                <TextBlock Grid.Row="2" Style="{StaticResource Text.Caption}" Text="GitHub Repository" Margin="0,0,0,10" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding GitHubUrl, Mode=OneWay}" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,8,10" VerticalAlignment="Center" />
+                                <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding GitHubUrl}" Margin="0,0,0,6" />
 
-                                <TextBlock Grid.Row="3" Style="{StaticResource Text.Caption}" Text="Facebook" />
-                                <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource Text.Mono}" Text="{Binding FacebookUrl}" Foreground="{DynamicResource Brush.Accent}" />
+                                <TextBlock Grid.Row="3" Style="{StaticResource Text.Caption}" Text="Facebook" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding FacebookUrl, Mode=OneWay}" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <Button Grid.Row="3" Grid.Column="2" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding FacebookUrl}" />
                             </Grid>
                         </Border>
 
                         <!-- Mission highlights -->
-                        <Border Style="{StaticResource InfoCard}">
+                        <Border Style="{StaticResource InfoCard}"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_About_Highlights_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_About_Highlights_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_About_Highlights_Meaning}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc About_Highlights_Title}" Margin="0,0,0,12" />
-                                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc About_Highlights_Body}" LineHeight="22" />
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{l:Loc About_Highlights_Body}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -228,12 +249,16 @@
                 <!-- TAB 1: HOW IT WORKS & ARCHITECTURE -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                               Visibility="{Binding IsArchitectureTab, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel Margin="28,22,28,28" MaxWidth="820">
+                    <StackPanel Margin="28,22,28,28" MaxWidth="840">
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc About_Arch_Title}" Margin="0,0,0,6" />
                         <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc About_Arch_Subtitle}" Margin="0,0,0,14" />
 
                         <!-- Flow strip -->
-                        <Border Style="{StaticResource InfoCard}">
+                        <Border Style="{StaticResource InfoCard}"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_About_Arch_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_About_Arch_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_About_Arch_Meaning}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc About_Arch_FlowLabel}" Margin="0,0,0,10" />
                                 <WrapPanel VerticalAlignment="Center">
@@ -263,7 +288,7 @@
                                     <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE774;" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,10,0" />
                                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc About_Arch_Pillar1_Title}" />
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc About_Arch_Pillar1_Body}" LineHeight="21" />
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{l:Loc About_Arch_Pillar1_Body}" />
                             </StackPanel>
                         </Border>
 
@@ -273,7 +298,7 @@
                                     <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE705;" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,10,0" />
                                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc About_Arch_Pillar2_Title}" />
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc About_Arch_Pillar2_Body}" LineHeight="21" />
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{l:Loc About_Arch_Pillar2_Body}" />
                             </StackPanel>
                         </Border>
 
@@ -283,7 +308,7 @@
                                     <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7FC;" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,10,0" />
                                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc About_Arch_Pillar3_Title}" />
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc About_Arch_Pillar3_Body}" LineHeight="21" />
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{l:Loc About_Arch_Pillar3_Body}" />
                             </StackPanel>
                         </Border>
 
@@ -293,7 +318,7 @@
                                     <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72E;" Foreground="{DynamicResource Brush.Success}" Margin="0,0,10,0" />
                                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc About_Arch_Pillar4_Title}" />
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc About_Arch_Pillar4_Body}" LineHeight="21" />
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{l:Loc About_Arch_Pillar4_Body}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -302,11 +327,11 @@
                 <!-- TAB 2: BUG REPORT -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                               Visibility="{Binding IsBugReportTab, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel Margin="28,22,28,28" MaxWidth="820">
+                    <StackPanel Margin="28,22,28,28" MaxWidth="840">
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc BugReport_Title}" Margin="0,0,0,4" />
                         <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc BugReport_Subtitle}" Margin="0,0,0,14" />
 
-                        <!-- Feedback Banner -->
+                        <!-- Feedback Banner (Selectable + Copy Button) -->
                         <Border CornerRadius="8" Padding="14,10" Margin="0,0,0,12"
                                 Visibility="{Binding BugFeedbackMessage, Converter={StaticResource NullToVisibility}}">
                             <Border.Style>
@@ -322,10 +347,23 @@
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
-                            <TextBlock Style="{StaticResource Text.Body}" Text="{Binding BugFeedbackMessage}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding BugFeedbackMessage, Mode=OneWay}"
+                                         Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}"
+                                        controls:CopyTextBehavior.CopyText="{Binding BugFeedbackMessage}" />
+                            </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource InfoCard}">
+                        <Border Style="{StaticResource InfoCard}"
+                                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_About_BugReport_Title}"
+                                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_About_BugReport_Desc}"
+                                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_About_BugReport_Meaning}"
+                                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                             <StackPanel>
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
@@ -359,8 +397,80 @@
                                 </Grid>
 
                                 <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc BugReport_DescLabel}" Margin="0,0,0,6" />
-                                <TextBox Style="{StaticResource MultilineInput}" Height="110"
+                                <TextBox Style="{StaticResource MultilineInput}" Height="96"
                                          Text="{Binding BugDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+
+                                <!-- Screenshot / Error Image Attachments -->
+                                <Border Background="{DynamicResource Brush.ControlFill}" BorderBrush="{DynamicResource Brush.ControlBorder}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc BugReport_Attach_Title}" />
+                                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc BugReport_Attach_Subtitle}" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                            <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Command="{Binding AttachImagesCommand}" Padding="10,5" Margin="0,0,6,2">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEB9F;" FontSize="13" Margin="0,0,6,0" />
+                                                        <TextBlock Text="{l:Loc BugReport_Attach_Browse}" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Command="{Binding PasteScreenshotCommand}" Padding="10,5" Margin="0,0,6,2">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE77F;" FontSize="13" Margin="0,0,6,0" />
+                                                        <TextBlock Text="{l:Loc BugReport_Attach_Paste}" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Command="{Binding CopyAttachmentsToClipboardCommand}" Padding="10,5" Margin="0,0,6,2"
+                                                        Visibility="{Binding HasAttachedImages, Converter={StaticResource BoolToVisibility}}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8C8;" FontSize="13" Margin="0,0,6,0" />
+                                                        <TextBlock Text="{l:Loc BugReport_Attach_CopyImages}" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Command="{Binding OpenAttachmentsFolderCommand}" Padding="10,5" Margin="0,0,0,2"
+                                                        Visibility="{Binding HasAttachedImages, Converter={StaticResource BoolToVisibility}}"
+                                                        Content="{l:Loc BugReport_Attach_OpenFolder}" />
+                                            </WrapPanel>
+                                        </Grid>
+
+                                        <ItemsControl ItemsSource="{Binding AttachedImages}"
+                                                      Visibility="{Binding HasAttachedImages, Converter={StaticResource BoolToVisibility}}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:BugReportAttachmentItem}">
+                                                    <Border Background="{DynamicResource Brush.Card}" BorderBrush="{DynamicResource Brush.ControlBorder}"
+                                                            BorderThickness="1" CornerRadius="6" Padding="6" Margin="0,4,8,4" Width="154">
+                                                        <StackPanel>
+                                                            <Grid Height="68" Background="{DynamicResource Brush.WindowBackground}" Margin="0,0,0,5">
+                                                                <Image Source="{Binding Thumbnail}" Stretch="Uniform"
+                                                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                                                                <Button HorizontalAlignment="Right" VerticalAlignment="Top" Width="22" Height="22" Padding="0"
+                                                                        Content="×" FontWeight="Bold" Background="#AA000000" Foreground="White" BorderThickness="0"
+                                                                        Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        CommandParameter="{Binding}" />
+                                                            </Grid>
+                                                            <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource Brush.TextPrimary}" Text="{Binding FileName}"
+                                                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                                       Foreground="{DynamicResource Brush.TextTertiary}" Text="{Binding FileSizeText}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
 
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
@@ -376,25 +486,54 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc BugReport_DiagPreviewLabel}" Margin="0,4,0,6" />
-                                <TextBox Style="{StaticResource MultilineInput}" IsReadOnly="True" Height="130"
+                                <Grid Margin="0,4,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc BugReport_DiagPreviewLabel}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}"
+                                            controls:CopyTextBehavior.CopyText="{Binding DiagnosticsPreview}" />
+                                </Grid>
+                                <TextBox Style="{StaticResource MultilineInput}" IsReadOnly="True" Height="115"
                                          FontFamily="{StaticResource Font.Mono}" FontSize="{DynamicResource Font.Size.Small}"
-                                         Text="{Binding DiagnosticsPreview, Mode=OneWay}" Margin="0,0,0,14" />
+                                         Text="{Binding DiagnosticsPreview, Mode=OneWay}" Margin="0,0,0,10" />
 
-                                <WrapPanel>
-                                    <Button Style="{StaticResource Button.Primary}" Command="{Binding SubmitGitHubIssueCommand}" Margin="0,0,10,4">
+                                <!-- Copyable Direct GitHub Issue Link -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc BugReport_DirectLinkLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Small}"
+                                             Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding GeneratedGitHubIssueUrl, Mode=OneWay}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <Button Grid.Column="2" Style="{StaticResource Button.CopyInline}"
+                                            controls:CopyTextBehavior.CopyText="{Binding GeneratedGitHubIssueUrl}" />
+                                </Grid>
+
+                                <WrapPanel Margin="0,0,0,4">
+                                    <Button Style="{StaticResource Button.Primary}" Command="{Binding SubmitGitHubIssueCommand}" Margin="0,0,8,6">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE774;" FontSize="14" Margin="0,0,8,0" />
                                             <TextBlock Text="{l:Loc BugReport_Btn_SubmitGitHub}" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Command="{Binding SubmitFacebookReportCommand}" Margin="0,0,10,4">
+                                    <Button Command="{Binding OpenCleanGitHubIssuesCommand}" Margin="0,0,8,6">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8A7;" FontSize="14" Margin="0,0,8,0" />
+                                            <TextBlock Text="{l:Loc BugReport_Btn_CleanGitHub}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding SubmitFacebookReportCommand}" Margin="0,0,0,6">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8BD;" FontSize="14" Margin="0,0,8,0" />
                                             <TextBlock Text="{l:Loc BugReport_Btn_SubmitFacebook}" />
                                         </StackPanel>
                                     </Button>
                                 </WrapPanel>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc BugReport_GitHubNonOwnerTip}" Foreground="{DynamicResource Brush.TextTertiary}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

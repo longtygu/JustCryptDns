@@ -48,6 +48,11 @@ public interface IGamingEngineService
         IProgress<(int Completed, int Total, string CurrentResolver)>? progress = null,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ResolverBenchmarkResult>> RunBenchmarkAsync(
+        int roundsPerDomain,
+        IProgress<GamingBenchmarkProgress>? detailedProgress,
+        CancellationToken cancellationToken = default);
+
     ResolverBenchmarkResult? SelectBestBenchmarkResult(
         IReadOnlyList<ResolverBenchmarkResult> results,
         GamingSelectionProfile profile);

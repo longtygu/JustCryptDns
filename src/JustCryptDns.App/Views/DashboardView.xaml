@@ -109,9 +109,12 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" VerticalAlignment="Top" />
-                        <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{Binding TrafficWarningBanner}" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding TrafficWarningBanner, Mode=OneWay}"
+                                 VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <Button Grid.Column="2" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding TrafficWarningBanner}" />
                     </Grid>
                     <WrapPanel Orientation="Horizontal" Margin="32,12,0,0">
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding UseAlternateLoopbackPort53Command}" Margin="0,0,8,4"
@@ -146,14 +149,28 @@
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding EngineError, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding EngineError}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding EngineError, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding EngineError}" />
+                </Grid>
             </Border>
 
             <!-- Local Proxy Test Feedback Banner -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"
                     Visibility="{Binding TestProxyFeedback, Converter={StaticResource NullToVisibility}}">
-                <TextBlock Style="{StaticResource Text.Body}" Text="{Binding TestProxyFeedback}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding TestProxyFeedback, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding TestProxyFeedback}" />
+                </Grid>
             </Border>
 
             <!-- Protection status -->

@@ -245,21 +245,35 @@ public sealed class UpdateAndBugReportTests : IDisposable
             "AllWebsitesSmart",
             "Ethernet (Ethernet, Up)",
             longLogs);
-        var draft = new BugReportDraft(BugReportCategory.DpiBypass, "Steam hung", "Steam store fails on TLS.", IncludeDiagnostics: true);
+        var draft = new BugReportDraft(
+            BugReportCategory.DpiBypass,
+            "Steam hung",
+            "Steam store fails on TLS.",
+            IncludeDiagnostics: true,
+            AttachedImagePaths:
+            [
+                @"C:\Users\LONGTYGU\Pictures\err1.png",
+                @"C:\Users\LONGTYGU\Desktop\err2.jpg",
+            ]);
 
         var markdown = BugReportBuilder.BuildGitHubMarkdown(draft, diagnostics);
         Assert.Contains("DPI Bypass & Split-Tunnel", markdown, StringComparison.Ordinal);
         Assert.Contains(@"C:\Users\<user>", markdown, StringComparison.Ordinal);
+        Assert.Contains("err1.png", markdown, StringComparison.Ordinal);
+        Assert.Contains("err2.jpg", markdown, StringComparison.Ordinal);
         Assert.DoesNotContain("LONGTYGU", markdown, StringComparison.OrdinalIgnoreCase);
 
         var url = BugReportBuilder.BuildGitHubIssueUrl(draft, diagnostics);
         Assert.StartsWith(BugReportBuilder.GitHubNewIssueUrl, url, StringComparison.Ordinal);
-        Assert.True(url.Length <= 5500, $"Expected GitHub URL <= 5500 chars, got {url.Length}");
+        Assert.DoesNotContain("labels=", url, StringComparison.OrdinalIgnoreCase);
+        Assert.True(url.Length <= BugReportBuilder.MaxGitHubIssueUrlLength,
+            $"Expected GitHub URL <= {BugReportBuilder.MaxGitHubIssueUrlLength} chars, got {url.Length}");
 
         var fb = BugReportBuilder.BuildFacebookMessage(draft, diagnostics);
         Assert.Contains("[JustCryptDns v1.3.0 - DPI Bypass & Split-Tunnel] Steam hung", fb, StringComparison.Ordinal);
+        Assert.Contains("err1.png", fb, StringComparison.Ordinal);
         Assert.Contains(@"C:\Users\<user>", fb, StringComparison.Ordinal);
-        Assert.DoesNotContain("AppData\\Local\\LONGTYGU", fb, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("LONGTYGU", fb, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

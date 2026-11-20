@@ -269,4 +269,42 @@ public sealed class GamingEnginePhase8Tests
             Assert.Equal("quad9-doh", engine.ActiveId);
         }
     }
+
+    [Fact]
+    public async Task RunBenchmarkAsync_WithDetailedProgress_StreamsStagesAndSupportsCancellation()
+    {
+        var (gaming, _, _, _, _, _) = CreateGamingStack();
+        using (gaming)
+        {
+            var events = new List<GamingBenchmarkProgress>();
+            var progress = new SyncGamingProgress(events);
+
+            var results = await gaming.RunBenchmarkAsync(roundsPerDomain: 2, detailedProgress: progress);
+            Assert.NotEmpty(results);
+            Assert.Contains(events, e => e.Stage == GamingBenchmarkProgressStage.ResolverStarted);
+            Assert.Contains(events, e => e.Stage == GamingBenchmarkProgressStage.DomainProbed);
+            Assert.Contains(events, e => e.Stage == GamingBenchmarkProgressStage.ResolverCompleted);
+
+            var cancelEvents = new List<GamingBenchmarkProgress>();
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+            var cancelledResults = await gaming.RunBenchmarkAsync(
+                roundsPerDomain: 2,
+                detailedProgress: new SyncGamingProgress(cancelEvents),
+                cancellationToken: cts.Token);
+            Assert.Empty(cancelledResults);
+            Assert.Contains(cancelEvents, e => e.Stage == GamingBenchmarkProgressStage.Cancelled);
+        }
+    }
+
+    private sealed class SyncGamingProgress(List<GamingBenchmarkProgress> target) : IProgress<GamingBenchmarkProgress>
+    {
+        public void Report(GamingBenchmarkProgress value)
+        {
+            lock (target)
+            {
+                target.Add(value);
+            }
+        }
+    }
 }

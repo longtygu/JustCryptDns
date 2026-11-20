@@ -77,7 +77,8 @@ public sealed record BugReportDraft(
     BugReportCategory Category,
     string Title,
     string Description,
-    bool IncludeDiagnostics);
+    bool IncludeDiagnostics,
+    IReadOnlyList<string>? AttachedImagePaths = null);
 
 public sealed record BugDiagnosticsSnapshot(
     string AppVersion,

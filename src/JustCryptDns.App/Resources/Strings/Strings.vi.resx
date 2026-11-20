@@ -700,7 +700,7 @@
     <value>Đang khởi động…</value>
   </data>
   <data name="EngineState_Running" xml:space="preserve">
-    <value>Đang bảo vệ (Đang chạy)</value>
+    <value>Đang chạy</value>
   </data>
   <data name="EngineState_Degraded" xml:space="preserve">
     <value>Suy giảm</value>
@@ -2213,5 +2213,701 @@
   </data>
   <data name="Dash_Explain_LiveLog_Metrics" xml:space="preserve">
     <value>Hiển thị thời gian, trạng thái (Allowed/Cached/Blocked/Routed/Failed), loại bản ghi, tên miền, resolver xử lý và độ trễ (ms).</value>
+  </data>
+  <data name="Common_Copy" xml:space="preserve">
+    <value>Sao chép vào Clipboard</value>
+  </data>
+  <data name="Common_Copied" xml:space="preserve">
+    <value>Đã sao chép!</value>
+  </data>
+  <data name="BugReport_Attach_Title" xml:space="preserve">
+    <value>HÌNH ẢNH CHỤP MÀN HÌNH LỖI (TÙY CHỌN · TỐI ĐA 6 ẢNH)</value>
+  </data>
+  <data name="BugReport_Attach_Subtitle" xml:space="preserve">
+    <value>Chọn file ảnh hoặc dán trực tiếp từ Clipboard, sau đó bấm 'Copy ảnh (Ctrl+V)' để dán thẳng vào GitHub Issue hoặc Messenger.</value>
+  </data>
+  <data name="BugReport_Attach_Browse" xml:space="preserve">
+    <value>Đính kèm ảnh…</value>
+  </data>
+  <data name="BugReport_Attach_Paste" xml:space="preserve">
+    <value>Dán ảnh từ Clipboard</value>
+  </data>
+  <data name="BugReport_Attach_CopyImages" xml:space="preserve">
+    <value>Copy ảnh (Ctrl+V)</value>
+  </data>
+  <data name="BugReport_Attach_OpenFolder" xml:space="preserve">
+    <value>Mở thư mục ảnh</value>
+  </data>
+  <data name="BugReport_Attach_DialogTitle" xml:space="preserve">
+    <value>Chọn ảnh chụp màn hình lỗi</value>
+  </data>
+  <data name="BugReport_Attach_Added" xml:space="preserve">
+    <value>Đã đính kèm {0} ảnh lỗi. Sau khi mở GitHub/Messenger, hãy bấm 'Copy ảnh (Ctrl+V)' để dán trực tiếp ảnh vào khung soạn thảo.</value>
+  </data>
+  <data name="BugReport_Attach_PastedOne" xml:space="preserve">
+    <value>Đã lấy ảnh từ Clipboard ('{0}') và đính kèm vào báo cáo lỗi.</value>
+  </data>
+  <data name="BugReport_Attach_LimitOrSize" xml:space="preserve">
+    <value>Tối đa 6 ảnh và mỗi ảnh không vượt quá 15 MB.</value>
+  </data>
+  <data name="BugReport_Attach_NoClipboardImage" xml:space="preserve">
+    <value>Clipboard hiện không có hình ảnh. Hãy bấm PrintScreen / Win+Shift+S trước hoặc chọn 'Đính kèm ảnh…'.</value>
+  </data>
+  <data name="BugReport_Attach_NoValidFiles" xml:space="preserve">
+    <value>Không tìm thấy tệp ảnh hợp lệ trên ổ đĩa.</value>
+  </data>
+  <data name="BugReport_Attach_CopiedForPaste" xml:space="preserve">
+    <value>Đã copy {0} ảnh vào Clipboard — chuyển sang trang GitHub hoặc Messenger và nhấn Ctrl+V để gửi ảnh!</value>
+  </data>
+  <data name="BugReport_DirectLinkLabel" xml:space="preserve">
+    <value>Link GitHub trực tiếp:</value>
+  </data>
+  <data name="BugReport_Btn_CleanGitHub" xml:space="preserve">
+    <value>Mở GitHub Issues (Link sạch)</value>
+  </data>
+  <data name="BugReport_GitHubNonOwnerTip" xml:space="preserve">
+    <value>Tài khoản GitHub thường (không phải chủ repo) hoạt động ổn định với link rút gọn; nếu trình duyệt/mạng chặn link dài, hãy bấm 'Mở GitHub Issues (Link sạch)' rồi dán Ctrl+V.</value>
+  </data>
+  <data name="BugReport_GitHubOpenedWithImages" xml:space="preserve">
+    <value>Đã mở trang tạo GitHub Issue &amp; sao chép nội dung ({0} ảnh đang đính kèm — hãy bấm 'Copy ảnh (Ctrl+V)' hoặc 'Mở thư mục ảnh' để thả ảnh vào GitHub).</value>
+  </data>
+  <data name="BugReport_GitHubCleanOpened" xml:space="preserve">
+    <value>Đã mở trang GitHub Issues sạch và sao chép toàn bộ nội dung báo lỗi vào Clipboard — nhấn Ctrl+V để dán nội dung.</value>
+  </data>
+  <data name="BugReport_GitHubCleanOpenedWithImages" xml:space="preserve">
+    <value>Đã mở trang GitHub Issues sạch &amp; sao chép báo lỗi ({0} ảnh đính kèm — dán chữ Ctrl+V trước, rồi bấm 'Copy ảnh' để dán hình).</value>
+  </data>
+  <data name="BugReport_FacebookOpenedWithImages" xml:space="preserve">
+    <value>Đã sao chép báo lỗi &amp; mở Facebook Longtygu ({0} ảnh đính kèm — dán chữ Ctrl+V trước, rồi bấm 'Copy ảnh' để dán hình gửi kèm).</value>
+  </data>
+  <data name="Gaming_Bench_Header_Running" xml:space="preserve">
+    <value>Đang chạy đo hiệu năng đa tên miền…</value>
+  </data>
+  <data name="Gaming_Bench_Header_Done" xml:space="preserve">
+    <value>Hoàn tất đo hiệu năng đa tên miền</value>
+  </data>
+  <data name="Gaming_Bench_Header_Cancelled" xml:space="preserve">
+    <value>Đã dừng đo hiệu năng đa tên miền</value>
+  </data>
+  <data name="Gaming_Bench_OkCount" xml:space="preserve">
+    <value>{0} OK</value>
+  </data>
+  <data name="Gaming_Bench_FailCount" xml:space="preserve">
+    <value>{0} lỗi</value>
+  </data>
+  <data name="Gaming_Bench_CancelledSummary" xml:space="preserve">
+    <value>Đã dừng đo sớm — hiển thị kết quả tạm thời cho {0} resolver đã kiểm tra xong.</value>
+  </data>
+  <data name="Gaming_Bench_Outcome_Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Gaming_Bench_Outcome_Timeout" xml:space="preserve">
+    <value>Hết giờ</value>
+  </data>
+  <data name="Gaming_Bench_Outcome_Failed" xml:space="preserve">
+    <value>Thất bại</value>
+  </data>
+  <data name="Gaming_Bench_Outcome_Summary" xml:space="preserve">
+    <value>Tổng kết</value>
+  </data>
+  <data name="Diag_Scan_Header_Idle" xml:space="preserve">
+    <value>Nhật ký quét chẩn đoán mạng</value>
+  </data>
+  <data name="Diag_Scan_Header_Running" xml:space="preserve">
+    <value>Đang chạy kiểm tra chẩn đoán…</value>
+  </data>
+  <data name="Diag_Scan_Header_Done" xml:space="preserve">
+    <value>Hoàn tất kiểm tra chẩn đoán</value>
+  </data>
+  <data name="Diag_Scan_Header_Cancelled" xml:space="preserve">
+    <value>Đã dừng kiểm tra chẩn đoán</value>
+  </data>
+  <data name="Diag_Scan_PassCount" xml:space="preserve">
+    <value>{0} đạt</value>
+  </data>
+  <data name="Diag_Scan_FailCount" xml:space="preserve">
+    <value>{0} lỗi</value>
+  </data>
+  <data name="Diag_Cat_None" xml:space="preserve">
+    <value>Sẵn sàng</value>
+  </data>
+  <data name="Diag_Cat_Lookup" xml:space="preserve">
+    <value>Tra cứu DNS</value>
+  </data>
+  <data name="Diag_Cat_Dnssec" xml:space="preserve">
+    <value>DNSSEC</value>
+  </data>
+  <data name="Diag_Cat_Doh" xml:space="preserve">
+    <value>DoH</value>
+  </data>
+  <data name="Diag_Cat_DnsCrypt" xml:space="preserve">
+    <value>DNSCrypt</value>
+  </data>
+  <data name="Diag_Cat_Leak" xml:space="preserve">
+    <value>Rò rỉ DNS</value>
+  </data>
+  <data name="Diag_Cat_Restrictions" xml:space="preserve">
+    <value>Quét cổng</value>
+  </data>
+  <data name="Diag_Cat_Compare" xml:space="preserve">
+    <value>So sánh</value>
+  </data>
+  <data name="Diag_Cat_Propagation" xml:space="preserve">
+    <value>Lan truyền</value>
+  </data>
+  <data name="Diag_Outcome_Running" xml:space="preserve">
+    <value>Đang đo</value>
+  </data>
+  <data name="Diag_Outcome_Pass" xml:space="preserve">
+    <value>Đạt</value>
+  </data>
+  <data name="Diag_Outcome_Warning" xml:space="preserve">
+    <value>Cảnh báo</value>
+  </data>
+  <data name="Diag_Outcome_Fail" xml:space="preserve">
+    <value>Lỗi</value>
+  </data>
+  <data name="Diag_Outcome_Info" xml:space="preserve">
+    <value>Chi tiết</value>
+  </data>
+  <data name="Info_About_Identity_Title" xml:space="preserve">
+    <value>Thông tin tác giả &amp; Phiên bản ứng dụng</value>
+  </data>
+  <data name="Info_About_Identity_Desc" xml:space="preserve">
+    <value>Hiển thị chân dung tác giả, phiên bản đang cài đặt cùng các nút mở nhanh GitHub, Facebook, báo lỗi và kiểm tra cập nhật.</value>
+  </data>
+  <data name="Info_About_Identity_Meaning" xml:space="preserve">
+    <value>Hãy đối chiếu số phiên bản hiện tại với GitHub Releases khi báo lỗi hoặc nâng cấp bản mới.</value>
+  </data>
+  <data name="Info_About_Links_Title" xml:space="preserve">
+    <value>Môi trường hệ thống &amp; Liên kết liên hệ</value>
+  </data>
+  <data name="Info_About_Links_Desc" xml:space="preserve">
+    <value>Hiển thị phiên bản phần mềm, Windows OS, địa chỉ GitHub repo và Facebook tác giả — cho phép bôi đen và copy nhanh từng dòng.</value>
+  </data>
+  <data name="Info_About_Links_Meaning" xml:space="preserve">
+    <value>Bấm nút Copy cạnh mỗi dòng để sao chép chính xác phiên bản hoặc đường dẫn repo.</value>
+  </data>
+  <data name="Info_About_Highlights_Title" xml:space="preserve">
+    <value>Điểm nổi bật &amp; Triết lý thiết kế</value>
+  </data>
+  <data name="Info_About_Highlights_Desc" xml:space="preserve">
+    <value>Tóm tắt cách JustCryptDns kết hợp DNS mã hóa, tách mảnh TLS DPI thuần C#, tối ưu chơi game và cơ chế tự phục hồi mạng.</value>
+  </data>
+  <data name="Info_About_Highlights_Meaning" xml:space="preserve">
+    <value>Bạn có thể bôi đen và sao chép trực tiếp nội dung mô tả trong thẻ này.</value>
+  </data>
+  <data name="Info_About_Arch_Title" xml:space="preserve">
+    <value>Sơ đồ luồng xử lý gói tin &amp; truy vấn</value>
+  </data>
+  <data name="Info_About_Arch_Desc" xml:space="preserve">
+    <value>Mô tả luồng dữ liệu từ ứng dụng Windows đi qua proxy DNS cục bộ, mã hóa upstream và proxy vượt DPI Auto-PAC.</value>
+  </data>
+  <data name="Info_About_Arch_Meaning" xml:space="preserve">
+    <value>Bước 1–4 minh họa cách giữ nguyên UDP game 0 ms lag trong khi web bị chặn vẫn truy cập thông suốt.</value>
+  </data>
+  <data name="Info_About_BugReport_Title" xml:space="preserve">
+    <value>Trình tạo báo lỗi &amp; Đính kèm ảnh chụp màn hình</value>
+  </data>
+  <data name="Info_About_BugReport_Desc" xml:space="preserve">
+    <value>Đóng gói mô tả lỗi, thông số chẩn đoán đã che tên cá nhân, hình ảnh lỗi và sao chép sẵn để gửi lên GitHub hoặc Facebook.</value>
+  </data>
+  <data name="Info_About_BugReport_Meaning" xml:space="preserve">
+    <value>Mọi đường dẫn người dùng (C:\Users\&lt;tên&gt;) được ẩn tự động; link GitHub được tối ưu ngắn gọn để mọi tài khoản đều gửi được.</value>
+  </data>
+  <data name="Info_DnsMgr_Engine_Title" xml:space="preserve">
+    <value>Điều khiển &amp; Trạng thái DNS Engine</value>
+  </data>
+  <data name="Info_DnsMgr_Engine_Desc" xml:space="preserve">
+    <value>Bật, tắt, khởi động lại hoặc kiểm tra thử proxy DNS mã hóa cục bộ đang phục vụ toàn hệ thống.</value>
+  </data>
+  <data name="Info_DnsMgr_Engine_Meaning" xml:space="preserve">
+    <value>'Đang chạy' màu xanh lá cho biết engine đang hoạt động; 'Đã dừng' màu đỏ cho biết proxy đang tắt; bên dưới là cổng lắng nghe và độ trễ.</value>
+  </data>
+  <data name="Info_DnsMgr_Resolver_Title" xml:space="preserve">
+    <value>Resolver hoạt động &amp; Chính sách dự phòng</value>
+  </data>
+  <data name="Info_DnsMgr_Resolver_Desc" xml:space="preserve">
+    <value>Chọn máy chủ DNS mã hóa chính và chính sách tự chuyển đổi sang resolver phụ nếu máy chủ chính gặp sự cố.</value>
+  </data>
+  <data name="Info_DnsMgr_Resolver_Meaning" xml:space="preserve">
+    <value>DoH/DoT/DNSCrypt mã hóa truy vấn chống nhà mạng nghe lén/giả mạo DNS; tự động chuyển dự phòng giúp mạng không bị gián đoạn.</value>
+  </data>
+  <data name="Info_DnsMgr_Proxy_Title" xml:space="preserve">
+    <value>Cấu hình địa chỉ &amp; Cổng Proxy cục bộ</value>
+  </data>
+  <data name="Info_DnsMgr_Proxy_Desc" xml:space="preserve">
+    <value>Thiết lập IP loopback, cổng UDP/TCP lắng nghe (mặc định 53) và tùy chọn xử lý bản ghi IPv6 AAAA.</value>
+  </data>
+  <data name="Info_DnsMgr_Proxy_Meaning" xml:space="preserve">
+    <value>Windows chỉ đẩy DNS hệ thống vào cổng 53; nếu bị dịch vụ khác chiếm cổng 53, hãy dùng nút chuyển sang loopback phụ (:53).</value>
+  </data>
+  <data name="Info_DnsMgr_Windows_Title" xml:space="preserve">
+    <value>Tích hợp DNS Bộ điều hợp mạng Windows</value>
+  </data>
+  <data name="Info_DnsMgr_Windows_Desc" xml:space="preserve">
+    <value>Quản lý việc tự động trỏ DNS card mạng Windows về proxy cục bộ và khôi phục an toàn về trạng thái ban đầu.</value>
+  </data>
+  <data name="Info_DnsMgr_Windows_Meaning" xml:space="preserve">
+    <value>DNS gốc của máy luôn được sao lưu SHA-256 và tự động khôi phục khi tắt app, khởi động lại hoặc tắt máy.</value>
+  </data>
+  <data name="Info_DnsMgr_DnsCrypt_Title" xml:space="preserve">
+    <value>Bộ chạy dnscrypt-proxy nhúng sẵn</value>
+  </data>
+  <data name="Info_DnsMgr_DnsCrypt_Desc" xml:space="preserve">
+    <value>Quản lý tệp thực thi dnscrypt-proxy cục bộ dùng cho các resolver giao thức DNSCrypt v2 và Anonymized DNSCrypt.</value>
+  </data>
+  <data name="Info_DnsMgr_DnsCrypt_Meaning" xml:space="preserve">
+    <value>Hiển thị phiên bản và đường dẫn cài đặt (có nút Copy nhanh); bấm Cài đặt/Cập nhật nếu cần nâng cấp nhân DNSCrypt.</value>
+  </data>
+  <data name="Info_Resolvers_Scan_Title" xml:space="preserve">
+    <value>Trình quét &amp; Nhật ký kiểm tra Resolver trực tiếp</value>
+  </data>
+  <data name="Info_Resolvers_Scan_Desc" xml:space="preserve">
+    <value>Đo đồng thời tình trạng trực tuyến của tất cả resolver đang bật qua DNS packet thực với ngưỡng timeout an toàn.</value>
+  </data>
+  <data name="Info_Resolvers_Scan_Meaning" xml:space="preserve">
+    <value>Hiển thị trạng thái Trực tuyến / Hết giờ / Lỗi, độ trễ ms của từng máy chủ và cho phép dừng quét bất kỳ lúc nào.</value>
+  </data>
+  <data name="Info_Resolvers_Summary_Title" xml:space="preserve">
+    <value>Tổng quan Resolver Chính / Phụ &amp; Thống kê</value>
+  </data>
+  <data name="Info_Resolvers_Summary_Desc" xml:space="preserve">
+    <value>Nêu bật cặp resolver Chính - Dự phòng phụ đang hoạt động cùng số lượng máy chủ theo phân loại trong thư viện.</value>
+  </data>
+  <data name="Info_Resolvers_Summary_Meaning" xml:space="preserve">
+    <value>Luôn giữ ít nhất 2 resolver mã hóa ổn định ở vị trí Chính và Phụ để cơ chế tự phục hồi hoạt động mượt mà.</value>
+  </data>
+  <data name="Info_Resolvers_Primary_Title" xml:space="preserve">
+    <value>Resolver Chính đang hoạt động</value>
+  </data>
+  <data name="Info_Resolvers_Primary_Desc" xml:space="preserve">
+    <value>Máy chủ DNS ưu tiên số 1 xử lý truy vấn mặc định (nhận diện bằng chấm phát sáng nhấp nháy màu xanh lá ở góc phải).</value>
+  </data>
+  <data name="Info_Resolvers_Primary_Meaning" xml:space="preserve">
+    <value>Chấm xanh nhấp nháy báo hiệu đây là resolver Chính; có thể bôi đen hoặc bấm Copy để sao chép endpoint.</value>
+  </data>
+  <data name="Info_Resolvers_Secondary_Title" xml:space="preserve">
+    <value>Resolver Dự phòng Phụ</value>
+  </data>
+  <data name="Info_Resolvers_Secondary_Desc" xml:space="preserve">
+    <value>Máy chủ dự phòng nóng tự động tiếp quản ngay khi resolver Chính bị lỗi hoặc quá hạn (chấm nhấp nháy màu cam góc phải).</value>
+  </data>
+  <data name="Info_Resolvers_Secondary_Meaning" xml:space="preserve">
+    <value>Nên chọn nhà cung cấp khác với resolver Chính (ví dụ Cloudflare + Quad9) để tránh cùng bị lỗi đồng loạt.</value>
+  </data>
+  <data name="Info_Resolvers_Editor_Title" xml:space="preserve">
+    <value>Trình tạo &amp; Sửa Resolver Tùy chỉnh</value>
+  </data>
+  <data name="Info_Resolvers_Editor_Desc" xml:space="preserve">
+    <value>Thêm hoặc chỉnh sửa máy chủ DNS riêng theo DoH HTTPS, DoT hostname, DNSCrypt stamp (sdns://) hoặc IP UDP/TCP.</value>
+  </data>
+  <data name="Info_Resolvers_Editor_Meaning" xml:space="preserve">
+    <value>IP Bootstrap giúp kết nối trực tiếp tới điểm cuối DoH/DoT mà không phụ thuộc DNS có sẵn của nhà mạng.</value>
+  </data>
+  <data name="Info_Resolvers_Filter_Title" xml:space="preserve">
+    <value>Tìm kiếm &amp; Lọc theo Nhóm / Giao thức</value>
+  </data>
+  <data name="Info_Resolvers_Filter_Desc" xml:space="preserve">
+    <value>Lọc nhanh danh sách resolver theo tên, địa chỉ, nhóm hoặc giao thức mã hóa, hoặc tạo thêm nhóm phân loại mới.</value>
+  </data>
+  <data name="Info_Resolvers_Filter_Meaning" xml:space="preserve">
+    <value>Kết hợp ô tìm kiếm với bộ lọc giao thức để nhanh chóng chọn máy chủ DoH, DoT hoặc DNSCrypt phù hợp nhất.</value>
+  </data>
+  <data name="Info_Routing_Profile_Title" xml:space="preserve">
+    <value>Bộ định tuyến DNS theo Tên miền &amp; Hồ sơ</value>
+  </data>
+  <data name="Info_Routing_Profile_Desc" xml:space="preserve">
+    <value>Phân chia luồng DNS: đưa các tên miền khớp quy tắc qua một resolver riêng, phần còn lại đi qua Resolver dự phòng mặc định.</value>
+  </data>
+  <data name="Info_Routing_Profile_Meaning" xml:space="preserve">
+    <value>Quy tắc có số ưu tiên nhỏ hơn sẽ được xét trước; có thể tạo nhiều hồ sơ cho Game, Công việc hoặc Bảo mật.</value>
+  </data>
+  <data name="Info_Routing_Editor_Title" xml:space="preserve">
+    <value>Trình tạo Quy tắc Định tuyến Tên miền</value>
+  </data>
+  <data name="Info_Routing_Editor_Desc" xml:space="preserve">
+    <value>Tạo quy tắc khớp chính xác, theo đuôi tên miền (suffix), ký tự đại diện (wildcard) hoặc regex để gán tới resolver chỉ định.</value>
+  </data>
+  <data name="Info_Routing_Editor_Meaning" xml:space="preserve">
+    <value>Ví dụ chọn Suffix 'steampowered.com' -&gt; Cloudflare sẽ tự động gộp mọi tên miền con của Steam qua Cloudflare.</value>
+  </data>
+  <data name="Info_Routing_Tester_Title" xml:space="preserve">
+    <value>Công cụ Kiểm thử Quy tắc Định tuyến</value>
+  </data>
+  <data name="Info_Routing_Tester_Desc" xml:space="preserve">
+    <value>Kiểm tra nhanh một tên miền bất kỳ sẽ khớp với quy tắc nào hay rơi về resolver mặc định trước khi áp dụng thực tế.</value>
+  </data>
+  <data name="Info_Routing_Tester_Meaning" xml:space="preserve">
+    <value>Hiển thị tên quy tắc trúng khớp và resolver được chọn kèm độ ưu tiên.</value>
+  </data>
+  <data name="Info_Routing_Rules_Title" xml:space="preserve">
+    <value>Thẻ Quy tắc Định tuyến đang bật</value>
+  </data>
+  <data name="Info_Routing_Rules_Desc" xml:space="preserve">
+    <value>Hiển thị độ ưu tiên (#), kiểu khớp, mẫu tên miền và resolver đích kèm nút sửa, xóa hoặc bật/tắt tức thì.</value>
+  </data>
+  <data name="Info_Routing_Rules_Meaning" xml:space="preserve">
+    <value>Các quy tắc được duyệt từ số nhỏ (#1) đến lớn hơn; bạn có thể bật/tắt nhanh từng quy tắc mà không cần xóa.</value>
+  </data>
+  <data name="Info_Routing_Log_Title" xml:space="preserve">
+    <value>Nhật ký Quyết định Định tuyến gần đây</value>
+  </data>
+  <data name="Info_Routing_Log_Desc" xml:space="preserve">
+    <value>Ghi lại các truy vấn gần nhất đã đi qua bộ định tuyến và tên miền nào được dẫn tới resolver nào.</value>
+  </data>
+  <data name="Info_Routing_Log_Meaning" xml:space="preserve">
+    <value>Dùng để xác nhận quy tắc định tuyến tùy chỉnh của bạn đang khớp đúng với lưu lượng game hoặc trình duyệt.</value>
+  </data>
+  <data name="Info_Filtering_Summary_Title" xml:space="preserve">
+    <value>Tổng quan Bộ lọc Quảng cáo &amp; Bảo vệ DNS</value>
+  </data>
+  <data name="Info_Filtering_Summary_Desc" xml:space="preserve">
+    <value>Công tắc bật/tắt bộ lọc toàn cục và thống kê tổng số tên miền quảng cáo, theo dõi, mã độc đang bị chặn.</value>
+  </data>
+  <data name="Info_Filtering_Summary_Meaning" xml:space="preserve">
+    <value>Chặn ngay từ tầng phân giải DNS cục bộ giúp triệt tiêu quảng cáo trong toàn bộ app mà không tốn RAM trình duyệt.</value>
+  </data>
+  <data name="Info_Filtering_Blocklists_Title" xml:space="preserve">
+    <value>Nguồn Danh sách Chặn (Blocklist)</value>
+  </data>
+  <data name="Info_Filtering_Blocklists_Desc" xml:space="preserve">
+    <value>Các tập quy tắc tên miền chống quảng cáo, tracker, telemetry và trang web lừa đảo độc hại.</value>
+  </data>
+  <data name="Info_Filtering_Blocklists_Meaning" xml:space="preserve">
+    <value>Số domains biểu thị quy mô bộ lọc đang nạp; bấm làm mới định kỳ để cập nhật danh sách mới nhất.</value>
+  </data>
+  <data name="Info_Filtering_Allowlist_Title" xml:space="preserve">
+    <value>Danh sách Ngoại lệ (Allowlist) &amp; Cho phép tạm thời</value>
+  </data>
+  <data name="Info_Filtering_Allowlist_Desc" xml:space="preserve">
+    <value>Cho phép ngoại lệ vĩnh viễn hoặc tạm thời nếu một dịch vụ hợp pháp bị blocklist chặn nhầm.</value>
+  </data>
+  <data name="Info_Filtering_Allowlist_Meaning" xml:space="preserve">
+    <value>Tên miền nằm trong Allowlist luôn được ưu tiên cho qua trước mọi danh sách chặn.</value>
+  </data>
+  <data name="Info_Filtering_CustomBlock_Title" xml:space="preserve">
+    <value>Danh sách Chặn Tùy chỉnh cá nhân</value>
+  </data>
+  <data name="Info_Filtering_CustomBlock_Desc" xml:space="preserve">
+    <value>Tự thêm các tên miền cụ thể bạn muốn chặn tuyệt đối trên toàn máy tính Windows.</value>
+  </data>
+  <data name="Info_Filtering_CustomBlock_Meaning" xml:space="preserve">
+    <value>Có hiệu lực ngay lập tức đối với mọi truy vấn DNS mới.</value>
+  </data>
+  <data name="Info_Filtering_Inspector_Title" xml:space="preserve">
+    <value>Trình Kiểm tra Quyết định Lọc (Inspector)</value>
+  </data>
+  <data name="Info_Filtering_Inspector_Desc" xml:space="preserve">
+    <value>Tra cứu nhanh một tên miền đang bị Chặn hay Được phép kèm tên danh sách hoặc quy tắc cụ thể đã quyết định.</value>
+  </data>
+  <data name="Info_Filtering_Inspector_Meaning" xml:space="preserve">
+    <value>Rất hữu ích khi cần tìm nguyên nhân một trang web hay hình ảnh không tải được do dính filter.</value>
+  </data>
+  <data name="Info_Filtering_Cache_Title" xml:space="preserve">
+    <value>Bộ nhớ đệm DNS RAM thông minh theo TTL</value>
+  </data>
+  <data name="Info_Filtering_Cache_Desc" xml:space="preserve">
+    <value>Lưu tạm bản ghi DNS đúng theo thời gian TTL (bao gồm cả negative cache) để trả kết quả trong chưa tới 1 mili-giây.</value>
+  </data>
+  <data name="Info_Filtering_Cache_Meaning" xml:space="preserve">
+    <value>Tỷ lệ trúng Cache cao giúp mở web tức thì; xóa cache khi vừa đổi IP DNS trên tên miền riêng.</value>
+  </data>
+  <data name="Info_Gaming_Notice_Title" xml:space="preserve">
+    <value>Nguyên lý Tối ưu Chơi game</value>
+  </data>
+  <data name="Info_Gaming_Notice_Desc" xml:space="preserve">
+    <value>Giải thích trung thực vai trò của DNS đối với việc chọn cụm máy chủ/CDN và lý do ping trận đấu giữ nguyên đường đi thẳng.</value>
+  </data>
+  <data name="Info_Gaming_Notice_Meaning" xml:space="preserve">
+    <value>Không can thiệp driver kernel nên an toàn tuyệt đối 100% với Anti-Cheat (Vanguard, VAC, EAC, BattlEye).</value>
+  </data>
+  <data name="Info_Gaming_Synergy_Title" xml:space="preserve">
+    <value>Trạng thái Kết hợp Chơi game &amp; Vượt DPI</value>
+  </data>
+  <data name="Info_Gaming_Synergy_Desc" xml:space="preserve">
+    <value>Hiển thị sự phối hợp giữa Gaming Mode và proxy Auto-PAC để vào cửa hàng Steam/Discord mượt mà trong khi ping game 0 ms.</value>
+  </data>
+  <data name="Info_Gaming_Synergy_Meaning" xml:space="preserve">
+    <value>Nhãn xanh cho biết cửa hàng và cộng đồng game đang được vượt chặn DPI tự động song song.</value>
+  </data>
+  <data name="Info_Gaming_Scanner_Title" xml:space="preserve">
+    <value>Trình Quét &amp; Nhật ký Đo hiệu năng đa tên miền</value>
+  </data>
+  <data name="Info_Gaming_Scanner_Desc" xml:space="preserve">
+    <value>Hiển thị trực tiếp từng truy vấn thăm dò đa tên miền game qua nhiều vòng lặp với độ trễ ms, trạng thái và nút Hủy/Copy log.</value>
+  </data>
+  <data name="Info_Gaming_Scanner_Meaning" xml:space="preserve">
+    <value>Giúp phát hiện chính xác resolver nào vừa nhanh vừa ít dao động jitter và 0% timeout khi truy vấn tên miền game.</value>
+  </data>
+  <data name="Info_Gaming_Control_Title" xml:space="preserve">
+    <value>Công tắc Chế độ Game &amp; Ghim Resolver phiên chơi</value>
+  </data>
+  <data name="Info_Gaming_Control_Desc" xml:space="preserve">
+    <value>Kích hoạt ghim resolver tối ưu nhất trong phiên chơi game, giữ ấm cache DNS và áp dụng định tuyến tên miền game.</value>
+  </data>
+  <data name="Info_Gaming_Control_Meaning" xml:space="preserve">
+    <value>Chế độ ghim giúp tránh chuyển đổi resolver đột ngột giữa trận trừ phi máy chủ chính gặp sự cố mất kết nối.</value>
+  </data>
+  <data name="Info_Gaming_Profiles_Title" xml:space="preserve">
+    <value>Hồ sơ Nền tảng Game &amp; Tiêu chí Chọn thông minh</value>
+  </data>
+  <data name="Info_Gaming_Profiles_Desc" xml:space="preserve">
+    <value>Chọn hồ sơ Steam, Riot, Epic, EA, Ubisoft, Battle.net hoặc tùy chỉnh cùng chiến lược chọn (Ping thấp nhất / Cân bằng / Ổn định nhất).</value>
+  </data>
+  <data name="Info_Gaming_Profiles_Meaning" xml:space="preserve">
+    <value>Balanced cân đối giữa độ ổn định + jitter + tốc độ; Ghi đè thủ công cho phép khóa cứng resolver bạn tự chọn.</value>
+  </data>
+  <data name="Info_Gaming_Results_Title" xml:space="preserve">
+    <value>Thẻ Kết quả Đo hiệu năng Resolver</value>
+  </data>
+  <data name="Info_Gaming_Results_Desc" xml:space="preserve">
+    <value>Tổng hợp độ trễ Trung bình, P95, Thấp/Cao nhất, Jitter, % Thành công và % Timeout sau nhiều vòng đo đa tên miền.</value>
+  </data>
+  <data name="Info_Gaming_Results_Meaning" xml:space="preserve">
+    <value>Chỉ số P95 và Jitter thấp cho thấy kết nối vào sảnh chờ &amp; tải patch game ổn định hơn đáng kể; bấm Áp dụng để dùng ngay.</value>
+  </data>
+  <data name="Info_Bypass_Status_Title" xml:space="preserve">
+    <value>Trạng thái Bộ vượt DPI &amp; Số liệu Auto-PAC</value>
+  </data>
+  <data name="Info_Bypass_Status_Desc" xml:space="preserve">
+    <value>Theo dõi proxy tách mảnh TLS cục bộ, đường dẫn Auto-PAC, cơ chế tự sửa lỗi 4 tầng và số phiên vượt DPI / Tunnel.</value>
+  </data>
+  <data name="Info_Bypass_Status_Meaning" xml:space="preserve">
+    <value>Có thể copy nhanh địa chỉ Proxy và URL Auto-PAC; các bộ đếm cho thấy tỷ lệ mở khóa thành công bằng tách gói so với qua Tunnel.</value>
+  </data>
+  <data name="Info_Bypass_Tester_Title" xml:space="preserve">
+    <value>Kiểm tra kết nối &amp; Thử vượt DPI trực tiếp theo tên miền</value>
+  </data>
+  <data name="Info_Bypass_Tester_Desc" xml:space="preserve">
+    <value>So sánh thực tế độ trễ giữa Kết nối thẳng, Tách mảnh TLS DPI và Upstream Tunnel cho bất kỳ trang web nào đang bị chặn.</value>
+  </data>
+  <data name="Info_Bypass_Tester_Meaning" xml:space="preserve">
+    <value>Nếu đi thẳng thất bại trong khi Vượt DPI thành công thì trang đang bị chặn SNI DPI và sẽ tự mở khóa mượt mà qua Auto-PAC.</value>
+  </data>
+  <data name="Info_Bypass_Settings_Title" xml:space="preserve">
+    <value>Tinh chỉnh Tách gói TLS &amp; Tự sửa lỗi thông minh</value>
+  </data>
+  <data name="Info_Bypass_Settings_Desc" xml:space="preserve">
+    <value>Điều chỉnh phạm vi áp dụng web (Mọi trang web Auto-PAC hay Chỉ theo danh sách), kích thước mảnh byte, độ trễ và tự học.</value>
+  </data>
+  <data name="Info_Bypass_Settings_Meaning" xml:space="preserve">
+    <value>Tự sửa lỗi 4 tầng tự động thử mảnh 16B, đi thẳng hoặc đẩy qua Tunnel nếu trang web phản hồi kém.</value>
+  </data>
+  <data name="Info_Bypass_Upstream_Title" xml:space="preserve">
+    <value>Tầng 2: Split-Tunnel Dự phòng (WARP / SOCKS5 / HTTP)</value>
+  </data>
+  <data name="Info_Bypass_Upstream_Desc" xml:space="preserve">
+    <value>Cấu hình proxy upstream cục bộ (như Cloudflare WARP 127.0.0.1:40000) chỉ dành riêng cho các trang bị chặn IP cứng.</value>
+  </data>
+  <data name="Info_Bypass_Upstream_Meaning" xml:space="preserve">
+    <value>Tự động Fallback bảo toàn tốc độ 0 lag cho trang thường/game và tự cứu trang bị chặn IP qua tunnel.</value>
+  </data>
+  <data name="Info_Bypass_Rules_Title" xml:space="preserve">
+    <value>Quản lý Quy tắc Vượt chặn Tên miền</value>
+  </data>
+  <data name="Info_Bypass_Rules_Desc" xml:space="preserve">
+    <value>Thiết lập cách xử lý riêng cho từng tên miền (Đi thẳng, Tách gói DPI, Qua Tunnel, Lai tự động) cùng các gói Steam/Gaming.</value>
+  </data>
+  <data name="Info_Bypass_Rules_Meaning" xml:space="preserve">
+    <value>Lai tự động ưu tiên tách mảnh TLS siêu nhẹ trước, chỉ dùng Tunnel khi kết nối trực tiếp thật sự thất bại.</value>
+  </data>
+  <data name="Info_Bypass_Exclusions_Title" xml:space="preserve">
+    <value>Danh sách Ngoại lệ Đi thẳng tuyệt đối</value>
+  </data>
+  <data name="Info_Bypass_Exclusions_Desc" xml:space="preserve">
+    <value>Các tên miền luôn được Auto-PAC trả về DIRECT (không qua proxy) — phù hợp ngân hàng, mạng nội bộ và trang yêu cầu IP gốc.</value>
+  </data>
+  <data name="Info_Bypass_Exclusions_Meaning" xml:space="preserve">
+    <value>Hiệu lực tức thì mà không làm gián đoạn các trang khác đang vượt DPI.</value>
+  </data>
+  <data name="Info_Bypass_Learned_Title" xml:space="preserve">
+    <value>Bộ nhớ Tự học Chiến lược Vượt chặn</value>
+  </data>
+  <data name="Info_Bypass_Learned_Desc" xml:space="preserve">
+    <value>Tự ghi nhớ trong 30 phút chiến lược hiệu quả nhất (Đi thẳng / 16B / Tunnel) sau khi phát hiện trang nào kén TLS fragmentation.</value>
+  </data>
+  <data name="Info_Bypass_Learned_Meaning" xml:space="preserve">
+    <value>Bấm 'Ghim quy tắc' để lưu vĩnh viễn chiến lược tối ưu đó thành quy tắc cố định.</value>
+  </data>
+  <data name="Info_Bypass_Activity_Title" xml:space="preserve">
+    <value>Nhật ký Luồng Kết nối Vượt DPI gần đây</value>
+  </data>
+  <data name="Info_Bypass_Activity_Desc" xml:space="preserve">
+    <value>Ghi lại tên miền vừa đi qua Smart Proxy, phương pháp vượt chặn đã dùng, độ trễ bắt tay TLS và nút loại trừ nhanh.</value>
+  </data>
+  <data name="Info_Bypass_Activity_Meaning" xml:space="preserve">
+    <value>Nếu thấy tên miền nào không cần qua proxy, bấm ngay nút 'Đi thẳng' ở cuối dòng để đưa vào danh sách ngoại lệ.</value>
+  </data>
+  <data name="Info_Diag_Scanner_Title" xml:space="preserve">
+    <value>Trình Quét Chẩn đoán &amp; Nhật ký từng bước trực tiếp</value>
+  </data>
+  <data name="Info_Diag_Scanner_Desc" xml:space="preserve">
+    <value>Hiển thị hoạt ảnh quét radar, thanh tiến trình và nhật ký chi tiết từng giao thức/máy chủ cho tất cả 8 loại kiểm tra mạng.</value>
+  </data>
+  <data name="Info_Diag_Scanner_Meaning" xml:space="preserve">
+    <value>Nhãn Đạt / Cảnh báo / Lỗi và thời gian đo ms giúp xác định chính xác nút thắt ở DNS gốc, DoH, DoT, DNSCrypt hay adapter Windows.</value>
+  </data>
+  <data name="Info_Diag_Local_Title" xml:space="preserve">
+    <value>Ảnh chụp Trạng thái Mạng &amp; Proxy cục bộ</value>
+  </data>
+  <data name="Info_Diag_Local_Desc" xml:space="preserve">
+    <value>Đọc cấu hình IP, Gateway, DNS thực tế trên card mạng Windows và trạng thái DNS engine — hỗ trợ bôi đen/sao chép thông số.</value>
+  </data>
+  <data name="Info_Diag_Local_Meaning" xml:space="preserve">
+    <value>Khi đang bảo vệ, DNS của adapter trỏ về 127.0.0.1 (hoặc loopback phụ) còn Gateway giữ nguyên router của bạn.</value>
+  </data>
+  <data name="Info_Diag_External_Title" xml:space="preserve">
+    <value>Kiểm tra Bảo mật, Rò rỉ DNS &amp; Chặn cổng nhà mạng</value>
+  </data>
+  <data name="Info_Diag_External_Desc" xml:space="preserve">
+    <value>Chạy thăm dò thực tế ra bên ngoài cho DNSSEC, DoH/443, DNSCrypt, kiểm tra rò rỉ DNS và quét chặn cổng 53/853 của ISP.</value>
+  </data>
+  <data name="Info_Diag_External_Meaning" xml:space="preserve">
+    <value>Nút Quét cổng kiểm tra từng kênh (UDP/53, TCP/53, DoH/443, DoT/853, DNSCrypt) và xuất nhật ký chi tiết theo từng giao thức.</value>
+  </data>
+  <data name="Info_Diag_Lookup_Title" xml:space="preserve">
+    <value>Tra cứu Bản ghi DNS, So sánh Resolver &amp; Lan truyền toàn cầu</value>
+  </data>
+  <data name="Info_Diag_Lookup_Desc" xml:space="preserve">
+    <value>Truy vấn trực tiếp A/AAAA/CNAME/MX/TXT/NS, so sánh tốc độ nhiều resolver song song hoặc kiểm tra tính đồng nhất lan truyền DNS toàn cầu.</value>
+  </data>
+  <data name="Info_Diag_Lookup_Meaning" xml:space="preserve">
+    <value>So sánh giúp chọn resolver phản hồi nhanh nhất; Lan truyền giúp kiểm chứng các DNS lớn trên thế giới có trả chung một IP hay chưa.</value>
+  </data>
+  <data name="Info_Monitor_Summary_Title" xml:space="preserve">
+    <value>Tóm tắt Trạng thái &amp; Chỉ số Giám sát trực tiếp</value>
+  </data>
+  <data name="Info_Monitor_Summary_Desc" xml:space="preserve">
+    <value>Hiển thị nhanh trạng thái engine, tổng truy vấn, số lượng bị chặn, tỷ lệ trúng cache và độ trễ gần nhất.</value>
+  </data>
+  <data name="Info_Monitor_Summary_Meaning" xml:space="preserve">
+    <value>Dùng nút Tạm dừng luồng khi muốn đọc kỹ một tên miền đang trôi nhanh trong danh sách.</value>
+  </data>
+  <data name="Info_Monitor_Stream_Title" xml:space="preserve">
+    <value>Nhật ký Luồng Truy vấn DNS (Ảo hóa tiết kiệm RAM)</value>
+  </data>
+  <data name="Info_Monitor_Stream_Desc" xml:space="preserve">
+    <value>Luồng theo dõi thời gian thực từng tên miền đi qua proxy cục bộ kèm kết quả, loại bản ghi, resolver và thời gian phản hồi.</value>
+  </data>
+  <data name="Info_Monitor_Stream_Meaning" xml:space="preserve">
+    <value>Allowed/Cached = hợp lệ; Blocked = chặn quảng cáo; Routed = đi theo quy tắc riêng; Failed = lỗi upstream.</value>
+  </data>
+  <data name="Info_Monitor_Failover_Title" xml:space="preserve">
+    <value>Lịch sử Chuyển đổi Dự phòng &amp; Tự phục hồi</value>
+  </data>
+  <data name="Info_Monitor_Failover_Desc" xml:space="preserve">
+    <value>Ghi lại các lần hệ thống tự động chuyển từ resolver gặp sự cố sang resolver phụ để giữ kết nối liên tục.</value>
+  </data>
+  <data name="Info_Monitor_Failover_Meaning" xml:space="preserve">
+    <value>Nếu thấy nhiều sự kiện failover liên tiếp, hãy vào Thư viện Resolver để đổi sang một resolver Chính ổn định hơn.</value>
+  </data>
+  <data name="Info_Settings_General_Title" xml:space="preserve">
+    <value>Ngôn ngữ giao diện &amp; Hành vi nút Đóng</value>
+  </data>
+  <data name="Info_Settings_General_Desc" xml:space="preserve">
+    <value>Chuyển đổi ngôn ngữ Việt/Anh tức thì và chọn hành động khi bấm dấu X góc trên bên phải cửa sổ.</value>
+  </data>
+  <data name="Info_Settings_General_Meaning" xml:space="preserve">
+    <value>Khi thoát hoàn toàn ứng dụng, DNS và Proxy gốc của Windows luôn được khôi phục an toàn tự động.</value>
+  </data>
+  <data name="Info_Settings_Updates_Title" xml:space="preserve">
+    <value>Cập nhật phần mềm tự động qua GitHub Releases</value>
+  </data>
+  <data name="Info_Settings_Updates_Desc" xml:space="preserve">
+    <value>Kiểm tra phiên bản mới từ github.com/longtygu/JustCryptDns, vẽ biểu đồ tốc độ tải, kiểm tra SHA-256 và nâng cấp trực tiếp.</value>
+  </data>
+  <data name="Info_Settings_Updates_Meaning" xml:space="preserve">
+    <value>Toàn bộ cài đặt, resolver tùy chỉnh và quy tắc vượt chặn đều được giữ nguyên khi nâng cấp trực tiếp.</value>
+  </data>
+  <data name="Info_Settings_Startup_Title" xml:space="preserve">
+    <value>Khởi động cùng Windows &amp; Dịch vụ nền</value>
+  </data>
+  <data name="Info_Settings_Startup_Desc" xml:space="preserve">
+    <value>Cấu hình tự mở cùng Windows, thu nhỏ vào khay hệ thống, tự bật DNS engine/Gaming Mode và theo dõi kết nối Windows Service.</value>
+  </data>
+  <data name="Info_Settings_Startup_Meaning" xml:space="preserve">
+    <value>Trạng thái Đã kết nối giúp việc áp dụng/khôi phục DNS hệ thống ổn định nhất.</value>
+  </data>
+  <data name="Info_Settings_Appearance_Title" xml:space="preserve">
+    <value>Chọn Giao diện nhanh &amp; Chỉnh Giao diện chuyên sâu</value>
+  </data>
+  <data name="Info_Settings_Appearance_Desc" xml:space="preserve">
+    <value>Chuyển nhanh Tối / Sáng / Hệ thống / Tùy chỉnh hoặc mở trang Giao diện để tinh chỉnh trong suốt, màu nhấn, cỡ chữ và hiệu ứng.</value>
+  </data>
+  <data name="Info_Settings_Appearance_Meaning" xml:space="preserve">
+    <value>Mọi thay đổi giao diện được áp dụng trực tiếp mà không cần khởi động lại app.</value>
+  </data>
+  <data name="Info_Settings_Perf_Title" xml:space="preserve">
+    <value>Tối ưu Tài nguyên, CPU &amp; Giám sát Bộ nhớ</value>
+  </data>
+  <data name="Info_Settings_Perf_Desc" xml:space="preserve">
+    <value>Điều chỉnh độ sâu bộ đệm nhật ký và bật đo RAM/Luồng/Handle tiến trình theo thời gian thực kèm nút giải phóng RAM.</value>
+  </data>
+  <data name="Info_Settings_Perf_Meaning" xml:space="preserve">
+    <value>Chế độ Tiết kiệm giảm tối đa dung lượng bộ đệm và dừng hiệu ứng đồ họa ngay khi thu nhỏ app xuống khay.</value>
+  </data>
+  <data name="Info_Settings_About_Title" xml:space="preserve">
+    <value>Thông tin Phiên bản, Thư mục Dữ liệu &amp; Báo lỗi</value>
+  </data>
+  <data name="Info_Settings_About_Desc" xml:space="preserve">
+    <value>Xem và sao chép nhanh số phiên bản, tên Windows, thư mục cấu hình/nhật ký hoặc mở cửa sổ Thông tin app / Báo lỗi.</value>
+  </data>
+  <data name="Info_Settings_About_Meaning" xml:space="preserve">
+    <value>Nhấn nút Copy cạnh đường dẫn để sao chép thư mục dữ liệu hoặc log nhanh chóng.</value>
+  </data>
+  <data name="Info_Appearance_Theme_Title" xml:space="preserve">
+    <value>Chế độ Chủ đề &amp; Tông màu Nền Tùy chỉnh</value>
+  </data>
+  <data name="Info_Appearance_Theme_Desc" xml:space="preserve">
+    <value>Chuyển đổi giữa chủ đề Tối, Sáng, đồng bộ Windows hoặc chủ đề pha màu nền tùy thích.</value>
+  </data>
+  <data name="Info_Appearance_Theme_Meaning" xml:space="preserve">
+    <value>Bảng màu giữ độ tương phản sắc nét ngay cả khi bật hiệu ứng trong suốt Mica/Acrylic.</value>
+  </data>
+  <data name="Info_Appearance_Accent_Title" xml:space="preserve">
+    <value>Màu nhấn Chủ đạo &amp; Mã màu Hex tùy chỉnh</value>
+  </data>
+  <data name="Info_Appearance_Accent_Desc" xml:space="preserve">
+    <value>Đồng bộ theo màu nhấn Windows DWM hoặc tự chọn ô màu mẫu hay nhập mã #RRGGBB bất kỳ.</value>
+  </data>
+  <data name="Info_Appearance_Accent_Meaning" xml:space="preserve">
+    <value>Thay đổi đồng bộ màu nút chính, vạch đồng hồ đo, sóng mạng và các thẻ trạng thái.</value>
+  </data>
+  <data name="Info_Appearance_Transparency_Title" xml:space="preserve">
+    <value>Độ trong suốt Cửa sổ &amp; Chất liệu Kính nền DWM</value>
+  </data>
+  <data name="Info_Appearance_Transparency_Desc" xml:space="preserve">
+    <value>Điều chỉnh mức độ xuyên thấu của thẻ giao diện và chọn chất liệu kính Mica, Acrylic hoặc Blur trên Windows 10/11.</value>
+  </data>
+  <data name="Info_Appearance_Transparency_Meaning" xml:space="preserve">
+    <value>Nếu hình nền desktop quá sáng làm khó đọc, hãy kéo thanh trượt thấp xuống để giữ chữ luôn rõ nét.</value>
+  </data>
+  <data name="Info_Appearance_Background_Title" xml:space="preserve">
+    <value>Hoàn thiện Bề mặt Nền Cửa sổ</value>
+  </data>
+  <data name="Info_Appearance_Background_Desc" xml:space="preserve">
+    <value>Lựa chọn nền phẳng tối giản hoặc nền tỏa sáng ánh màu nhấn nhẹ ở phía sau cửa sổ.</value>
+  </data>
+  <data name="Info_Appearance_Background_Meaning" xml:space="preserve">
+    <value>Hiệu ứng dùng brush tĩnh nên hầu như không tốn thêm tài nguyên CPU.</value>
+  </data>
+  <data name="Info_Appearance_Layout_Title" xml:space="preserve">
+    <value>Thanh bên, Mật độ Thẻ &amp; Bo góc Cửa sổ</value>
+  </data>
+  <data name="Info_Appearance_Layout_Desc" xml:space="preserve">
+    <value>Chỉnh độ rộng thanh menu bên trái, khoảng cách thoáng/gọn giữa các thẻ và kiểu bo góc DWM của Windows 11.</value>
+  </data>
+  <data name="Info_Appearance_Layout_Meaning" xml:space="preserve">
+    <value>Mật độ Gọn giúp hiển thị nhiều chỉ số và bảng nhật ký trên một màn hình hơn mà ít phải cuộn.</value>
+  </data>
+  <data name="Info_Appearance_Scaling_Title" xml:space="preserve">
+    <value>Thu phóng Giao diện, Cỡ chữ &amp; Kiểu Nhấp nháy Đèn</value>
+  </data>
+  <data name="Info_Appearance_Scaling_Desc" xml:space="preserve">
+    <value>Điều chỉnh tỷ lệ phóng to (80%–150%), cỡ chữ, tốc độ hiệu ứng và tùy biến hoặc tắt hẳn hiệu ứng nhấp nháy của nút/khiên.</value>
+  </data>
+  <data name="Info_Appearance_Scaling_Meaning" xml:space="preserve">
+    <value>Chọn Tắt ở mục Hoạt ảnh hoặc Nhấp nháy để dừng hoàn toàn mọi chuyển động trang trí nếu muốn tối đa hiệu năng.</value>
   </data>
 </root>

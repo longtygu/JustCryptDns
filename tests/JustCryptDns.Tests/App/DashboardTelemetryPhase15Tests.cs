@@ -70,10 +70,16 @@ public sealed class DashboardTelemetryPhase15Tests
         public Task<IReadOnlyList<ResolverComparisonEntry>> CompareResolversAsync(string domain, string recordType = "A", CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<IReadOnlyList<ResolverComparisonEntry>> CompareResolversAsync(string domain, string recordType, IProgress<DiagnosticStepProgress>? progress, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<DnsLeakTestReport> RunDnsLeakTestAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<IReadOnlyList<ResolverComparisonEntry>> CheckPropagationAsync(string domain, string recordType, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<ResolverComparisonEntry>> CheckPropagationAsync(string domain, string recordType, IProgress<DiagnosticStepProgress>? progress, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 

@@ -236,10 +236,23 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
         return removed;
     }
 
-    public async Task<IReadOnlyList<ResolverBenchmarkResult>> RunBenchmarkAsync(
+    public Task<IReadOnlyList<ResolverBenchmarkResult>> RunBenchmarkAsync(
         int roundsPerDomain = 2,
         IProgress<(int Completed, int Total, string CurrentResolver)>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        RunBenchmarkCoreAsync(roundsPerDomain, progress, detailedProgress: null, cancellationToken);
+
+    public Task<IReadOnlyList<ResolverBenchmarkResult>> RunBenchmarkAsync(
+        int roundsPerDomain,
+        IProgress<GamingBenchmarkProgress>? detailedProgress,
+        CancellationToken cancellationToken = default) =>
+        RunBenchmarkCoreAsync(roundsPerDomain, legacyProgress: null, detailedProgress, cancellationToken);
+
+    private async Task<IReadOnlyList<ResolverBenchmarkResult>> RunBenchmarkCoreAsync(
+        int roundsPerDomain,
+        IProgress<(int Completed, int Total, string CurrentResolver)>? legacyProgress,
+        IProgress<GamingBenchmarkProgress>? detailedProgress,
+        CancellationToken cancellationToken)
     {
         roundsPerDomain = Math.Clamp(roundsPerDomain, 2, 10);
         var activeProfile = GetActiveGamingProfile();
@@ -251,44 +264,182 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
             .Where(r => _upstreams.ContainsKey(r.Protocol))
             .ToList();
 
-        var results = new List<ResolverBenchmarkResult>(candidates.Count);
-        var timeout = TimeSpan.FromMilliseconds(Math.Min(_settings.Current.Dns.QueryTimeoutMs, 2500));
-        var completed = 0;
+        var totalResolvers = candidates.Count;
+        var totalQueriesTarget = totalResolvers * domains.Count * roundsPerDomain;
+        var results = new List<ResolverBenchmarkResult>(totalResolvers);
+        var resultsLock = new object();
+        var perQueryTimeout = TimeSpan.FromMilliseconds(Math.Clamp(_settings.Current.Dns.QueryTimeoutMs, 1000, 2200));
+        var hardDeadline = perQueryTimeout + TimeSpan.FromMilliseconds(400);
+        var completedResolvers = 0;
+        var completedQueries = 0;
+        var cancelled = false;
 
-        foreach (var resolver in candidates)
+        using var throttle = new SemaphoreSlim(3, 3);
+        var tasks = candidates.Select(async resolver =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            progress?.Report((completed, candidates.Count, resolver.Name));
-
-            var upstream = _upstreams[resolver.Protocol];
-            var latencies = new List<double>(domains.Count * roundsPerDomain);
-            var totalQueries = 0;
-            var successQueries = 0;
-            var timeoutQueries = 0;
-
-            for (var round = 0; round < roundsPerDomain; round++)
+            var acquired = false;
+            try
             {
-                foreach (var domain in domains)
+                await throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+                acquired = true;
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var snapshotDone = Volatile.Read(ref completedResolvers);
+                legacyProgress?.Report((snapshotDone, totalResolvers, resolver.Name));
+                detailedProgress?.Report(new GamingBenchmarkProgress(
+                    GamingBenchmarkProgressStage.ResolverStarted,
+                    resolver.Id,
+                    resolver.Name,
+                    resolver.Protocol,
+                    domains[0],
+                    1,
+                    roundsPerDomain,
+                    snapshotDone,
+                    totalResolvers,
+                    Volatile.Read(ref completedQueries),
+                    totalQueriesTarget,
+                    true,
+                    false,
+                    0,
+                    0,
+                    0,
+                    null,
+                    DateTimeOffset.Now));
+
+                var upstream = _upstreams[resolver.Protocol];
+                var latencies = new List<double>(domains.Count * roundsPerDomain);
+                var resolverTotalQueries = 0;
+                var successQueries = 0;
+                var timeoutQueries = 0;
+
+                for (var round = 0; round < roundsPerDomain; round++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    totalQueries++;
-                    var query = DnsPacket.CreateQuery(domain, DnsRecordType.A);
-                    var outcome = await upstream.QueryAsync(query, resolver, timeout, cancellationToken).ConfigureAwait(false);
-                    if (outcome.Success)
+                    foreach (var domain in domains)
                     {
-                        successQueries++;
-                        latencies.Add(outcome.LatencyMs);
-                    }
-                    else if (outcome.Error is not null && outcome.Error.Contains("timed out", StringComparison.OrdinalIgnoreCase))
-                    {
-                        timeoutQueries++;
+                        cancellationToken.ThrowIfCancellationRequested();
+                        resolverTotalQueries++;
+                        DnsQueryResult outcome;
+                        try
+                        {
+                            var query = DnsPacket.CreateQuery(domain, DnsRecordType.A);
+                            outcome = await upstream
+                                .QueryAsync(query, resolver, perQueryTimeout, cancellationToken)
+                                .WaitAsync(hardDeadline, cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                            throw;
+                        }
+                        catch (TimeoutException)
+                        {
+                            outcome = new DnsQueryResult(false, [], perQueryTimeout.TotalMilliseconds, resolver.Id, resolver.Protocol, "Timed out");
+                        }
+                        catch (Exception ex)
+                        {
+                            outcome = new DnsQueryResult(false, [], 0, resolver.Id, resolver.Protocol, ex.Message);
+                        }
+
+                        var timedOut = !outcome.Success && outcome.Error is not null &&
+                                       (outcome.Error.Contains("timed out", StringComparison.OrdinalIgnoreCase) ||
+                                        outcome.Error.Contains("timeout", StringComparison.OrdinalIgnoreCase));
+                        if (outcome.Success)
+                        {
+                            successQueries++;
+                            latencies.Add(outcome.LatencyMs);
+                        }
+                        else if (timedOut)
+                        {
+                            timeoutQueries++;
+                        }
+
+                        var doneQueriesNow = Interlocked.Increment(ref completedQueries);
+                        detailedProgress?.Report(new GamingBenchmarkProgress(
+                            GamingBenchmarkProgressStage.DomainProbed,
+                            resolver.Id,
+                            resolver.Name,
+                            resolver.Protocol,
+                            domain,
+                            round + 1,
+                            roundsPerDomain,
+                            Volatile.Read(ref completedResolvers),
+                            totalResolvers,
+                            doneQueriesNow,
+                            totalQueriesTarget,
+                            outcome.Success,
+                            timedOut,
+                            outcome.LatencyMs,
+                            0,
+                            0,
+                            outcome.Error,
+                            DateTimeOffset.Now));
                     }
                 }
-            }
 
-            results.Add(BuildBenchmarkMetric(resolver, totalQueries, successQueries, timeoutQueries, latencies));
-            completed++;
-            progress?.Report((completed, candidates.Count, resolver.Name));
+                var metric = BuildBenchmarkMetric(resolver, resolverTotalQueries, successQueries, timeoutQueries, latencies);
+                lock (resultsLock)
+                {
+                    results.Add(metric);
+                }
+
+                var doneResolversNow = Interlocked.Increment(ref completedResolvers);
+                legacyProgress?.Report((doneResolversNow, totalResolvers, resolver.Name));
+                detailedProgress?.Report(new GamingBenchmarkProgress(
+                    GamingBenchmarkProgressStage.ResolverCompleted,
+                    resolver.Id,
+                    resolver.Name,
+                    resolver.Protocol,
+                    string.Join(", ", domains.Take(2)),
+                    roundsPerDomain,
+                    roundsPerDomain,
+                    doneResolversNow,
+                    totalResolvers,
+                    Volatile.Read(ref completedQueries),
+                    totalQueriesTarget,
+                    metric.SuccessfulQueries > 0,
+                    metric.TimeoutQueries == metric.TotalQueries,
+                    metric.AverageLatencyMs,
+                    metric.AverageLatencyMs,
+                    metric.ReliabilityScore,
+                    metric.SuccessfulQueries == 0 ? "All probes failed" : null,
+                    DateTimeOffset.Now));
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                cancelled = true;
+            }
+            finally
+            {
+                if (acquired)
+                {
+                    throttle.Release();
+                }
+            }
+        }).ToList();
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        if (cancelled)
+        {
+            detailedProgress?.Report(new GamingBenchmarkProgress(
+                GamingBenchmarkProgressStage.Cancelled,
+                string.Empty,
+                string.Empty,
+                DnsProtocol.DnsOverHttps,
+                string.Empty,
+                roundsPerDomain,
+                roundsPerDomain,
+                completedResolvers,
+                totalResolvers,
+                completedQueries,
+                totalQueriesTarget,
+                false,
+                false,
+                0,
+                0,
+                0,
+                "Cancelled",
+                DateTimeOffset.Now));
         }
 
         var ordered = results
@@ -296,12 +447,16 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
             .ThenBy(r => r.AverageLatencyMs)
             .ToList();
 
-        lock (_resultsLock)
+        if (ordered.Count > 0)
         {
-            _lastResults = ordered;
+            lock (_resultsLock)
+            {
+                _lastResults = ordered;
+            }
+
+            BenchmarkCompleted?.Invoke(this, ordered);
         }
 
-        BenchmarkCompleted?.Invoke(this, ordered);
         RaiseGamingStateChanged();
         return ordered;
     }

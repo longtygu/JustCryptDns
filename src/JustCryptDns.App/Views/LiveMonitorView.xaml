@@ -6,6 +6,7 @@
              xmlns:vm="clr-namespace:JustCryptDns.App.ViewModels"
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+             xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="950"
              d:DataContext="{d:DesignInstance Type=vm:LiveMonitorViewModel}">
     <UserControl.Resources>
@@ -39,7 +40,11 @@
         </Grid>
 
         <!-- Live Metrics Summary -->
-        <Border Grid.Row="1" Style="{StaticResource SectionCard}">
+        <Border Grid.Row="1" Style="{StaticResource SectionCard}"
+                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Monitor_Summary_Title}"
+                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Monitor_Summary_Desc}"
+                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Monitor_Summary_Meaning}"
+                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
             <UniformGrid Rows="1" Columns="5">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc DnsMgr_EngineTitle}" />
@@ -72,7 +77,11 @@
         </Border>
 
         <!-- Virtualized Live Query Stream -->
-        <Border Grid.Row="2" Style="{StaticResource SectionCard}" Padding="16,12">
+        <Border Grid.Row="2" Style="{StaticResource SectionCard}" Padding="16,12"
+                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Monitor_Stream_Title}"
+                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Monitor_Stream_Desc}"
+                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Monitor_Stream_Meaning}"
+                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -111,7 +120,11 @@
         </Border>
 
         <!-- Failover Events Log -->
-        <Border Grid.Row="3" Style="{StaticResource SectionCard}" Margin="0">
+        <Border Grid.Row="3" Style="{StaticResource SectionCard}" Margin="0"
+                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Monitor_Failover_Title}"
+                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Monitor_Failover_Desc}"
+                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Monitor_Failover_Meaning}"
+                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
             <StackPanel>
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
