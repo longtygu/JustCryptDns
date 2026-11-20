@@ -24,6 +24,8 @@ public sealed class ServiceStateManager : IServiceIpcHandler
     private readonly IDnsReverseLookupCache? _reverseLookupCache;
     private readonly INetworkInfoService? _networkInfo;
     private readonly IResolverLibraryService? _resolverLibrary;
+    private readonly INetworkDiagnosticsService? _diagnostics;
+    private readonly IDnsFailoverService? _failover;
     private readonly ILogger<ServiceStateManager> _logger;
     private readonly DateTimeOffset _startedAt = DateTimeOffset.UtcNow;
     private readonly string _version;
@@ -41,7 +43,9 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         IWindowsFirewallManager? firewallManager = null,
         IDnsReverseLookupCache? reverseLookupCache = null,
         INetworkInfoService? networkInfo = null,
-        IResolverLibraryService? resolverLibrary = null)
+        IResolverLibraryService? resolverLibrary = null,
+        INetworkDiagnosticsService? diagnostics = null,
+        IDnsFailoverService? failover = null)
     {
         _settings = settings;
         _dnsEngine = dnsEngine;
@@ -53,8 +57,10 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         _reverseLookupCache = reverseLookupCache;
         _networkInfo = networkInfo;
         _resolverLibrary = resolverLibrary;
+        _diagnostics = diagnostics;
+        _failover = failover;
         _version = typeof(ServiceStateManager).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.5.2";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.6.0";
     }
 
     public async Task InitializeFromSettingsAsync(CancellationToken cancellationToken = default)
@@ -215,10 +221,17 @@ public sealed class ServiceStateManager : IServiceIpcHandler
 
             case IpcRequestKind.ReloadConfiguration:
             {
+                await _settings.ReloadFromDiskAsync(cancellationToken).ConfigureAwait(false);
                 if (!string.IsNullOrWhiteSpace(request.StringValue))
                 {
                     var (ok, err) = await _dnsEngine.SwitchResolverAsync(request.StringValue, cancellationToken).ConfigureAwait(false);
                     return new IpcResponse(ok, GetSnapshot(), ok ? null : "SwitchResolverFailed", err);
+                }
+
+                if (_bypassEngine is not null
+                    && _bypassEngine.GetStats().State is BypassEngineState.Running or BypassEngineState.Degraded)
+                {
+                    await _bypassEngine.RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
                 }
 
                 return new IpcResponse(true, GetSnapshot());
@@ -354,6 +367,66 @@ public sealed class ServiceStateManager : IServiceIpcHandler
             {
                 var snapshot = _reverseLookupCache?.GetSnapshot(600) ?? [];
                 var json = JsonSerializer.Serialize(snapshot, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.GetEngineDetailedStats:
+            {
+                var stats = _dnsEngine.GetStats();
+                var json = JsonSerializer.Serialize(stats, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.GetBypassDetailedStats:
+            {
+                var stats = _bypassEngine?.GetStats() ?? new BypassRuntimeStats();
+                var json = JsonSerializer.Serialize(stats, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.GetBypassEventsSnapshot:
+            {
+                var events = _bypassEngine?.GetRecentEvents().Take(200).ToList() ?? [];
+                var json = JsonSerializer.Serialize(events, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.RestartBypassEngine:
+            {
+                if (_bypassEngine is null)
+                {
+                    return new IpcResponse(false, GetSnapshot(), "BypassUnavailable", "Bypass engine is not registered.");
+                }
+
+                var (ok, err) = await _bypassEngine.RestartAsync(cancellationToken).ConfigureAwait(false);
+                return new IpcResponse(ok, GetSnapshot(), ok ? null : "BypassRestartFailed", err);
+            }
+
+            case IpcRequestKind.ProbeActiveResolver:
+            {
+                var probe = await _dnsEngine.ProbeActiveResolverAsync(cancellationToken).ConfigureAwait(false);
+                var json = JsonSerializer.Serialize(probe, SettingsJson.Options);
+                return new IpcResponse(probe.Success, GetSnapshot(), probe.Success ? null : "ProbeFailed", json);
+            }
+
+            case IpcRequestKind.TestLocalProxy:
+            {
+                var (ok, latencyMs, summary) = await _dnsEngine.TestLocalProxyAsync(cancellationToken).ConfigureAwait(false);
+                var json = JsonSerializer.Serialize(new LocalProxyTestResult(ok, latencyMs, summary), SettingsJson.Options);
+                return new IpcResponse(ok, GetSnapshot(), ok ? null : "LocalProxyTestFailed", json);
+            }
+
+            case IpcRequestKind.GetLiveQueriesSnapshot:
+            {
+                var entries = _diagnostics?.GetMonitorEntries().Take(200).ToList() ?? [];
+                var json = JsonSerializer.Serialize(entries, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.GetFailoverEventsSnapshot:
+            {
+                var events = _failover?.GetFailoverHistory().Take(100).ToList() ?? [];
+                var json = JsonSerializer.Serialize(events, SettingsJson.Options);
                 return new IpcResponse(true, GetSnapshot(), Message: json);
             }
 

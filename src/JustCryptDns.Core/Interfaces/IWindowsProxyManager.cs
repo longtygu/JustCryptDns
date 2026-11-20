@@ -10,6 +10,8 @@ public sealed record WindowsProxyOperationResult(bool Success, string? ErrorMess
 /// </summary>
 public interface IWindowsProxyManager
 {
+    bool CanModifyCurrentUserProxy { get; }
+
     bool HasActiveBackup();
 
     WindowsProxyBackup? ReadBackup();

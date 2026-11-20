@@ -36,7 +36,7 @@ public sealed class SettingsService : ISettingsService, IDisposable
 
     public AppSettings Current { get; private set; }
 
-    public SettingsLoadOutcome LoadOutcome { get; }
+    public SettingsLoadOutcome LoadOutcome { get; private set; }
 
     public event EventHandler<AppSettings>? Changed;
 
@@ -79,6 +79,36 @@ public sealed class SettingsService : ISettingsService, IDisposable
     {
         _deferredTimer.Change(Timeout.Infinite, Timeout.Infinite);
         await SaveDeferredAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> ReloadFromDiskAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        AppSettings reloaded;
+        try
+        {
+            _deferredTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            Interlocked.Exchange(ref _pendingDeferred, 0);
+
+            var result = _store.Load();
+            LoadOutcome = result.Outcome;
+            if (result.Outcome == SettingsLoadOutcome.ResetAfterCorruption)
+            {
+                _logger.LogWarning("Skipping disk settings reload because primary and backup settings files were unreadable.");
+                return false;
+            }
+
+            result.Settings.Normalize();
+            Current = result.Settings;
+            reloaded = result.Settings;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        Changed?.Invoke(this, reloaded);
+        return true;
     }
 
     public void Dispose()

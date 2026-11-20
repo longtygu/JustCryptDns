@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text.Json;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Controls;
@@ -40,8 +42,11 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly INetworkTelemetryService? _telemetry;
     private readonly IResolverLibraryService? _resolverLibrary;
     private readonly INetworkDiagnosticsService? _diagnostics;
+    private readonly IServiceClient? _serviceClient;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
+    private DispatcherTimer? _servicePollTimer;
+    private bool _isServicePollInFlight;
     private string _activeResolverId = string.Empty;
     private long _lastBypassUiTick;
     private BypassRuntimeStats? _pendingBypassStats;
@@ -54,8 +59,13 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private DateTimeOffset? _lastUpdated;
     [ObservableProperty] private bool _hasSnapshot;
 
-    [ObservableProperty] private DnsEngineState _engineState = DnsEngineState.Stopped;
-    [ObservableProperty] private DnsProtocol _activeProtocol = DnsProtocol.DnsOverHttps;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUnencryptedDnsActive))]
+    private DnsEngineState _engineState = DnsEngineState.Stopped;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUnencryptedDnsActive))]
+    private DnsProtocol _activeProtocol = DnsProtocol.DnsOverHttps;
     [ObservableProperty] private string _activeResolverName = string.Empty;
     [ObservableProperty] private string _listenEndpoint = "127.0.0.1:53";
     [ObservableProperty] private string _latencyDisplay = "—";
@@ -119,7 +129,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         IBypassEngineService? bypassEngine = null,
         INetworkTelemetryService? telemetry = null,
         IResolverLibraryService? resolverLibrary = null,
-        INetworkDiagnosticsService? diagnostics = null)
+        INetworkDiagnosticsService? diagnostics = null,
+        IServiceClient? serviceClient = null)
         : base("Nav_Dashboard", "Page_Dashboard_Subtitle")
     {
         _network = network;
@@ -132,6 +143,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         _telemetry = telemetry;
         _resolverLibrary = resolverLibrary;
         _diagnostics = diagnostics;
+        _serviceClient = serviceClient;
         _ui = SynchronizationContext.Current;
         StatusPulseStyle = _settings?.Current.Appearance.StatusPulseStyle ?? StatusPulseStyle.Breathing;
         IsFilteringActive = _filtering?.IsFilteringEnabled ?? false;
@@ -156,6 +168,8 @@ public sealed partial class DashboardViewModel : PageViewModel
     public bool IsEngineAvailable => true;
 
     public bool IsEngineRunning => EngineState is DnsEngineState.Running or DnsEngineState.Degraded;
+
+    public bool IsUnencryptedDnsActive => IsEngineRunning && ActiveProtocol == DnsProtocol.UdpTcp;
 
     public bool IsBypassRunning => BypassState is BypassEngineState.Running or BypassEngineState.Degraded;
 
@@ -237,11 +251,13 @@ public sealed partial class DashboardViewModel : PageViewModel
         }
 
         ApplyEngineStats(_dnsEngine.GetStats());
+        StartServicePolling();
         _ = RefreshCommand.ExecuteAsync(null);
     }
 
     public override void OnNavigatedFrom()
     {
+        StopServicePolling();
         _network.NetworkChanged -= OnNetworkChanged;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
         if (_bypassEngine is not null)
@@ -272,6 +288,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     {
         if (disposing)
         {
+            StopServicePolling();
             _network.NetworkChanged -= OnNetworkChanged;
             _dnsEngine.StateChanged -= OnEngineStateChanged;
             if (_bypassEngine is not null)
@@ -463,6 +480,25 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     [RelayCommand]
     private void OpenDnsManager() => _navigation.Navigate(PageKeys.DnsManager);
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task SwitchToEncryptedDnsAsync()
+    {
+        EngineError = null;
+        TestProxyFeedback = null;
+        var (ok, err) = await _dnsEngine.SwitchResolverAsync(BuiltInResolvers.DefaultResolverId);
+        if (ok)
+        {
+            TestProxyFeedback = LocalizationManager.Instance["DnsWarn_SwitchedToEncrypted"];
+            _ = _dnsEngine.ProbeActiveResolverAsync();
+        }
+        else
+        {
+            EngineError = err;
+        }
+
+        ApplyEngineStats(_dnsEngine.GetStats());
+    }
 
     [RelayCommand]
     private void ToggleQueryLogPause() => IsQueryLogPaused = !IsQueryLogPaused;
@@ -787,6 +823,110 @@ public sealed partial class DashboardViewModel : PageViewModel
         else
         {
             Sync();
+        }
+    }
+
+    private void StartServicePolling()
+    {
+        if (_serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        {
+            return;
+        }
+
+        _ = PollServiceStateAsync();
+        if (_servicePollTimer is null && System.Windows.Application.Current?.Dispatcher is { } dispatcher)
+        {
+            _servicePollTimer = new DispatcherTimer(
+                TimeSpan.FromSeconds(2),
+                DispatcherPriority.Background,
+                OnServicePollTick,
+                dispatcher);
+        }
+
+        _servicePollTimer?.Start();
+    }
+
+    private void StopServicePolling()
+    {
+        if (_servicePollTimer is not null)
+        {
+            _servicePollTimer.Stop();
+            _servicePollTimer.Tick -= OnServicePollTick;
+            _servicePollTimer = null;
+        }
+    }
+
+    private void OnServicePollTick(object? sender, EventArgs e) => _ = PollServiceStateAsync();
+
+    private async Task PollServiceStateAsync()
+    {
+        if (_isServicePollInFlight || _serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        {
+            return;
+        }
+
+        _isServicePollInFlight = true;
+        try
+        {
+            var token = _cts?.Token ?? CancellationToken.None;
+            if (_dnsEngine is HybridDnsEngineProxy hybridDns)
+            {
+                await hybridDns.RefreshFromServiceAsync(token).ConfigureAwait(false);
+            }
+
+            if (_bypassEngine is HybridBypassEngineProxy hybridBypass)
+            {
+                await hybridBypass.RefreshFromServiceAsync(token).ConfigureAwait(false);
+            }
+
+            List<LiveQueryMonitorEntry>? entries = null;
+            if (!IsQueryLogPaused && !IsTelemetryPaused)
+            {
+                var queriesRes = await _serviceClient
+                    .SendAsync(new IpcRequest(IpcRequestKind.GetLiveQueriesSnapshot), token)
+                    .ConfigureAwait(false);
+                if (queriesRes is { Success: true, Message: not null })
+                {
+                    entries = JsonSerializer.Deserialize<List<LiveQueryMonitorEntry>>(queriesRes.Message, SettingsJson.Options);
+                }
+            }
+
+            void ApplyToUi()
+            {
+                ApplyEngineStats(_dnsEngine.GetStats());
+                if (_bypassEngine is not null)
+                {
+                    ApplyBypassStats(_bypassEngine.GetStats());
+                }
+
+                if (entries is not null)
+                {
+                    RecentQueries.Clear();
+                    foreach (var entry in entries.Take(MaxDashboardQueries))
+                    {
+                        RecentQueries.Add(entry);
+                    }
+
+                    OnPropertyChanged(nameof(HasRecentQueries));
+                }
+            }
+
+            if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+            {
+                await dispatcher.InvokeAsync(ApplyToUi);
+            }
+            else
+            {
+                ApplyToUi();
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or JsonException or ObjectDisposedException or InvalidOperationException)
+        {
+            _logger.LogDebug(ex, "Dashboard service polling skipped.");
+        }
+        finally
+        {
+            _isServicePollInFlight = false;
         }
     }
 }

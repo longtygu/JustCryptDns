@@ -5,7 +5,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = "1.5.2",
+    [string]$Version = "1.6.0",
     [switch]$SkipTests
 )
 
@@ -67,9 +67,12 @@ try {
     Copy-Item docs\USER_GUIDE.md, docs\TROUBLESHOOTING.md, docs\PERFORMANCE.md -Destination $DocsOut -Force
 
     Write-Host "==> 4/5 Packaging portable ZIP archive..." -ForegroundColor Cyan
+    $PortableFlagPath = Join-Path $PublishDir "portable.flag"
+    Set-Content -Path $PortableFlagPath -Value "Portable mode enabled: store settings, logs, and engine binaries in .\data next to JustCryptDns.exe." -Encoding UTF8
     $ZipPath = Join-Path $DistDir "JustCryptDns-$Version-win-x64-portable.zip"
     if (Test-Path $ZipPath) { Remove-Item -Force $ZipPath }
     Compress-Archive -Path "$PublishDir\*" -DestinationPath $ZipPath -CompressionLevel Optimal
+    Remove-Item -Force $PortableFlagPath -ErrorAction SilentlyContinue
 
     # Optional Inno Setup installer compilation
     $Iscc = (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1)

@@ -1,10 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Localization;
+using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
+using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
 
 namespace JustCryptDns.App.ViewModels;
@@ -74,6 +77,9 @@ public sealed partial class BypassViewModel : PageViewModel
     private readonly IBypassEngineService _bypassEngine;
     private readonly IWindowsProxyManager _windowsProxy;
     private readonly ISettingsService _settings;
+    private readonly IServiceClient? _serviceClient;
+    private DispatcherTimer? _servicePollTimer;
+    private bool _isServicePollInFlight;
     private bool _loading;
     private long _lastStatsUiTick;
     private BypassRuntimeStats? _pendingStats;
@@ -137,12 +143,14 @@ public sealed partial class BypassViewModel : PageViewModel
     public BypassViewModel(
         IBypassEngineService bypassEngine,
         IWindowsProxyManager windowsProxy,
-        ISettingsService settings)
+        ISettingsService settings,
+        IServiceClient? serviceClient = null)
         : base("Nav_Bypass", "Page_Bypass_Subtitle")
     {
         _bypassEngine = bypassEngine;
         _windowsProxy = windowsProxy;
         _settings = settings;
+        _serviceClient = serviceClient;
 
         LoadFromSettingsAndEngine();
     }
@@ -174,10 +182,12 @@ public sealed partial class BypassViewModel : PageViewModel
         _bypassEngine.StateChanged += OnBypassStateChanged;
         _bypassEngine.ConnectionProcessed += OnConnectionProcessed;
         LoadFromSettingsAndEngine();
+        StartServicePolling();
     }
 
     public override void OnNavigatedFrom()
     {
+        StopServicePolling();
         _bypassEngine.StateChanged -= OnBypassStateChanged;
         _bypassEngine.ConnectionProcessed -= OnConnectionProcessed;
     }
@@ -186,6 +196,7 @@ public sealed partial class BypassViewModel : PageViewModel
     {
         if (disposing)
         {
+            StopServicePolling();
             _bypassEngine.StateChanged -= OnBypassStateChanged;
             _bypassEngine.ConnectionProcessed -= OnConnectionProcessed;
         }
@@ -764,6 +775,82 @@ public sealed partial class BypassViewModel : PageViewModel
         else if (value == UpstreamTunnelKind.HttpConnect && UpstreamPortText is "40000" or "1080")
         {
             UpstreamPortText = "8080";
+        }
+    }
+
+    private void StartServicePolling()
+    {
+        if (_serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        {
+            return;
+        }
+
+        _ = PollServiceStateAsync();
+        if (_servicePollTimer is null && System.Windows.Application.Current?.Dispatcher is { } dispatcher)
+        {
+            _servicePollTimer = new DispatcherTimer(
+                TimeSpan.FromSeconds(2),
+                DispatcherPriority.Background,
+                OnServicePollTick,
+                dispatcher);
+        }
+
+        _servicePollTimer?.Start();
+    }
+
+    private void StopServicePolling()
+    {
+        if (_servicePollTimer is not null)
+        {
+            _servicePollTimer.Stop();
+            _servicePollTimer.Tick -= OnServicePollTick;
+            _servicePollTimer = null;
+        }
+    }
+
+    private void OnServicePollTick(object? sender, EventArgs e) => _ = PollServiceStateAsync();
+
+    private async Task PollServiceStateAsync()
+    {
+        if (_isServicePollInFlight || _serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        {
+            return;
+        }
+
+        _isServicePollInFlight = true;
+        try
+        {
+            if (_bypassEngine is HybridBypassEngineProxy hybridBypass)
+            {
+                await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
+            }
+
+            void ApplyToUi()
+            {
+                ApplyStats(_bypassEngine.GetStats());
+                RecentEvents.Clear();
+                foreach (var evt in _bypassEngine.GetRecentEvents().Reverse().Take(MaxUiEvents))
+                {
+                    RecentEvents.Add(evt);
+                }
+            }
+
+            if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+            {
+                await dispatcher.InvokeAsync(ApplyToUi);
+            }
+            else
+            {
+                ApplyToUi();
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or InvalidOperationException)
+        {
+            // Transient IPC / shutdown timing.
+        }
+        finally
+        {
+            _isServicePollInFlight = false;
         }
     }
 }

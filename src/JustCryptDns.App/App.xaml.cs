@@ -35,6 +35,7 @@ public partial class App : Application
     private string? _lastAppearanceJson;
     private string? _lastLanguage;
     private LogLevelSetting? _lastLogLevel;
+    private int _serviceReloadGeneration;
 
     public static bool ShouldStartMinimized(IReadOnlyList<string> args, GeneralSettings general)
     {
@@ -73,6 +74,12 @@ public partial class App : Application
 
         var paths = new AppPaths(Environment.GetEnvironmentVariable("JUSTCRYPTDNS_DATA_DIR"));
         paths.EnsureCreated();
+        if (OperatingSystem.IsWindows())
+        {
+            SharedDataAclHelper.EnsureSharedDirectoryWritable(paths);
+        }
+
+        var migratedLegacySettings = paths.TryMigrateLegacyUserDataToShared();
 
         // Load settings before logging is configured so the configured level/retention apply from the first line.
         var store = new JsonSettingsStore(paths, NullLogger<JsonSettingsStore>.Instance);
@@ -115,6 +122,8 @@ public partial class App : Application
             {
                 Dispatcher.BeginInvoke(() => ApplyPresentation(current));
             }
+
+            ScheduleServiceConfigSync();
         };
 
         // Initialize system tray icon.
@@ -129,7 +138,7 @@ public partial class App : Application
         tray.Initialize();
 
         // Probe background service, recover orphaned backups, and auto-start local engines in standalone mode.
-        _ = InitializeStandaloneEnginesAsync(_services, _logger);
+        _ = InitializeStandaloneEnginesAsync(_services, _logger, migratedLegacySettings);
         _ = CheckForUpdatesInBackgroundAsync(_services, _logger);
 
         var window = _services.GetRequiredService<MainWindow>();
@@ -200,6 +209,7 @@ public partial class App : Application
         RunSafeShutdownCleanupSync(timeoutMs: 6000, source: "OnExit");
 
         Volatile.Write(ref _servicesDisposed, true);
+        Interlocked.Increment(ref _serviceReloadGeneration);
         if (_services is { } services)
         {
             try
@@ -263,7 +273,9 @@ public partial class App : Application
                     await serviceClient.RefreshStatusAsync(probeCts.Token).ConfigureAwait(false);
                 }
 
-                await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false, cts.Token).ConfigureAwait(false);
+                var serviceBypassRunning = serviceClient.ConnectionState == ServiceConnectionState.Connected
+                    && serviceClient.LastStatus?.IsBypassRunning == true;
+                await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: serviceBypassRunning, cts.Token).ConfigureAwait(false);
 
                 if (serviceClient.ConnectionState != ServiceConnectionState.Connected)
                 {
@@ -330,14 +342,30 @@ public partial class App : Application
             using var cts = new CancellationTokenSource(timeoutMs);
             var cleanupTask = Task.Run(async () =>
             {
-                if (services.GetService<IBypassEngineService>() is { } bypassEngine)
+                var svcState = services.GetService<IServiceClient>()?.ConnectionState;
+                if (svcState == ServiceConnectionState.Connected)
                 {
-                    await bypassEngine.StopAsync(cts.Token).ConfigureAwait(false);
-                }
+                    if (services.GetService<IBypassEngineService>() is HybridBypassEngineProxy hybridBypass)
+                    {
+                        await hybridBypass.StopLocalFallbackOnlyAsync(cts.Token).ConfigureAwait(false);
+                    }
 
-                if (services.GetService<IDnsEngine>() is { } dnsEngine)
+                    if (services.GetService<IDnsEngine>() is HybridDnsEngineProxy hybridDns)
+                    {
+                        await hybridDns.StopLocalFallbackOnlyAsync(cts.Token).ConfigureAwait(false);
+                    }
+                }
+                else
                 {
-                    await dnsEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                    if (services.GetService<IBypassEngineService>() is { } bypassEngine)
+                    {
+                        await bypassEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                    }
+
+                    if (services.GetService<IDnsEngine>() is { } dnsEngine)
+                    {
+                        await dnsEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                    }
                 }
 
                 if (services.GetService<ISettingsService>() is { } settings)
@@ -346,7 +374,6 @@ public partial class App : Application
                 }
 
                 // Always lift transient Emergency Lockdown (and standalone DNS Leak Guard when service is not keeping DNS alive).
-                var svcState = services.GetService<IServiceClient>()?.ConnectionState;
                 if (svcState != ServiceConnectionState.Connected)
                 {
                     if (services.GetService<IWindowsFirewallManager>() is { } fw)
@@ -403,7 +430,10 @@ public partial class App : Application
         }
     }
 
-    private static async Task InitializeStandaloneEnginesAsync(ServiceProvider services, ILogger<App> logger)
+    private static async Task InitializeStandaloneEnginesAsync(
+        ServiceProvider services,
+        ILogger<App> logger,
+        bool migratedLegacySettings)
     {
         try
         {
@@ -415,10 +445,30 @@ public partial class App : Application
             var bypassEngine = services.GetRequiredService<IBypassEngineService>();
 
             await serviceClient.RefreshStatusAsync().ConfigureAwait(false);
-            await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false).ConfigureAwait(false);
+            var serviceConnected = serviceClient.ConnectionState == ServiceConnectionState.Connected;
+            var serviceBypassRunning = serviceConnected && serviceClient.LastStatus?.IsBypassRunning == true;
+            await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: serviceBypassRunning).ConfigureAwait(false);
 
-            if (serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            if (serviceConnected)
             {
+                if (migratedLegacySettings)
+                {
+                    _ = await serviceClient
+                        .SendAsync(new IpcRequest(IpcRequestKind.ReloadConfiguration))
+                        .ConfigureAwait(false);
+                }
+
+                if (dnsEngine is HybridDnsEngineProxy hybridDns)
+                {
+                    await hybridDns.RefreshFromServiceAsync().ConfigureAwait(false);
+                }
+
+                if (bypassEngine is HybridBypassEngineProxy hybridBypass)
+                {
+                    await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
+                    await hybridBypass.EnsureUserProxySynchronizedAsync().ConfigureAwait(false);
+                }
+
                 return;
             }
 
@@ -510,6 +560,68 @@ public partial class App : Application
         catch (Exception ex)
         {
             logger.LogDebug(ex, "Startup background update check failed safely.");
+        }
+    }
+
+    private void ScheduleServiceConfigSync()
+    {
+        if (Volatile.Read(ref _servicesDisposed))
+        {
+            return;
+        }
+
+        var generation = Interlocked.Increment(ref _serviceReloadGeneration);
+        _ = DebounceServiceConfigSyncAsync(generation);
+    }
+
+    private async Task DebounceServiceConfigSyncAsync(int generation)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(400)).ConfigureAwait(false);
+            if (Volatile.Read(ref _serviceReloadGeneration) == generation && !Volatile.Read(ref _servicesDisposed))
+            {
+                await SyncUiSettingsToServiceAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+        {
+            // Ignore shutdown timing.
+        }
+    }
+
+    private async Task SyncUiSettingsToServiceAsync()
+    {
+        if (Volatile.Read(ref _servicesDisposed) || _services is not { } services)
+        {
+            return;
+        }
+
+        try
+        {
+            var serviceClient = services.GetService<IServiceClient>();
+            if (serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+            {
+                return;
+            }
+
+            var settings = services.GetService<ISettingsService>();
+            if (settings is not null)
+            {
+                await settings.FlushAsync().ConfigureAwait(false);
+            }
+
+            _ = await serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ReloadConfiguration)).ConfigureAwait(false);
+
+            if (services.GetService<IBypassEngineService>() is HybridBypassEngineProxy hybridBypass)
+            {
+                await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
+                await hybridBypass.EnsureUserProxySynchronizedAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or InvalidOperationException)
+        {
+            _logger.LogDebug(ex, "Debounced UI-to-service settings sync skipped during shutdown.");
         }
     }
 

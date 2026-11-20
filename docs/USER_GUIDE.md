@@ -1,11 +1,12 @@
 # JustCryptDns User Guide
 
-## 1. Quick Start
-1. Launch **JustCryptDns**.
+## 1. Quick Start & Service Unification
+1. Launch **JustCryptDns** (when installed with **JustCryptDns Background Service**, the desktop UI automatically connects over named-pipe IPC so UI and Service share one DNS engine, one DPI Bypass proxy, and one configuration store in `%ProgramData%\JustCryptDns`).
 2. Open **DNS Manager** and verify your local proxy endpoint (default `127.0.0.1:53`). If another DNS service is already listening on port 53, JustCryptDns detects the conflict automatically and suggests a free alternate port.
-3. Click **Start DNS engine** to activate the local encrypted DNS proxy.
+3. Click **Start DNS engine** to activate the local encrypted DNS proxy. If you ever switch to an unencrypted `UDP/TCP` resolver, **Dashboard** and **DNS Manager** display a warning banner with a one-click **Switch to Cloudflare (DoH)** button.
 4. Click **Test resolver** to verify live end-to-end resolution and view measured latency.
 5. (Optional) Enable **Configure Windows adapter automatically** to route Windows DNS queries through JustCryptDns. Your original DNS configuration is always backed up with SHA-256 verification before any change is applied.
+6. Portable ZIP builds include `portable.flag` beside `JustCryptDns.exe` so settings, logs, backups, and managed engines remain self-contained in `<AppDir>\data`.
 
 ## 2. Resolver Library
 - Includes 28 curated endpoints across **Cloudflare**, **Google Public DNS**, **Quad9**, **OpenDNS**, **AdGuard DNS**, **Control D**, **NextDNS**, **Mullvad DNS**, and **DNS0** supporting DoH, DoT, DNSCrypt (`sdns://`), and UDP/TCP.
@@ -35,10 +36,10 @@
 - **4-Stage Self-Healing Cascade:**
   1. Primary TLS/HTTP fragmentation (40B TLS chunks / HTTP `Host:` split) via encrypted DNS.
   2. Automatic 16B aggressive TLS escalation if stricter DPI drops the initial attempt.
-  3. Instant self-healing Direct Unfragmented recovery if a legacy/banking server rejects split `ClientHello` packets.
+  3. Instant self-healing Direct Unfragmented recovery if a legacy/banking server rejects split `ClientHello` packets (or if TLS handshake stalls over fragmentation when TCP connect is fast).
   4. Tier 2 Split-Tunnel fallback (**Cloudflare WARP local SOCKS5** on `127.0.0.1:40000`, SOCKS5, or HTTP CONNECT) for IP/geo-blocked sites, with 30-minute adaptive host learning and 1-click pinning/exclusion.
   - To prepare Cloudflare WARP without affecting game ping: run `warp-cli mode proxy` and `warp-cli connect`, then click **Detect Cloudflare WARP** inside **DPI Bypass & Tunnel**.
-- Original Windows WinINet proxy settings are backed up with SHA-256 verification to `%LOCALAPPDATA%\JustCryptDns\proxy-backup.json` and restored cleanly on stop, exit, or crash recovery.
+- Original Windows WinINet proxy settings are backed up per-user with SHA-256 verification to `%LOCALAPPDATA%\JustCryptDns\proxy-backup.json` (or `<AppDir>\data\proxy-backup.json` in portable mode) and synchronized cleanly by the desktop UI even when **JustCryptDnsService** runs under `LocalSystem`.
 
 ## 7. Network Diagnostics & Live Monitor
 - Inspect **Local Adapter & Engine Diagnostics** separately from **External Tests** (A/AAAA/CNAME/MX/TXT/NS Lookup, DNSSEC test, DoH test, DNSCrypt test, DNS Leak check, UDP/TCP 53 restriction scan, Resolver Comparison, and Global Propagation).

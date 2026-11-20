@@ -65,9 +65,11 @@ public static class ServiceRegistration
         services.AddSingleton<IThreatIntelligenceService, ThreatIntelligenceService>();
         services.AddSingleton<IWindowsFirewallManager, WindowsFirewallService>();
         services.AddSingleton<IFirewallBlocklistCoordinator, FirewallBlocklistCoordinator>();
-        services.AddSingleton<IDnsEngine, DnsEngineService>();
+        services.AddSingleton<DnsEngineService>();
+        services.AddSingleton<IDnsEngine, HybridDnsEngineProxy>();
         services.AddSingleton<IGamingEngineService, GamingEngineService>();
-        services.AddSingleton<IBypassEngineService, BypassEngineService>();
+        services.AddSingleton<BypassEngineService>();
+        services.AddSingleton<IBypassEngineService, HybridBypassEngineProxy>();
 
         services.AddSingleton<IUpdateService, GitHubUpdateService>();
         services.AddSingleton<IBugDiagnosticsCollector, BugDiagnosticsCollector>();

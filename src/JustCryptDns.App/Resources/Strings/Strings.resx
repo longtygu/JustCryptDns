@@ -1323,6 +1323,15 @@
   <data name="TrafficFix_ServiceStoppedSuccess" xml:space="preserve">
     <value>Stopped '{0}' and switched JustCryptDns to 127.0.0.1:53.</value>
   </data>
+  <data name="DnsWarn_UnencryptedActive" xml:space="preserve">
+    <value>Unencrypted DNS (UDP/TCP) is active. Your ISP can inspect, hijack, or block DNS queries. Switch to an encrypted DoH/DoT/DNSCrypt resolver for full protection.</value>
+  </data>
+  <data name="DnsWarn_SwitchToEncryptedDoh" xml:space="preserve">
+    <value>Switch to Cloudflare (DoH)</value>
+  </data>
+  <data name="DnsWarn_SwitchedToEncrypted" xml:space="preserve">
+    <value>Switched to Cloudflare (DoH) encrypted DNS.</value>
+  </data>
   <data name="Nav_Bypass" xml:space="preserve">
     <value>DPI Bypass &amp; Tunnel</value>
   </data>

@@ -21,7 +21,14 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     private readonly SynchronizationContext? _ui;
     private bool _loading;
 
-    [ObservableProperty] private DnsEngineState _engineState = DnsEngineState.Stopped;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUnencryptedDnsActive))]
+    private DnsEngineState _engineState = DnsEngineState.Stopped;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUnencryptedDnsActive))]
+    private DnsProtocol _activeProtocol = DnsProtocol.DnsOverHttps;
+
     [ObservableProperty] private DnsResolverEndpoint _selectedResolver;
     [ObservableProperty] private string _listenAddress = DnsSettings.DefaultListenAddress;
     [ObservableProperty] private string _listenPortText = "53";
@@ -86,6 +93,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     public string DnsCryptPath { get; }
 
     public bool IsEngineRunning => EngineState is DnsEngineState.Running or DnsEngineState.Degraded;
+
+    public bool IsUnencryptedDnsActive => IsEngineRunning && ActiveProtocol == DnsProtocol.UdpTcp;
 
     public override void OnNavigatedTo()
     {
@@ -226,6 +235,37 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     {
         ListenPortText = "53";
         await ApplyProxySettingsAsync();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task SwitchToEncryptedDnsAsync()
+    {
+        IsBusy = true;
+        InfoMessage = null;
+        ErrorMessage = null;
+        try
+        {
+            var (ok, err) = await _dnsEngine.SwitchResolverAsync(BuiltInResolvers.DefaultResolverId);
+            if (ok)
+            {
+                _loading = true;
+                SelectedResolver = _resolverLibrary is not null
+                    ? _resolverLibrary.GetByIdOrDefault(BuiltInResolvers.DefaultResolverId)
+                    : BuiltInResolvers.GetByIdOrDefault(BuiltInResolvers.DefaultResolverId);
+                _loading = false;
+                InfoMessage = LocalizationManager.Instance["DnsWarn_SwitchedToEncrypted"];
+                _ = _dnsEngine.ProbeActiveResolverAsync();
+            }
+            else
+            {
+                ErrorMessage = err;
+            }
+        }
+        finally
+        {
+            ApplyStats(_dnsEngine.GetStats());
+            IsBusy = false;
+        }
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
@@ -450,6 +490,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     internal void ApplyStats(DnsEngineRuntimeStats stats)
     {
         EngineState = stats.State;
+        ActiveProtocol = stats.ActiveProtocol;
         ListenEndpoint = stats.ListenEndpoint;
         TotalQueries = stats.TotalQueries;
         SuccessfulQueries = stats.SuccessfulQueries;

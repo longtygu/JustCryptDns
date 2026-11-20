@@ -171,25 +171,34 @@ public sealed class BypassEngineService : IBypassEngineService
             var pacUrl = BuildVersionedPacUrl(listenIp, pacServer.BoundPort);
             if (bypass.ApplyWindowsProxyAutomatically && bypass.WindowsProxyMode != WindowsProxyMode.ManualOnly)
             {
-                WindowsProxyOperationResult proxyResult;
-                if (bypass.WindowsProxyMode == WindowsProxyMode.AutoPac)
+                if (!_windowsProxy.CanModifyCurrentUserProxy)
                 {
-                    proxyResult = await _windowsProxy.ApplyPacProxyAsync(pacUrl, cancellationToken).ConfigureAwait(false);
+                    _windowsProxyApplied = false;
+                    _logger.LogDebug(
+                        "Skipping HKCU WinINet proxy registration in non-interactive session (desktop UI manages per-user proxy).");
                 }
                 else
                 {
-                    var bypassList = string.Join(';', BuiltInBypassRules.DefaultDirectExclusions.Concat(bypass.DirectExclusionDomains ?? []));
-                    proxyResult = await _windowsProxy.ApplyManualProxyAsync($"{listenIp}:{proxy.BoundPort}", bypassList, cancellationToken).ConfigureAwait(false);
-                }
+                    WindowsProxyOperationResult proxyResult;
+                    if (bypass.WindowsProxyMode == WindowsProxyMode.AutoPac)
+                    {
+                        proxyResult = await _windowsProxy.ApplyPacProxyAsync(pacUrl, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        var bypassList = string.Join(';', BuiltInBypassRules.DefaultDirectExclusions.Concat(bypass.DirectExclusionDomains ?? []));
+                        proxyResult = await _windowsProxy.ApplyManualProxyAsync($"{listenIp}:{proxy.BoundPort}", bypassList, cancellationToken).ConfigureAwait(false);
+                    }
 
-                if (proxyResult.Success)
-                {
-                    _windowsProxyApplied = true;
-                }
-                else
-                {
-                    warning = proxyResult.ErrorMessage;
-                    _logger.LogWarning("Bypass proxy started, but Windows proxy registration returned: {Warning}", warning);
+                    if (proxyResult.Success)
+                    {
+                        _windowsProxyApplied = true;
+                    }
+                    else
+                    {
+                        warning = proxyResult.ErrorMessage;
+                        _logger.LogWarning("Bypass proxy started, but Windows proxy registration returned: {Warning}", warning);
+                    }
                 }
             }
 
@@ -215,7 +224,7 @@ public sealed class BypassEngineService : IBypassEngineService
         {
             if (_state == BypassEngineState.Stopped && _proxy is null && _pacServer is null)
             {
-                if (_windowsProxyApplied || _windowsProxy.HasActiveBackup())
+                if (_windowsProxy.CanModifyCurrentUserProxy && (_windowsProxyApplied || _windowsProxy.HasActiveBackup()))
                 {
                     await _windowsProxy.RestoreOriginalProxyAsync(cancellationToken).ConfigureAwait(false);
                     _windowsProxyApplied = false;
@@ -227,7 +236,7 @@ public sealed class BypassEngineService : IBypassEngineService
             SetState(BypassEngineState.Stopping, _lastError);
             await StopCoreAsync().ConfigureAwait(false);
 
-            if (_windowsProxyApplied || _windowsProxy.HasActiveBackup())
+            if (_windowsProxy.CanModifyCurrentUserProxy && (_windowsProxyApplied || _windowsProxy.HasActiveBackup()))
             {
                 await _windowsProxy.RestoreOriginalProxyAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -722,7 +731,8 @@ public sealed class BypassEngineService : IBypassEngineService
         if (_state is BypassEngineState.Running or BypassEngineState.Degraded
             && _pacServer is { BoundPort: > 0 } pacServer
             && bypass.ApplyWindowsProxyAutomatically
-            && bypass.WindowsProxyMode == WindowsProxyMode.AutoPac)
+            && bypass.WindowsProxyMode == WindowsProxyMode.AutoPac
+            && _windowsProxy.CanModifyCurrentUserProxy)
         {
             var listenIp = ParseListenIp(bypass.ListenAddress);
             var url = BuildVersionedPacUrl(listenIp, pacServer.BoundPort);
@@ -949,7 +959,7 @@ public sealed class BypassEngineService : IBypassEngineService
 
     private static async Task<int> SendHeadRequestAsync(SslStream ssl, string host, CancellationToken ct)
     {
-        var req = Encoding.ASCII.GetBytes($"HEAD / HTTP/1.1\r\nHost: {host}\r\nUser-Agent: JustCryptDns/1.5.2\r\nConnection: close\r\n\r\n");
+        var req = Encoding.ASCII.GetBytes($"HEAD / HTTP/1.1\r\nHost: {host}\r\nUser-Agent: JustCryptDns/1.6.0\r\nConnection: close\r\n\r\n");
         await ssl.WriteAsync(req, ct).ConfigureAwait(false);
         await ssl.FlushAsync(ct).ConfigureAwait(false);
 

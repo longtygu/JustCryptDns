@@ -57,6 +57,12 @@ public interface ISettingsService
     /// <summary>Writes any pending deferred change now (call on shutdown).</summary>
     Task FlushAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Reloads settings from disk (used when another process updated <c>settings.json</c> cleanly)
+    /// and raises <see cref="Changed"/> when the file loads without schema degradation.
+    /// </summary>
+    Task<bool> ReloadFromDiskAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Raised (possibly on a pool thread) when a deferred save fails.</summary>
     event EventHandler<Exception>? SaveFailed;
 }

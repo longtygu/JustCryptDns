@@ -132,6 +132,26 @@
                 </StackPanel>
             </Border>
 
+            <!-- Unencrypted DNS Warning Banner -->
+            <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
+                    Padding="18,14" Margin="{DynamicResource Card.Gap}"
+                    Visibility="{Binding IsUnencryptedDnsActive, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="1" Text="{l:Loc DnsWarn_UnencryptedActive}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </Grid>
+                    <WrapPanel Orientation="Horizontal" Margin="32,12,0,0">
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding SwitchToEncryptedDnsCommand}"
+                                Content="{l:Loc DnsWarn_SwitchToEncryptedDoh}" Margin="0,0,8,4" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
             <!-- Error / Info alerts (Selectable & Copyable) -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
                     Padding="16,12" Margin="{DynamicResource Card.Gap}"

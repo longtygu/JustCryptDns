@@ -37,6 +37,14 @@ public enum IpcRequestKind
     ClearFirewallBlocklist,
     GetFirewallBlocklistStatus,
     GetReverseDnsSnapshot,
+    GetEngineDetailedStats,
+    GetBypassDetailedStats,
+    GetBypassEventsSnapshot,
+    RestartBypassEngine,
+    ProbeActiveResolver,
+    TestLocalProxy,
+    GetLiveQueriesSnapshot,
+    GetFailoverEventsSnapshot,
 }
 
 public sealed record IpcRequest(
@@ -88,6 +96,11 @@ public sealed record IpcResponse(
     string? ErrorCode = null,
     string? Message = null,
     int ProtocolVersion = IpcConstants.ProtocolVersion);
+
+public sealed record LocalProxyTestResult(
+    bool Success,
+    double LatencyMs,
+    string Summary);
 
 [JsonConverter(typeof(JsonStringEnumConverter<ServiceConnectionState>))]
 public enum ServiceConnectionState

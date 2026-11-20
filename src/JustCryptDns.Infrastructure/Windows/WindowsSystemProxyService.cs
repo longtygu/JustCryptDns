@@ -176,6 +176,8 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
         _bootRecovery = bootRecovery;
     }
 
+    public bool CanModifyCurrentUserProxy => _configurator.CanModifyCurrentUserProxy;
+
     public bool HasActiveBackup()
     {
         var doc = ReadBackup();

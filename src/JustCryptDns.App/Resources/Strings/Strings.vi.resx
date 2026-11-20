@@ -1323,6 +1323,15 @@
   <data name="TrafficFix_ServiceStoppedSuccess" xml:space="preserve">
     <value>Đã dừng '{0}' và chuyển JustCryptDns về 127.0.0.1:53.</value>
   </data>
+  <data name="DnsWarn_UnencryptedActive" xml:space="preserve">
+    <value>Đang dùng DNS không mã hóa (UDP/TCP). Nhà mạng có thể theo dõi, chặn hoặc đầu độc truy vấn DNS. Hãy chuyển sang máy chủ DoH/DoT/DNSCrypt để được bảo vệ đầy đủ.</value>
+  </data>
+  <data name="DnsWarn_SwitchToEncryptedDoh" xml:space="preserve">
+    <value>Chuyển sang Cloudflare (DoH)</value>
+  </data>
+  <data name="DnsWarn_SwitchedToEncrypted" xml:space="preserve">
+    <value>Đã chuyển sang DNS mã hóa Cloudflare (DoH).</value>
+  </data>
   <data name="Nav_Bypass" xml:space="preserve">
     <value>Vượt DPI &amp; Tunnel</value>
   </data>

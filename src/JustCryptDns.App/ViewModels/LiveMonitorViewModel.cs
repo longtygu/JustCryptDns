@@ -1,7 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text.Json;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using JustCryptDns.App.Services;
+using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
@@ -13,6 +17,9 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     private readonly INetworkDiagnosticsService _diagnostics;
     private readonly IDnsFailoverService _failover;
     private readonly IDnsEngine _dnsEngine;
+    private readonly IServiceClient? _serviceClient;
+    private DispatcherTimer? _servicePollTimer;
+    private bool _isServicePollInFlight;
 
     [ObservableProperty] private bool _isPaused;
     [ObservableProperty] private DnsEngineState _engineState = DnsEngineState.Stopped;
@@ -25,12 +32,14 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     public LiveMonitorViewModel(
         INetworkDiagnosticsService diagnostics,
         IDnsFailoverService failover,
-        IDnsEngine dnsEngine)
+        IDnsEngine dnsEngine,
+        IServiceClient? serviceClient = null)
         : base("Nav_Monitor", "Page_Monitor_Subtitle")
     {
         _diagnostics = diagnostics;
         _failover = failover;
         _dnsEngine = dnsEngine;
+        _serviceClient = serviceClient;
 
         _isPaused = _diagnostics.IsMonitorPaused;
         RefreshAll();
@@ -46,10 +55,12 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
         _failover.FailoverOccurred += OnFailoverOccurred;
         _dnsEngine.StateChanged += OnEngineStateChanged;
         RefreshAll();
+        StartServicePolling();
     }
 
     public override void OnNavigatedFrom()
     {
+        StopServicePolling();
         _diagnostics.QueryObserved -= OnQueryObserved;
         _failover.FailoverOccurred -= OnFailoverOccurred;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
@@ -59,6 +70,7 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     {
         if (disposing)
         {
+            StopServicePolling();
             _diagnostics.QueryObserved -= OnQueryObserved;
             _failover.FailoverOccurred -= OnFailoverOccurred;
             _dnsEngine.StateChanged -= OnEngineStateChanged;
@@ -163,6 +175,116 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
         else
         {
             ApplyEngineStats(stats);
+        }
+    }
+
+    private void StartServicePolling()
+    {
+        if (_serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        {
+            return;
+        }
+
+        _ = PollServiceStateAsync();
+        if (_servicePollTimer is null && System.Windows.Application.Current?.Dispatcher is { } dispatcher)
+        {
+            _servicePollTimer = new DispatcherTimer(
+                TimeSpan.FromSeconds(2),
+                DispatcherPriority.Background,
+                OnServicePollTick,
+                dispatcher);
+        }
+
+        _servicePollTimer?.Start();
+    }
+
+    private void StopServicePolling()
+    {
+        if (_servicePollTimer is not null)
+        {
+            _servicePollTimer.Stop();
+            _servicePollTimer.Tick -= OnServicePollTick;
+            _servicePollTimer = null;
+        }
+    }
+
+    private void OnServicePollTick(object? sender, EventArgs e) => _ = PollServiceStateAsync();
+
+    private async Task PollServiceStateAsync()
+    {
+        if (_isServicePollInFlight || _serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        {
+            return;
+        }
+
+        _isServicePollInFlight = true;
+        try
+        {
+            if (_dnsEngine is HybridDnsEngineProxy hybridDns)
+            {
+                await hybridDns.RefreshFromServiceAsync().ConfigureAwait(false);
+            }
+
+            List<LiveQueryMonitorEntry>? queries = null;
+            if (!IsPaused)
+            {
+                var queriesRes = await _serviceClient
+                    .SendAsync(new IpcRequest(IpcRequestKind.GetLiveQueriesSnapshot))
+                    .ConfigureAwait(false);
+                if (queriesRes is { Success: true, Message: not null })
+                {
+                    queries = JsonSerializer.Deserialize<List<LiveQueryMonitorEntry>>(queriesRes.Message, SettingsJson.Options);
+                }
+            }
+
+            List<FailoverEventEntry>? failovers = null;
+            var failoverRes = await _serviceClient
+                .SendAsync(new IpcRequest(IpcRequestKind.GetFailoverEventsSnapshot))
+                .ConfigureAwait(false);
+            if (failoverRes is { Success: true, Message: not null })
+            {
+                failovers = JsonSerializer.Deserialize<List<FailoverEventEntry>>(failoverRes.Message, SettingsJson.Options);
+            }
+
+            void ApplyToUi()
+            {
+                ApplyEngineStats(_dnsEngine.GetStats());
+
+                if (queries is not null)
+                {
+                    QueryEntries.Clear();
+                    foreach (var entry in queries.Take(300))
+                    {
+                        QueryEntries.Add(entry);
+                    }
+                }
+
+                if (failovers is not null)
+                {
+                    FailoverEvents.Clear();
+                    foreach (var ev in failovers.Take(100))
+                    {
+                        FailoverEvents.Add(ev);
+                    }
+                }
+            }
+
+            if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+            {
+                await dispatcher.InvokeAsync(ApplyToUi);
+            }
+            else
+            {
+                ApplyToUi();
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or JsonException or ObjectDisposedException or InvalidOperationException)
+        {
+            // Transient IPC / shutdown timing.
+        }
+        finally
+        {
+            _isServicePollInFlight = false;
         }
     }
 }

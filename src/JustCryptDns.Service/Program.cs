@@ -32,6 +32,10 @@ public static class Program
     {
         var paths = new AppPaths(Environment.GetEnvironmentVariable("JUSTCRYPTDNS_DATA_DIR"));
         paths.EnsureCreated();
+        if (OperatingSystem.IsWindows())
+        {
+            SharedDataAclHelper.EnsureSharedDirectoryWritable(paths);
+        }
 
         var bootstrapStore = new JsonSettingsStore(paths, NullLogger<JsonSettingsStore>.Instance);
         var initial = bootstrapStore.Load();

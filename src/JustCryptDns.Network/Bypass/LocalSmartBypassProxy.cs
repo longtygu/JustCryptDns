@@ -1,6 +1,8 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -31,6 +33,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
     private readonly Action<BypassActionKind, string, int, string, string, double, string?> _recordEvent;
     private readonly ILogger _logger;
     private readonly CancellationTokenSource _cts = new();
+    private readonly ConcurrentDictionary<TcpClient, byte> _activeClients = new();
 
     private TcpListener? _listener;
     private Task? _acceptTask;
@@ -62,6 +65,13 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
     public int BoundPort { get; private set; }
 
     public int ActiveTunnels => Volatile.Read(ref _activeTunnels);
+
+    public static bool ShouldLearnDirectForSlowFragmentedTls(double tcpConnectMs, double handshakeWaitMs) =>
+        handshakeWaitMs >= 900.0 && handshakeWaitMs >= Math.Max(tcpConnectMs, 10.0) * 5.0;
+
+    private void RegisterActiveClient(TcpClient client) => _activeClients[client] = 0;
+
+    private void UnregisterActiveClient(TcpClient client) => _activeClients.TryRemove(client, out _);
 
     public void Start()
     {
@@ -112,6 +122,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
     private async Task HandleClientConnectionAsync(TcpClient client, CancellationToken ct)
     {
         Interlocked.Increment(ref _activeTunnels);
+        RegisterActiveClient(client);
         try
         {
             using (client)
@@ -153,6 +164,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
         finally
         {
+            UnregisterActiveClient(client);
             Interlocked.Decrement(ref _activeTunnels);
         }
     }
@@ -531,6 +543,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         try
         {
             (direct, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            RegisterActiveClient(direct);
             var directStream = direct.GetStream();
             if (preBufferedPayload is { Length: > 0 })
             {
@@ -544,9 +557,16 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            direct?.Dispose();
             sw.Stop();
             _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, strategyLabel, Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
+        }
+        finally
+        {
+            if (direct is not null)
+            {
+                UnregisterActiveClient(direct);
+                direct.Dispose();
+            }
         }
     }
 
@@ -566,6 +586,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         try
         {
             (direct, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            RegisterActiveClient(direct);
             var directStream = direct.GetStream();
             await directStream.WriteAsync(initial.FirstPayload, ct).ConfigureAwait(false);
             if (initial.TrailingBytes.Length > 0)
@@ -580,9 +601,16 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            direct?.Dispose();
             sw.Stop();
             _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, "DirectStream", Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
+        }
+        finally
+        {
+            if (direct is not null)
+            {
+                UnregisterActiveClient(direct);
+                direct.Dispose();
+            }
         }
     }
 
@@ -601,6 +629,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         try
         {
             upstream = await UpstreamTunnelConnector.ConnectViaUpstreamAsync(targetHost, targetPort, settings.Upstream, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            RegisterActiveClient(upstream);
             var upstreamStream = upstream.GetStream();
             if (preBufferedPayload is { Length: > 0 })
             {
@@ -614,9 +643,16 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            upstream?.Dispose();
             sw.Stop();
             _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, settings.Upstream.Kind.ToString(), Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
+        }
+        finally
+        {
+            if (upstream is not null)
+            {
+                UnregisterActiveClient(upstream);
+                upstream.Dispose();
+            }
         }
     }
 
@@ -644,10 +680,15 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         var tcpConnected = false;
         try
         {
+            var connectSw = Stopwatch.StartNew();
             (upstream, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            connectSw.Stop();
+            var tcpConnectMs = connectSw.Elapsed.TotalMilliseconds;
+            RegisterActiveClient(upstream);
             tcpConnected = true;
 
             var upstreamStream = upstream.GetStream();
+            var handshakeSw = Stopwatch.StartNew();
             if (fragmentPayload)
             {
                 await SendPotentiallyFragmentedFirstPayloadAsync(upstreamStream, initial, strategy, fragmentSizeBytes, fragmentDelayMs, settings.FragmentHttpHostHeader, ct).ConfigureAwait(false);
@@ -667,9 +708,10 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
             using var firstByteCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             firstByteCts.CancelAfter(Math.Clamp(firstByteTimeoutMs, 800, 5000));
             var firstResponseLen = await upstreamStream.ReadAsync(firstResponseBuf, firstByteCts.Token).ConfigureAwait(false);
+            handshakeSw.Stop();
+            var handshakeWaitMs = handshakeSw.Elapsed.TotalMilliseconds;
             if (firstResponseLen <= 0)
             {
-                upstream.Dispose();
                 return new FirstFlightOutcome(false, false, false, "Remote host closed connection before handshake response.");
             }
 
@@ -679,8 +721,18 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
                 && firstResponseBuf[0] == 0x15
                 && settings.EnableSmartSelfHealing)
             {
-                upstream.Dispose();
                 return new FirstFlightOutcome(false, false, true, "Server sent TLS Alert in response to fragmented ClientHello.");
+            }
+
+            if (fragmentPayload
+                && settings.EnableSmartSelfHealing
+                && TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload)
+                && ShouldLearnDirectForSlowFragmentedTls(tcpConnectMs, handshakeWaitMs))
+            {
+                _matcher.RecordLearnedHost(
+                    targetHost,
+                    LearnedHostStrategy.Direct,
+                    string.Create(CultureInfo.InvariantCulture, $"Slow fragmented TLS ({handshakeWaitMs:0} ms vs TCP {tcpConnectMs:0} ms)"));
             }
 
             onConnectedBeforeRelay?.Invoke();
@@ -694,8 +746,15 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            upstream?.Dispose();
             return new FirstFlightOutcome(false, !tcpConnected, false, ex.Message);
+        }
+        finally
+        {
+            if (upstream is not null)
+            {
+                UnregisterActiveClient(upstream);
+                upstream.Dispose();
+            }
         }
     }
 
@@ -719,6 +778,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
                 settings.Upstream,
                 settings.ConnectTimeoutMs,
                 ct).ConfigureAwait(false);
+            RegisterActiveClient(fallbackTunnel);
 
             var tunnelStream = fallbackTunnel.GetStream();
             await tunnelStream.WriteAsync(initial.FirstPayload, ct).ConfigureAwait(false);
@@ -744,10 +804,17 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            fallbackTunnel?.Dispose();
             sw.Stop();
             _recordEvent(BypassActionKind.Failed, targetHost, targetPort, clientProtocol, $"Fallback -> {settings.Upstream.Kind}", Math.Round(sw.Elapsed.TotalMilliseconds, 1), ex.Message);
             return false;
+        }
+        finally
+        {
+            if (fallbackTunnel is not null)
+            {
+                UnregisterActiveClient(fallbackTunnel);
+                fallbackTunnel.Dispose();
+            }
         }
     }
 
@@ -941,9 +1008,30 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         _disposed = true;
         await _cts.CancelAsync().ConfigureAwait(false);
         try { _listener?.Stop(); } catch { }
+        foreach (var active in _activeClients.Keys)
+        {
+            try
+            {
+                active.Close();
+                active.Dispose();
+            }
+            catch
+            {
+                // Best-effort socket close during teardown.
+            }
+        }
+
+        _activeClients.Clear();
         if (_acceptTask is not null)
         {
-            try { await _acceptTask.ConfigureAwait(false); } catch { }
+            try
+            {
+                await Task.WhenAny(_acceptTask, Task.Delay(500)).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Ignore accept loop shutdown cancellation.
+            }
         }
 
         _cts.Dispose();
