@@ -1872,4 +1872,262 @@
   <data name="Dash_Explain_NetIpv6_Metrics" xml:space="preserve">
     <value>• Even when Global IPv6 is disabled to ensure loopback IPv4 DNS compatibility, local fe80:: addresses may still appear cleanly.</value>
   </data>
+  <data name="Nav_About" xml:space="preserve">
+    <value>App Info &amp; Support</value>
+  </data>
+  <data name="About_WindowTitle" xml:space="preserve">
+    <value>About JustCryptDns</value>
+  </data>
+  <data name="About_Tab_Overview" xml:space="preserve">
+    <value>Author &amp; Overview</value>
+  </data>
+  <data name="About_Tab_Architecture" xml:space="preserve">
+    <value>How It Works &amp; Principles</value>
+  </data>
+  <data name="About_Tab_BugReport" xml:space="preserve">
+    <value>Report a Bug</value>
+  </data>
+  <data name="About_AuthorBadge" xml:space="preserve">
+    <value>Author &amp; Maintainer</value>
+  </data>
+  <data name="About_BioDesc" xml:space="preserve">
+    <value>JustCryptDns is crafted in C# / .NET 8 and WPF to combine low-latency encrypted DNS resolution with lightweight client-side DPI bypass — keeping games responsive without routing all traffic through a slow VPN.</value>
+  </data>
+  <data name="About_Btn_GitHub" xml:space="preserve">
+    <value>Open GitHub Repo</value>
+  </data>
+  <data name="About_Btn_Facebook" xml:space="preserve">
+    <value>Message on Facebook</value>
+  </data>
+  <data name="About_Btn_ReportBug" xml:space="preserve">
+    <value>Report a Bug</value>
+  </data>
+  <data name="About_Btn_CheckUpdates" xml:space="preserve">
+    <value>Check Updates</value>
+  </data>
+  <data name="About_Highlights_Title" xml:space="preserve">
+    <value>Design Goals</value>
+  </data>
+  <data name="About_Highlights_Body" xml:space="preserve">
+    <value>• Full local privacy: no telemetry, no analytics, and zero third-party cloud tracking.
+• Dual-engine design: Encrypted DNS (DoH / DoT / DoQ / DNSCrypt) + Smart DPI Bypass &amp; Split-Tunnel.
+• Game-friendly: keeps UDP game traffic direct on your ISP line while unblocking blocked web/storefronts.
+• Safe OS integration: SHA-256 verified DNS &amp; proxy backups with OS shutdown restore and RunOnce crash recovery.</value>
+  </data>
+  <data name="About_Arch_Title" xml:space="preserve">
+    <value>Architecture &amp; Operating Principles</value>
+  </data>
+  <data name="About_Arch_Subtitle" xml:space="preserve">
+    <value>How JustCryptDns processes DNS queries and unblocks DPI-filtered HTTPS traffic locally on Windows.</value>
+  </data>
+  <data name="About_Arch_FlowLabel" xml:space="preserve">
+    <value>END-TO-END PACKET &amp; QUERY PIPELINE</value>
+  </data>
+  <data name="About_Flow_Step1" xml:space="preserve">
+    <value>1. Apps / Browser</value>
+  </data>
+  <data name="About_Flow_Step2" xml:space="preserve">
+    <value>2. Local DNS Proxy (127.0.0.2:53)</value>
+  </data>
+  <data name="About_Flow_Step3" xml:space="preserve">
+    <value>3. DoH / DoT / DoQ + Cache</value>
+  </data>
+  <data name="About_Flow_Step4" xml:space="preserve">
+    <value>4. Smart DPI Split-Tunnel PAC</value>
+  </data>
+  <data name="About_Arch_Pillar1_Title" xml:space="preserve">
+    <value>1. Encrypted Local DNS Proxy (Routing, Filtering &amp; RAM Cache)</value>
+  </data>
+  <data name="About_Arch_Pillar1_Body" xml:space="preserve">
+    <value>Windows routes DNS lookups to JustCryptDns's local UDP/TCP listener (127.0.0.1 or automatic 127.0.0.2 if port 53 is occupied). Incoming queries are matched against local blocklists (ads/trackers), served sub-millisecond from an in-memory TTL cache, or routed cleanly to encrypted DoH, DoT, DoQ, or DNSCrypt resolvers to defeat ISP DNS poisoning.</value>
+  </data>
+  <data name="About_Arch_Pillar2_Title" xml:space="preserve">
+    <value>2. Smart All-Web DPI Bypass &amp; 4-Stage Self-Healing</value>
+  </data>
+  <data name="About_Arch_Pillar2_Body" xml:space="preserve">
+    <value>Many ISPs use Deep Packet Inspection (SNI inspection or TCP resets) even after DNS succeeds. Instead of forcing a full VPN, JustCryptDns registers a fast loopback PAC script + local SOCKS5/HTTP relay that splits the TLS ClientHello across fragmented records (RecordChunkSplit / OOB Desync). If a site hangs or resets, the 4-stage self-healing loop automatically upgrades strategy and remembers what works per domain.</value>
+  </data>
+  <data name="About_Arch_Pillar3_Title" xml:space="preserve">
+    <value>3. Gaming Mode &amp; Multi-Resolver Failover</value>
+  </data>
+  <data name="About_Arch_Pillar3_Body" xml:space="preserve">
+    <value>Game UDP traffic stays untouched on your direct network interface for lowest ping, while Gaming Mode applies low-jitter polling and DNS presets. Continuous health scoring monitors resolver latency and switches seamlessly to your secondary failover resolver if an upstream endpoint degrades.</value>
+  </data>
+  <data name="About_Arch_Pillar4_Title" xml:space="preserve">
+    <value>4. Network Safety, Shutdown Hooks &amp; Boot Recovery</value>
+  </data>
+  <data name="About_Arch_Pillar4_Body" xml:space="preserve">
+    <value>Before changing any Windows adapter DNS or WinINet proxy setting, JustCryptDns seals the original state to disk with SHA-256 verification and runs a live connectivity probe. When closing or shutting down Windows (OnSessionEnding), original DNS/proxy settings are restored immediately, while HKCU RunOnce (--recover-and-exit) stands guard to heal connectivity automatically after unexpected power loss.</value>
+  </data>
+  <data name="BugReport_Title" xml:space="preserve">
+    <value>Report a Bug to the Author</value>
+  </data>
+  <data name="BugReport_Subtitle" xml:space="preserve">
+    <value>Your report is copied automatically with sanitized diagnostics (user folder names masked) before opening GitHub Issues or Facebook.</value>
+  </data>
+  <data name="BugReport_CategoryLabel" xml:space="preserve">
+    <value>Issue Category</value>
+  </data>
+  <data name="BugReport_SummaryLabel" xml:space="preserve">
+    <value>Short Summary</value>
+  </data>
+  <data name="BugReport_DescLabel" xml:space="preserve">
+    <value>Steps to Reproduce &amp; Details</value>
+  </data>
+  <data name="BugReport_IncludeDiag" xml:space="preserve">
+    <value>Attach system diagnostics &amp; last 20 sanitized warnings/errors</value>
+  </data>
+  <data name="BugReport_Btn_Copy" xml:space="preserve">
+    <value>Copy Report</value>
+  </data>
+  <data name="BugReport_Btn_OpenLogs" xml:space="preserve">
+    <value>Open Logs</value>
+  </data>
+  <data name="BugReport_DiagPreviewLabel" xml:space="preserve">
+    <value>Generated Report Preview (Read-Only)</value>
+  </data>
+  <data name="BugReport_Btn_SubmitGitHub" xml:space="preserve">
+    <value>Submit Issue on GitHub</value>
+  </data>
+  <data name="BugReport_Btn_SubmitFacebook" xml:space="preserve">
+    <value>Message Longtygu on Facebook</value>
+  </data>
+  <data name="BugReport_ValidationEmpty" xml:space="preserve">
+    <value>Please enter a short summary or description before submitting a bug report.</value>
+  </data>
+  <data name="BugReport_GitHubOpened" xml:space="preserve">
+    <value>Pre-filled GitHub Issue opened in your browser and full Markdown copied to Clipboard.</value>
+  </data>
+  <data name="BugReport_FacebookOpened" xml:space="preserve">
+    <value>Bug report copied to Clipboard and Longtygu's Facebook profile opened — simply paste (Ctrl+V) into chat!</value>
+  </data>
+  <data name="BugReport_OpenUrlFailed" xml:space="preserve">
+    <value>Could not launch the default web browser, but your report has been copied to Clipboard.</value>
+  </data>
+  <data name="BugReport_Copied" xml:space="preserve">
+    <value>Formatted bug report and diagnostics copied to Clipboard.</value>
+  </data>
+  <data name="BugCat_DnsEngine" xml:space="preserve">
+    <value>DNS Engine</value>
+  </data>
+  <data name="BugCat_DpiBypass" xml:space="preserve">
+    <value>DPI Bypass &amp; Split-Tunnel</value>
+  </data>
+  <data name="BugCat_Gaming" xml:space="preserve">
+    <value>Gaming Mode</value>
+  </data>
+  <data name="BugCat_UiAppearance" xml:space="preserve">
+    <value>UI &amp; Appearance</value>
+  </data>
+  <data name="BugCat_AutoUpdate" xml:space="preserve">
+    <value>Auto-Update</value>
+  </data>
+  <data name="BugCat_Other" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  <data name="Settings_Updates_Section" xml:space="preserve">
+    <value>Software Updates (GitHub)</value>
+  </data>
+  <data name="Settings_Updates_CurrentTitle" xml:space="preserve">
+    <value>Installed Version</value>
+  </data>
+  <data name="Settings_Updates_LastChecked" xml:space="preserve">
+    <value>Last checked</value>
+  </data>
+  <data name="Settings_Updates_Btn_Check" xml:space="preserve">
+    <value>Check for Updates</value>
+  </data>
+  <data name="Settings_Updates_AutoCheck" xml:space="preserve">
+    <value>Automatically check GitHub Releases on startup</value>
+  </data>
+  <data name="Settings_Updates_AutoCheck_Desc" xml:space="preserve">
+    <value>Quietly checks github.com/longtygu/JustCryptDns after launch and shows an indicator badge when an update is ready.</value>
+  </data>
+  <data name="Settings_Updates_IncludePre" xml:space="preserve">
+    <value>Include pre-release / beta builds</value>
+  </data>
+  <data name="Settings_Updates_IncludePre_Desc" xml:space="preserve">
+    <value>Opt in to preview releases before they are promoted to stable.</value>
+  </data>
+  <data name="Settings_Updates_Btn_ViewGitHub" xml:space="preserve">
+    <value>View on GitHub</value>
+  </data>
+  <data name="Settings_Updates_NotesLabel" xml:space="preserve">
+    <value>RELEASE NOTES</value>
+  </data>
+  <data name="Settings_Updates_Btn_Download" xml:space="preserve">
+    <value>Download Update</value>
+  </data>
+  <data name="Settings_Updates_Btn_CancelDownload" xml:space="preserve">
+    <value>Cancel Download</value>
+  </data>
+  <data name="Settings_Updates_Btn_InstallNow" xml:space="preserve">
+    <value>Install &amp; Restart App</value>
+  </data>
+  <data name="Settings_Updates_ChartTitle" xml:space="preserve">
+    <value>LIVE DOWNLOAD SPEED &amp; PROGRESS</value>
+  </data>
+  <data name="Settings_Updates_Checking" xml:space="preserve">
+    <value>Scanning GitHub Releases…</value>
+  </data>
+  <data name="Settings_Updates_IdleHint" xml:space="preserve">
+    <value>Updates are fetched over HTTPS from github.com/longtygu/JustCryptDns with SHA-256 verification and in-place replacement.</value>
+  </data>
+  <data name="Settings_Updates_AvailableMsg" xml:space="preserve">
+    <value>Version {0} is available for direct download and in-place upgrade.</value>
+  </data>
+  <data name="Settings_Updates_UpToDateMsg" xml:space="preserve">
+    <value>You are running the latest version (v{0}).</value>
+  </data>
+  <data name="Settings_Updates_NoReleasesMsg" xml:space="preserve">
+    <value>No published releases were found on github.com/longtygu/JustCryptDns yet.</value>
+  </data>
+  <data name="Settings_Updates_RateLimitedMsg" xml:space="preserve">
+    <value>GitHub API rate limit reached for this IP. Please try again in a few minutes.</value>
+  </data>
+  <data name="Settings_Updates_ErrorMsg" xml:space="preserve">
+    <value>Could not reach GitHub Releases.</value>
+  </data>
+  <data name="Settings_Updates_NeverChecked" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="Settings_Updates_NoNotes" xml:space="preserve">
+    <value>No release notes provided for this release.</value>
+  </data>
+  <data name="Settings_Updates_ChecksumOk" xml:space="preserve">
+    <value>SHA-256 verified ({0}…). Ready for in-place upgrade without deleting settings.</value>
+  </data>
+  <data name="Settings_Updates_ChecksumSkipped" xml:space="preserve">
+    <value>Package extracted and verified cleanly. Ready for in-place upgrade without deleting settings.</value>
+  </data>
+  <data name="Settings_Updates_DownloadCancelled" xml:space="preserve">
+    <value>Update download was cancelled.</value>
+  </data>
+  <data name="Settings_About_Btn_AppInfo" xml:space="preserve">
+    <value>Open App Info &amp; Architecture</value>
+  </data>
+  <data name="Settings_About_Btn_BugReport" xml:space="preserve">
+    <value>Report a Bug (GitHub / Facebook)</value>
+  </data>
+  <data name="UpdateState_Idle" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="UpdateState_Checking" xml:space="preserve">
+    <value>Checking</value>
+  </data>
+  <data name="UpdateState_UpToDate" xml:space="preserve">
+    <value>Up to date</value>
+  </data>
+  <data name="UpdateState_UpdateAvailable" xml:space="preserve">
+    <value>Update available</value>
+  </data>
+  <data name="UpdateState_NoReleasesPublished" xml:space="preserve">
+    <value>No releases</value>
+  </data>
+  <data name="UpdateState_RateLimited" xml:space="preserve">
+    <value>Rate limited</value>
+  </data>
+  <data name="UpdateState_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
 </root>

@@ -22,6 +22,9 @@ public interface IAppPaths
 
     /// <summary>Directory holding managed engine binaries and runtime configs (e.g. dnscrypt-proxy).</summary>
     string EngineDirectory { get; }
+
+    /// <summary>Directory storing downloaded updates and temporary staging files.</summary>
+    string UpdatesDirectory { get; }
 }
 
 /// <summary>
@@ -41,6 +44,7 @@ public sealed class AppPaths : IAppPaths
         DnsBackupFile = Path.Combine(DataDirectory, "dns-backup.json");
         ProxyBackupFile = Path.Combine(DataDirectory, "proxy-backup.json");
         EngineDirectory = Path.Combine(DataDirectory, "engine");
+        UpdatesDirectory = Path.Combine(DataDirectory, "updates");
     }
 
     public string DataDirectory { get; }
@@ -55,11 +59,14 @@ public sealed class AppPaths : IAppPaths
 
     public string EngineDirectory { get; }
 
-    /// <summary>Creates the data, log and engine directories if they do not exist.</summary>
+    public string UpdatesDirectory { get; }
+
+    /// <summary>Creates the data, log, engine and updates directories if they do not exist.</summary>
     public void EnsureCreated()
     {
         Directory.CreateDirectory(DataDirectory);
         Directory.CreateDirectory(LogsDirectory);
         Directory.CreateDirectory(EngineDirectory);
+        Directory.CreateDirectory(UpdatesDirectory);
     }
 }

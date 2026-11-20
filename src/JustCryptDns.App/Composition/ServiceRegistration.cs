@@ -13,6 +13,7 @@ using JustCryptDns.DNS.Resolver;
 using JustCryptDns.DNS.Routing;
 using JustCryptDns.Infrastructure.Diagnostics;
 using JustCryptDns.Infrastructure.Ipc;
+using JustCryptDns.Infrastructure.Updates;
 using JustCryptDns.Infrastructure.Windows;
 using JustCryptDns.Network.Bypass;
 using JustCryptDns.Network.Diagnostics;
@@ -60,16 +61,22 @@ public static class ServiceRegistration
         services.AddSingleton<IGamingEngineService, GamingEngineService>();
         services.AddSingleton<IBypassEngineService, BypassEngineService>();
 
+        services.AddSingleton<IUpdateService, GitHubUpdateService>();
+        services.AddSingleton<IBugDiagnosticsCollector, BugDiagnosticsCollector>();
+
         // UI services
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IAppearanceService, AppearanceService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<ITrayIconService, TrayIconService>();
+        services.AddSingleton<IAboutWindowService, AboutWindowService>();
+        services.AddSingleton<IAppLifecycleService, AppLifecycleService>();
         services.AddSingleton<IPageFactory, PageFactory>();
 
-        // Shell
+        // Shell & Secondary Windows
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton<MainWindow>();
+        services.AddTransient<AboutViewModel>();
 
         // Pages: transient, created on navigation and disposed when left.
         services.AddTransient<DashboardViewModel>();

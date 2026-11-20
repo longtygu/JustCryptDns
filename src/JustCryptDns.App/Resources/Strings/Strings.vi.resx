@@ -1872,4 +1872,262 @@
   <data name="Dash_Explain_NetIpv6_Metrics" xml:space="preserve">
     <value>• Ngay cả khi tắt IPv6 ngoài mạng để đảm bảo tương thích DNS loopback IPv4, địa chỉ nội bộ fe80:: vẫn có thể hiển thị bình thường.</value>
   </data>
+  <data name="Nav_About" xml:space="preserve">
+    <value>Thông tin &amp; Hỗ trợ</value>
+  </data>
+  <data name="About_WindowTitle" xml:space="preserve">
+    <value>Thông tin ứng dụng JustCryptDns</value>
+  </data>
+  <data name="About_Tab_Overview" xml:space="preserve">
+    <value>Tác giả &amp; Tổng quan</value>
+  </data>
+  <data name="About_Tab_Architecture" xml:space="preserve">
+    <value>Nguyên lý hoạt động</value>
+  </data>
+  <data name="About_Tab_BugReport" xml:space="preserve">
+    <value>Báo lỗi</value>
+  </data>
+  <data name="About_AuthorBadge" xml:space="preserve">
+    <value>Tác giả &amp; Phát triển</value>
+  </data>
+  <data name="About_BioDesc" xml:space="preserve">
+    <value>JustCryptDns được xây dựng bằng C# / .NET 8 và WPF nhằm kết hợp phân giải DNS mã hóa độ trễ thấp với vượt tường lửa DPI cục bộ nhẹ nhàng — vừa chơi game mượt mà không bị tăng ping VPN, vừa truy cập trọn vẹn các trang web bị chặn.</value>
+  </data>
+  <data name="About_Btn_GitHub" xml:space="preserve">
+    <value>Mở Repo GitHub</value>
+  </data>
+  <data name="About_Btn_Facebook" xml:space="preserve">
+    <value>Nhắn tin Facebook</value>
+  </data>
+  <data name="About_Btn_ReportBug" xml:space="preserve">
+    <value>Gửi báo lỗi</value>
+  </data>
+  <data name="About_Btn_CheckUpdates" xml:space="preserve">
+    <value>Kiểm tra cập nhật</value>
+  </data>
+  <data name="About_Highlights_Title" xml:space="preserve">
+    <value>Mục tiêu thiết kế</value>
+  </data>
+  <data name="About_Highlights_Body" xml:space="preserve">
+    <value>• Riêng tư tuyệt đối trên máy cá nhân: không thu thập dữ liệu người dùng, không telemetry ngầm.
+• Kiến trúc kép: DNS mã hóa (DoH / DoT / DoQ / DNSCrypt) + Vượt DPI &amp; Split-Tunnel thông minh.
+• Tối ưu cho chơi game: lưu lượng UDP game đi thẳng đường truyền gốc, chỉ xử lý DNS và kết nối web bị chặn.
+• An toàn hệ thống: sao lưu DNS &amp; proxy có xác thực SHA-256, tự khôi phục khi tắt máy và RunOnce khi sập nguồn.</value>
+  </data>
+  <data name="About_Arch_Title" xml:space="preserve">
+    <value>Cơ chế &amp; Nguyên lý hoạt động</value>
+  </data>
+  <data name="About_Arch_Subtitle" xml:space="preserve">
+    <value>Chi tiết cách JustCryptDns xử lý truy vấn DNS mã hóa và vượt lọc gói tin DPI trực tiếp trên Windows.</value>
+  </data>
+  <data name="About_Arch_FlowLabel" xml:space="preserve">
+    <value>LUỒNG XỬ LÝ DỮ LIỆU TỪ ĐẦU ĐẾN CUỐI</value>
+  </data>
+  <data name="About_Flow_Step1" xml:space="preserve">
+    <value>1. Ứng dụng / Trình duyệt</value>
+  </data>
+  <data name="About_Flow_Step2" xml:space="preserve">
+    <value>2. Proxy DNS cục bộ (127.0.0.2:53)</value>
+  </data>
+  <data name="About_Flow_Step3" xml:space="preserve">
+    <value>3. DoH / DoT / DoQ + Cache RAM</value>
+  </data>
+  <data name="About_Flow_Step4" xml:space="preserve">
+    <value>4. Smart DPI Split-Tunnel PAC</value>
+  </data>
+  <data name="About_Arch_Pillar1_Title" xml:space="preserve">
+    <value>1. Proxy DNS mã hóa cục bộ (Định tuyến, Lọc &amp; Cache RAM)</value>
+  </data>
+  <data name="About_Arch_Pillar1_Body" xml:space="preserve">
+    <value>Windows chuyển truy vấn tên miền về bộ lắng nghe UDP/TCP nội bộ của JustCryptDns (127.0.0.1 hoặc tự động chuyển sang 127.0.0.2 nếu cổng 53 đã có tiến trình khác dùng). Truy vấn sẽ đi qua bộ lọc chặn quảng cáo/theo dõi, kiểm tra bộ nhớ đệm RAM siêu nhanh theo TTL, hoặc định tuyến ra các máy chủ DoH, DoT, DoQ, DNSCrypt để tránh nhà mạng đầu độc DNS.</value>
+  </data>
+  <data name="About_Arch_Pillar2_Title" xml:space="preserve">
+    <value>2. Vượt tường lửa DPI toàn web &amp; Tự phục hồi 4 tầng</value>
+  </data>
+  <data name="About_Arch_Pillar2_Body" xml:space="preserve">
+    <value>Nhiều nhà mạng dùng thiết bị DPI soi trường SNI của gói TLS ClientHello hoặc bắn gói RST làm treo trang ngay cả khi đã đổi DNS. Thay vì ép toàn bộ máy chạy qua VPN chậm, JustCryptDns kích hoạt script PAC cục bộ kết hợp relay SOCKS5/HTTP chia nhỏ bản ghi ClientHello (RecordChunkSplit / OOB Desync). Khi một tên miền bị treo, cơ chế tự học 4 tầng tự đổi chiến thuật hiệu quả nhất và lưu lại cho lần sau.</value>
+  </data>
+  <data name="About_Arch_Pillar3_Title" xml:space="preserve">
+    <value>3. Chế độ Game &amp; Tự động chuyển dự phòng</value>
+  </data>
+  <data name="About_Arch_Pillar3_Body" xml:space="preserve">
+    <value>Lưu lượng game UDP không bị đẩy qua proxy nên giữ nguyên ping thấp và tốc độ tải tối đa, đồng thời giảm tần suất polling nền khi vào game. Bộ chấm điểm sức khỏe liên tục đo độ trễ và độ ổn định của resolver chính để tự chuyển sang resolver phụ khi có sự cố mạng.</value>
+  </data>
+  <data name="About_Arch_Pillar4_Title" xml:space="preserve">
+    <value>4. An toàn mạng, Khôi phục khi tắt máy &amp; Sau mất điện</value>
+  </data>
+  <data name="About_Arch_Pillar4_Body" xml:space="preserve">
+    <value>Trước khi thay đổi DNS card mạng hay WinINet Proxy, app luôn sao lưu nguyên trạng bằng mã băm SHA-256 và kiểm tra kết nối thực tế. Khi người dùng thoát app hoặc tắt/khởi động lại Windows (OnSessionEnding), DNS và proxy gốc được trả về ngay lập tức; nếu máy mất điện đột ngột, mục HKCU RunOnce (--recover-and-exit) tự động dọn sạch cấu hình kẹt khi Windows mở lại.</value>
+  </data>
+  <data name="BugReport_Title" xml:space="preserve">
+    <value>Gửi báo lỗi cho tác giả</value>
+  </data>
+  <data name="BugReport_Subtitle" xml:space="preserve">
+    <value>Nội dung báo lỗi và thông số chẩn đoán (đã ẩn tên thư mục cá nhân) sẽ tự động được sao chép trước khi mở GitHub hoặc Facebook.</value>
+  </data>
+  <data name="BugReport_CategoryLabel" xml:space="preserve">
+    <value>Phân loại lỗi</value>
+  </data>
+  <data name="BugReport_SummaryLabel" xml:space="preserve">
+    <value>Tiêu đề tóm tắt</value>
+  </data>
+  <data name="BugReport_DescLabel" xml:space="preserve">
+    <value>Mô tả chi tiết &amp; cách tái hiện lỗi</value>
+  </data>
+  <data name="BugReport_IncludeDiag" xml:space="preserve">
+    <value>Đính kèm thông số hệ thống &amp; 20 dòng cảnh báo/lỗi gần nhất (đã che tên user)</value>
+  </data>
+  <data name="BugReport_Btn_Copy" xml:space="preserve">
+    <value>Sao chép báo lỗi</value>
+  </data>
+  <data name="BugReport_Btn_OpenLogs" xml:space="preserve">
+    <value>Mở thư mục Log</value>
+  </data>
+  <data name="BugReport_DiagPreviewLabel" xml:space="preserve">
+    <value>Xem trước nội dung sẽ gửi</value>
+  </data>
+  <data name="BugReport_Btn_SubmitGitHub" xml:space="preserve">
+    <value>Báo lỗi trực tiếp lên GitHub</value>
+  </data>
+  <data name="BugReport_Btn_SubmitFacebook" xml:space="preserve">
+    <value>Nhắn tin qua Facebook (Longtygu)</value>
+  </data>
+  <data name="BugReport_ValidationEmpty" xml:space="preserve">
+    <value>Vui lòng nhập tiêu đề hoặc mô tả lỗi trước khi gửi báo cáo.</value>
+  </data>
+  <data name="BugReport_GitHubOpened" xml:space="preserve">
+    <value>Đã mở trang tạo GitHub Issue điền sẵn nội dung và sao chép bản đầy đủ vào Clipboard.</value>
+  </data>
+  <data name="BugReport_FacebookOpened" xml:space="preserve">
+    <value>Đã sao chép báo lỗi vào Clipboard và mở trang Facebook của Longtygu — bạn chỉ cần bấm Ctrl+V vào khung nhắn tin!</value>
+  </data>
+  <data name="BugReport_OpenUrlFailed" xml:space="preserve">
+    <value>Không thể tự mở trình duyệt web, nhưng nội dung báo lỗi đã được sao chép vào Clipboard.</value>
+  </data>
+  <data name="BugReport_Copied" xml:space="preserve">
+    <value>Đã sao chép toàn bộ nội dung báo lỗi và chẩn đoán vào Clipboard.</value>
+  </data>
+  <data name="BugCat_DnsEngine" xml:space="preserve">
+    <value>DNS Engine</value>
+  </data>
+  <data name="BugCat_DpiBypass" xml:space="preserve">
+    <value>Vượt DPI &amp; Split-Tunnel</value>
+  </data>
+  <data name="BugCat_Gaming" xml:space="preserve">
+    <value>Chế độ Gaming</value>
+  </data>
+  <data name="BugCat_UiAppearance" xml:space="preserve">
+    <value>Giao diện &amp; Hiệu ứng</value>
+  </data>
+  <data name="BugCat_AutoUpdate" xml:space="preserve">
+    <value>Tự động cập nhật</value>
+  </data>
+  <data name="BugCat_Other" xml:space="preserve">
+    <value>Khác</value>
+  </data>
+  <data name="Settings_Updates_Section" xml:space="preserve">
+    <value>Cập nhật phần mềm (GitHub)</value>
+  </data>
+  <data name="Settings_Updates_CurrentTitle" xml:space="preserve">
+    <value>Phiên bản hiện tại</value>
+  </data>
+  <data name="Settings_Updates_LastChecked" xml:space="preserve">
+    <value>Kiểm tra lần cuối</value>
+  </data>
+  <data name="Settings_Updates_Btn_Check" xml:space="preserve">
+    <value>Quét cập nhật</value>
+  </data>
+  <data name="Settings_Updates_AutoCheck" xml:space="preserve">
+    <value>Tự động kiểm tra bản mới trên GitHub khi mở ứng dụng</value>
+  </data>
+  <data name="Settings_Updates_AutoCheck_Desc" xml:space="preserve">
+    <value>Quét ngầm từ github.com/longtygu/JustCryptDns sau khi khởi động và hiển thị dấu báo hiệu khi có bản cập nhật mới.</value>
+  </data>
+  <data name="Settings_Updates_IncludePre" xml:space="preserve">
+    <value>Bao gồm bản thử nghiệm (Pre-release / Beta)</value>
+  </data>
+  <data name="Settings_Updates_IncludePre_Desc" xml:space="preserve">
+    <value>Cho phép nhận các bản phát hành thử nghiệm trước khi phát hành chính thức.</value>
+  </data>
+  <data name="Settings_Updates_Btn_ViewGitHub" xml:space="preserve">
+    <value>Xem trên GitHub</value>
+  </data>
+  <data name="Settings_Updates_NotesLabel" xml:space="preserve">
+    <value>CHI TIẾT BẢN CẬP NHẬT</value>
+  </data>
+  <data name="Settings_Updates_Btn_Download" xml:space="preserve">
+    <value>Tải bản cập nhật</value>
+  </data>
+  <data name="Settings_Updates_Btn_CancelDownload" xml:space="preserve">
+    <value>Hủy tải</value>
+  </data>
+  <data name="Settings_Updates_Btn_InstallNow" xml:space="preserve">
+    <value>Cập nhật trực tiếp &amp; Khởi động lại</value>
+  </data>
+  <data name="Settings_Updates_ChartTitle" xml:space="preserve">
+    <value>BIỂU ĐỒ TỐC ĐỘ TẢI &amp; TIẾN TRÌNH CẬP NHẬT</value>
+  </data>
+  <data name="Settings_Updates_Checking" xml:space="preserve">
+    <value>Đang quét phiên bản mới trên GitHub Releases…</value>
+  </data>
+  <data name="Settings_Updates_IdleHint" xml:space="preserve">
+    <value>Kiểm tra và tải gói cập nhật từ github.com/longtygu/JustCryptDns kèm kiểm tra SHA-256 và nâng cấp trực tiếp không cần gỡ app.</value>
+  </data>
+  <data name="Settings_Updates_AvailableMsg" xml:space="preserve">
+    <value>Đã có phiên bản {0} sẵn sàng tải về và cập nhật trực tiếp.</value>
+  </data>
+  <data name="Settings_Updates_UpToDateMsg" xml:space="preserve">
+    <value>Bạn đang dùng phiên bản mới nhất (v{0}).</value>
+  </data>
+  <data name="Settings_Updates_NoReleasesMsg" xml:space="preserve">
+    <value>Repo github.com/longtygu/JustCryptDns chưa có bản Release nào được phát hành.</value>
+  </data>
+  <data name="Settings_Updates_RateLimitedMsg" xml:space="preserve">
+    <value>Đã chạm giới hạn truy vấn GitHub API tạm thời. Vui lòng thử lại sau ít phút.</value>
+  </data>
+  <data name="Settings_Updates_ErrorMsg" xml:space="preserve">
+    <value>Không thể kết nối tới GitHub Releases.</value>
+  </data>
+  <data name="Settings_Updates_NeverChecked" xml:space="preserve">
+    <value>Chưa kiểm tra</value>
+  </data>
+  <data name="Settings_Updates_NoNotes" xml:space="preserve">
+    <value>Phiên bản này chưa có mô tả chi tiết.</value>
+  </data>
+  <data name="Settings_Updates_ChecksumOk" xml:space="preserve">
+    <value>Đã xác thực SHA-256 ({0}…). Sẵn sàng cập nhật trực tiếp mà không mất cài đặt.</value>
+  </data>
+  <data name="Settings_Updates_ChecksumSkipped" xml:space="preserve">
+    <value>Đã giải nén và kiểm tra gói cài đặt thành công. Sẵn sàng cập nhật trực tiếp.</value>
+  </data>
+  <data name="Settings_Updates_DownloadCancelled" xml:space="preserve">
+    <value>Đã hủy tải bản cập nhật.</value>
+  </data>
+  <data name="Settings_About_Btn_AppInfo" xml:space="preserve">
+    <value>Mở thông tin app &amp; nguyên lý</value>
+  </data>
+  <data name="Settings_About_Btn_BugReport" xml:space="preserve">
+    <value>Báo lỗi (GitHub / Facebook)</value>
+  </data>
+  <data name="UpdateState_Idle" xml:space="preserve">
+    <value>Sẵn sàng</value>
+  </data>
+  <data name="UpdateState_Checking" xml:space="preserve">
+    <value>Đang quét</value>
+  </data>
+  <data name="UpdateState_UpToDate" xml:space="preserve">
+    <value>Mới nhất</value>
+  </data>
+  <data name="UpdateState_UpdateAvailable" xml:space="preserve">
+    <value>Có bản mới</value>
+  </data>
+  <data name="UpdateState_NoReleasesPublished" xml:space="preserve">
+    <value>Chưa có bản phát hành</value>
+  </data>
+  <data name="UpdateState_RateLimited" xml:space="preserve">
+    <value>Giới hạn API</value>
+  </data>
+  <data name="UpdateState_Error" xml:space="preserve">
+    <value>Lỗi kết nối</value>
+  </data>
 </root>

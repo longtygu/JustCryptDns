@@ -204,6 +204,19 @@ internal sealed class MigrationV12ToV13 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v14 adds GitHub auto-update preferences (<see cref="UpdateSettings"/>).
+/// </summary>
+internal sealed class MigrationV13ToV14 : ISettingsMigration
+{
+    public int FromVersion => 13;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by UpdateSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -217,7 +230,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12(), new MigrationV12ToV13()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12(), new MigrationV12ToV13(), new MigrationV13ToV14()];
 
     public static int ReadVersion(JsonObject document)
     {

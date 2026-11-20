@@ -14,8 +14,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v12: Phases 1–14. v13: StatusPulseStyle for Dashboard DNS shield &amp; toggle button.</summary>
-    public const int CurrentSchemaVersion = 13;
+    /// <summary>v1–v12: Phases 1–14. v13: StatusPulseStyle. v14: GitHub auto-update settings.</summary>
+    public const int CurrentSchemaVersion = 14;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -39,6 +39,8 @@ public sealed class AppSettings
 
     public BypassSettings Bypass { get; set; } = new();
 
+    public UpdateSettings Updates { get; set; } = new();
+
     /// <summary>Normalizes out-of-range or missing values after deserialization.</summary>
     public AppSettings Normalize()
     {
@@ -52,6 +54,7 @@ public sealed class AppSettings
         Resilience ??= new ResilienceSettings();
         Performance ??= new PerformanceSettings();
         Bypass ??= new BypassSettings();
+        Updates ??= new UpdateSettings();
         General.Normalize();
         Appearance.Normalize();
         Dns.Normalize();
@@ -62,6 +65,7 @@ public sealed class AppSettings
         Resilience.Normalize();
         Performance.Normalize();
         Bypass.Normalize();
+        Updates.Normalize();
         return this;
     }
 
@@ -608,6 +612,32 @@ public sealed class BypassSettings
 
         Rules ??= BuiltInBypassRules.CreateDefaultRules().ToList();
         DirectExclusionDomains ??= [];
+    }
+}
+
+public sealed class UpdateSettings
+{
+    public const string DefaultRepositoryOwner = "longtygu";
+    public const string DefaultRepositoryName = "JustCryptDns";
+
+    public bool AutoCheckOnStartup { get; set; } = true;
+
+    public bool IncludePrereleases { get; set; }
+
+    public string RepositoryOwner { get; set; } = DefaultRepositoryOwner;
+
+    public string RepositoryName { get; set; } = DefaultRepositoryName;
+
+    public DateTimeOffset? LastCheckedUtc { get; set; }
+
+    internal void Normalize()
+    {
+        RepositoryOwner = string.IsNullOrWhiteSpace(RepositoryOwner)
+            ? DefaultRepositoryOwner
+            : RepositoryOwner.Trim();
+        RepositoryName = string.IsNullOrWhiteSpace(RepositoryName)
+            ? DefaultRepositoryName
+            : RepositoryName.Trim();
     }
 }
 

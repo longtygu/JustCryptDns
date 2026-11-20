@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using JustCryptDns.App;
 using JustCryptDns.App.Composition;
 using JustCryptDns.App.Services;
+using JustCryptDns.App.ViewModels;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
@@ -240,7 +241,7 @@ public sealed class BackgroundOperationTests : IDisposable
     }
 
     [Fact]
-    public void ServiceRegistration_BuildsAndResolvesRecoveryDependencies()
+    public async Task ServiceRegistration_BuildsAndResolvesRecoveryDependencies()
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), "jcd-di-test", Guid.NewGuid().ToString("N"));
         var paths = new AppPaths(tempRoot);
@@ -250,14 +251,27 @@ public sealed class BackgroundOperationTests : IDisposable
             var settings = new AppSettings();
             var initial = new SettingsLoadResult(settings, SettingsLoadOutcome.Loaded);
             var store = new MemorySettingsStore(settings);
-            using var provider = ServiceRegistration.Build(paths, NullLoggerFactory.Instance, store, initial);
+            await using var provider = ServiceRegistration.Build(paths, NullLoggerFactory.Instance, store, initial);
 
             var bootRecovery = provider.GetRequiredService<IBootRecoveryRegistrar>();
             var winDns = provider.GetRequiredService<IWindowsDnsManager>();
             var winProxy = provider.GetRequiredService<IWindowsProxyManager>();
+            var updateService = provider.GetRequiredService<IUpdateService>();
+            var diagCollector = provider.GetRequiredService<IBugDiagnosticsCollector>();
+            var aboutService = provider.GetRequiredService<IAboutWindowService>();
+            var lifecycleService = provider.GetRequiredService<IAppLifecycleService>();
+            using var aboutVm = provider.GetRequiredService<AboutViewModel>();
+            using var settingsVm = provider.GetRequiredService<SettingsViewModel>();
+
             Assert.NotNull(bootRecovery);
             Assert.NotNull(winDns);
             Assert.NotNull(winProxy);
+            Assert.NotNull(updateService);
+            Assert.NotNull(diagCollector);
+            Assert.NotNull(aboutService);
+            Assert.NotNull(lifecycleService);
+            Assert.NotNull(aboutVm);
+            Assert.NotNull(settingsVm);
         }
         finally
         {

@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
+using JustCryptDns.Core.Interfaces;
+using JustCryptDns.Core.Models;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.App.ViewModels;
@@ -24,6 +26,8 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private readonly IPageFactory _pageFactory;
     private readonly ISettingsService _settings;
+    private readonly IUpdateService? _updateService;
+    private readonly IAboutWindowService? _aboutWindow;
     private readonly ILogger<ShellViewModel> _logger;
 
     /// <summary>Selection in the main navigation list.</summary>
@@ -46,10 +50,21 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     private bool _rememberCloseChoice;
 
-    public ShellViewModel(IPageFactory pageFactory, ISettingsService settings, INavigationService navigation, ILogger<ShellViewModel> logger)
+    [ObservableProperty]
+    private bool _hasAvailableUpdate;
+
+    public ShellViewModel(
+        IPageFactory pageFactory,
+        ISettingsService settings,
+        INavigationService navigation,
+        ILogger<ShellViewModel> logger,
+        IUpdateService? updateService = null,
+        IAboutWindowService? aboutWindow = null)
     {
         _pageFactory = pageFactory;
         _settings = settings;
+        _updateService = updateService;
+        _aboutWindow = aboutWindow;
         _logger = logger;
 
         NavItems =
@@ -68,6 +83,12 @@ public sealed partial class ShellViewModel : ObservableObject
 
         _isSidebarCollapsed = settings.Current.Appearance.SidebarCollapsed;
         settings.Changed += OnSettingsChanged;
+        if (_updateService is not null)
+        {
+            HasAvailableUpdate = _updateService.LatestResult?.Status == UpdateCheckStatus.UpdateAvailable;
+            _updateService.UpdateCheckCompleted += OnUpdateCheckCompleted;
+        }
+
         navigation.NavigationRequested += (_, key) => NavigateTo(key);
         SelectedNavItem = NavItems[0];
     }
@@ -203,6 +224,9 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarCollapsed = !IsSidebarCollapsed;
 
+    [RelayCommand]
+    private void OpenAbout() => _aboutWindow?.Show(AboutWindowTab.Overview);
+
     partial void OnIsSidebarCollapsedChanged(bool value)
     {
         if (_settings.Current.Appearance.SidebarCollapsed != value)
@@ -215,6 +239,19 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         // Keep in sync when the sidebar mode is changed from the Appearance page.
         void Sync() => IsSidebarCollapsed = settings.Appearance.SidebarCollapsed;
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Sync);
+        }
+        else
+        {
+            Sync();
+        }
+    }
+
+    private void OnUpdateCheckCompleted(object? sender, UpdateCheckResult result)
+    {
+        void Sync() => HasAvailableUpdate = result.Status == UpdateCheckStatus.UpdateAvailable;
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(Sync);

@@ -1,12 +1,18 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Net.Http;
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using JustCryptDns.App.Controls;
+using JustCryptDns.App.Localization;
 using JustCryptDns.App.Services;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
+using JustCryptDns.Core.Models;
+using JustCryptDns.Core.Services;
 using JustCryptDns.Infrastructure.Windows;
 using Microsoft.Extensions.Logging;
 
@@ -19,8 +25,12 @@ public sealed partial class SettingsViewModel : PageViewModel
     private readonly IStartupService _startup;
     private readonly IServiceClient _serviceClient;
     private readonly IProcessPerformanceService? _performance;
+    private readonly IUpdateService? _updateService;
+    private readonly IAboutWindowService? _aboutWindow;
+    private readonly IAppLifecycleService? _lifecycle;
     private readonly ILogger<SettingsViewModel> _logger;
     private readonly SynchronizationContext? _ui;
+    private CancellationTokenSource? _downloadCts;
     private bool _loading;
 
     [ObservableProperty] private string _selectedLanguage = LanguageCodes.System;
@@ -37,6 +47,46 @@ public sealed partial class SettingsViewModel : PageViewModel
     [ObservableProperty] private ServiceConnectionState _serviceState;
     [ObservableProperty] private string? _serviceVersion;
 
+    // Software Updates
+    [ObservableProperty] private bool _autoCheckForUpdates = true;
+    [ObservableProperty] private bool _includePrereleases;
+    [ObservableProperty] private UpdateCheckStatus _updateStatus = UpdateCheckStatus.Idle;
+    [ObservableProperty] private string _updateStatusMessage = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanDownloadUpdate))]
+    [NotifyPropertyChangedFor(nameof(ShowDownloadButton))]
+    [NotifyPropertyChangedFor(nameof(ReleaseHeaderText))]
+    [NotifyPropertyChangedFor(nameof(ReleaseMetaText))]
+    [NotifyPropertyChangedFor(nameof(ReleaseNotesDisplay))]
+    private UpdateReleaseInfo? _latestRelease;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowDownloadButton))]
+    private bool _hasUpdateAvailable;
+
+    [ObservableProperty] private bool _isCheckingUpdates;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanDownloadUpdate))]
+    [NotifyPropertyChangedFor(nameof(ShowDownloadButton))]
+    private bool _isDownloadingUpdate;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanDownloadUpdate))]
+    [NotifyPropertyChangedFor(nameof(ShowDownloadButton))]
+    private bool _isUpdateReadyToInstall;
+
+    [ObservableProperty] private bool _showDownloadChart;
+    [ObservableProperty] private double _downloadPercent;
+    [ObservableProperty] private string _downloadSpeedText = "0 KB/s";
+    [ObservableProperty] private string _downloadTransferredText = "0.0 / 0.0 MB";
+    [ObservableProperty] private string _downloadEtaText = "--";
+    [ObservableProperty] private string? _downloadError;
+    [ObservableProperty] private string? _checksumStatusText;
+    [ObservableProperty] private PreparedUpdatePackage? _preparedPackage;
+    [ObservableProperty] private string _lastCheckedText = "--";
+
     /// <summary>Raw error detail from the last failed save (displayed through a localized template).</summary>
     [ObservableProperty]
     private string? _saveError;
@@ -48,7 +98,10 @@ public sealed partial class SettingsViewModel : PageViewModel
         IServiceClient serviceClient,
         IAppPaths paths,
         ILogger<SettingsViewModel> logger,
-        IProcessPerformanceService? performance = null)
+        IProcessPerformanceService? performance = null,
+        IUpdateService? updateService = null,
+        IAboutWindowService? aboutWindow = null,
+        IAppLifecycleService? lifecycle = null)
         : base("Nav_Settings", "Page_Settings_Subtitle")
     {
         _settings = settings;
@@ -56,6 +109,9 @@ public sealed partial class SettingsViewModel : PageViewModel
         _startup = startup;
         _serviceClient = serviceClient;
         _performance = performance;
+        _updateService = updateService;
+        _aboutWindow = aboutWindow;
+        _lifecycle = lifecycle;
         _logger = logger;
         _ui = SynchronizationContext.Current;
 
@@ -65,9 +121,10 @@ public sealed partial class SettingsViewModel : PageViewModel
 
         DataFolder = paths.DataDirectory;
         LogsFolder = paths.LogsDirectory;
-        Version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "0.0.0";
+        Version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.3.0";
         OperatingSystemName = WindowsVersion.DisplayName;
         ShowLoadWarning = settings.LoadOutcome == SettingsLoadOutcome.ResetAfterCorruption;
+        RefreshUpdateSummaryFromService();
     }
 
     public IReadOnlyList<string> Languages => LanguageCodes.All;
@@ -82,11 +139,51 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public bool ShowLoadWarning { get; }
 
+    public string CurrentAppVersion => _updateService?.CurrentVersion ?? Version;
+
+    public bool CanDownloadUpdate => LatestRelease?.PreferredAsset is not null && !IsDownloadingUpdate && !IsUpdateReadyToInstall;
+
+    public bool ShowDownloadButton => HasUpdateAvailable && CanDownloadUpdate;
+
+    public string ReleaseHeaderText => LatestRelease?.Name ?? string.Empty;
+
+    public string ReleaseMetaText
+    {
+        get
+        {
+            if (LatestRelease is null)
+            {
+                return string.Empty;
+            }
+
+            var sizeMb = LatestRelease.PreferredAsset is { SizeBytes: > 0 } asset
+                ? $"{asset.SizeBytes / (1024.0 * 1024.0):0.0} MB"
+                : "--";
+            var dateStr = LatestRelease.PublishedAtUtc.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.CurrentCulture);
+            return $"{LatestRelease.TagName}  •  {dateStr}  •  {sizeMb}";
+        }
+    }
+
+    public string ReleaseNotesDisplay =>
+        string.IsNullOrWhiteSpace(LatestRelease?.ReleaseNotes)
+            ? LocalizationManager.Instance["Settings_Updates_NoNotes"]
+            : LatestRelease!.ReleaseNotes;
+
+    public event EventHandler<UpdateDownloadProgress>? DownloadProgressReceived;
+
+    public event EventHandler? DownloadChartResetRequested;
+
     public override void OnNavigatedTo()
     {
         _settings.SaveFailed += OnSaveFailed;
         _settings.Changed += OnSettingsChanged;
         _serviceClient.StateChanged += OnServiceStateChanged;
+        if (_updateService is not null)
+        {
+            _updateService.UpdateCheckCompleted += OnUpdateCheckCompleted;
+        }
+
+        RefreshUpdateSummaryFromService();
         _ = CheckServiceCommand.ExecuteAsync(null);
     }
 
@@ -95,6 +192,10 @@ public sealed partial class SettingsViewModel : PageViewModel
         _settings.SaveFailed -= OnSaveFailed;
         _settings.Changed -= OnSettingsChanged;
         _serviceClient.StateChanged -= OnServiceStateChanged;
+        if (_updateService is not null)
+        {
+            _updateService.UpdateCheckCompleted -= OnUpdateCheckCompleted;
+        }
     }
 
     protected override void Dispose(bool disposing)
@@ -104,6 +205,14 @@ public sealed partial class SettingsViewModel : PageViewModel
             _settings.SaveFailed -= OnSaveFailed;
             _settings.Changed -= OnSettingsChanged;
             _serviceClient.StateChanged -= OnServiceStateChanged;
+            if (_updateService is not null)
+            {
+                _updateService.UpdateCheckCompleted -= OnUpdateCheckCompleted;
+            }
+
+            _downloadCts?.Cancel();
+            _downloadCts?.Dispose();
+            _downloadCts = null;
         }
 
         base.Dispose(disposing);
@@ -204,6 +313,22 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
     }
 
+    partial void OnAutoCheckForUpdatesChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = SaveAsync(s => s.Updates.AutoCheckOnStartup = value);
+        }
+    }
+
+    partial void OnIncludePrereleasesChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = SaveAsync(s => s.Updates.IncludePrereleases = value);
+        }
+    }
+
     [RelayCommand]
     private void RefreshPerformance()
     {
@@ -224,6 +349,122 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [RelayCommand]
     private void OpenAppearance() => _navigation.Navigate(PageKeys.Appearance);
+
+    [RelayCommand]
+    private void OpenAboutWindow() => _aboutWindow?.Show(AboutWindowTab.Overview);
+
+    [RelayCommand]
+    private void OpenBugReport() => _aboutWindow?.Show(AboutWindowTab.BugReport);
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task CheckForUpdatesAsync()
+    {
+        if (_updateService is null)
+        {
+            return;
+        }
+
+        IsCheckingUpdates = true;
+        UpdateStatus = UpdateCheckStatus.Checking;
+        UpdateStatusMessage = LocalizationManager.Instance["Settings_Updates_Checking"];
+        try
+        {
+            var result = await _updateService.CheckForUpdatesAsync(IncludePrereleases);
+            ApplyUpdateCheckResult(result);
+        }
+        finally
+        {
+            IsCheckingUpdates = false;
+        }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task DownloadUpdateAsync()
+    {
+        if (_updateService is null || LatestRelease?.PreferredAsset is null || IsDownloadingUpdate)
+        {
+            return;
+        }
+
+        _downloadCts?.Cancel();
+        _downloadCts?.Dispose();
+        _downloadCts = new CancellationTokenSource();
+
+        DownloadError = null;
+        ChecksumStatusText = null;
+        PreparedPackage = null;
+        IsUpdateReadyToInstall = false;
+        ShowDownloadChart = true;
+        IsDownloadingUpdate = true;
+        DownloadPercent = 0;
+        DownloadSpeedText = "0 KB/s";
+        DownloadTransferredText = "0.0 / -- MB";
+        DownloadEtaText = "--";
+        DownloadChartResetRequested?.Invoke(this, EventArgs.Empty);
+
+        var progress = new Progress<UpdateDownloadProgress>(OnDownloadProgress);
+        try
+        {
+            var prepared = await _updateService.DownloadAndPrepareAsync(LatestRelease, progress, _downloadCts.Token);
+            PreparedPackage = prepared;
+            IsUpdateReadyToInstall = true;
+            DownloadPercent = 100;
+            ChecksumStatusText = prepared.ChecksumVerified && prepared.ActualSha256 is { Length: >= 12 }
+                ? string.Format(CultureInfo.CurrentCulture, LocalizationManager.Instance["Settings_Updates_ChecksumOk"], prepared.ActualSha256[..12])
+                : LocalizationManager.Instance["Settings_Updates_ChecksumSkipped"];
+        }
+        catch (OperationCanceledException)
+        {
+            DownloadError = LocalizationManager.Instance["Settings_Updates_DownloadCancelled"];
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "Downloading update failed.");
+            DownloadError = ex.Message;
+        }
+        finally
+        {
+            IsDownloadingUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelDownload() => _downloadCts?.Cancel();
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task InstallUpdateNowAsync()
+    {
+        if (_updateService is null || _lifecycle is null || PreparedPackage is null)
+        {
+            return;
+        }
+
+        DownloadError = null;
+        var (launched, err) = await _lifecycle.ApplyUpdateAndRestartAsync(() =>
+        {
+            var ok = _updateService.LaunchPreparedUpdate(PreparedPackage, out var launchErr);
+            return (ok, launchErr);
+        });
+
+        if (!launched)
+        {
+            DownloadError = err;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenReleaseOnGitHub()
+    {
+        var url = LatestRelease?.HtmlUrl ?? (BugReportBuilder.GitHubRepoUrl + "/releases");
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true })?.Dispose();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Could not open release URL {Url}.", url);
+        }
+    }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task CheckServiceAsync()
@@ -266,6 +507,9 @@ public sealed partial class SettingsViewModel : PageViewModel
             CloseBehavior = current.General.CloseBehavior;
             MonitoringMode = current.Performance.MonitoringMode;
             EnablePerformanceDiagnostics = current.Performance.EnablePerformanceDiagnostics;
+            AutoCheckForUpdates = current.Updates.AutoCheckOnStartup;
+            IncludePrereleases = current.Updates.IncludePrereleases;
+            RefreshLastCheckedText(current.Updates.LastCheckedUtc);
         }
         finally
         {
@@ -341,5 +585,76 @@ public sealed partial class SettingsViewModel : PageViewModel
             _logger.LogError(ex, "Saving settings failed.");
             SaveError = ex.Message;
         }
+    }
+
+    private void RefreshUpdateSummaryFromService()
+    {
+        if (_updateService?.LatestResult is { } cached)
+        {
+            ApplyUpdateCheckResult(cached);
+        }
+        else
+        {
+            UpdateStatus = UpdateCheckStatus.Idle;
+            UpdateStatusMessage = LocalizationManager.Instance["Settings_Updates_IdleHint"];
+            HasUpdateAvailable = false;
+            RefreshLastCheckedText(_settings.Current.Updates.LastCheckedUtc);
+        }
+    }
+
+    private void OnUpdateCheckCompleted(object? sender, UpdateCheckResult result)
+    {
+        if (_ui is not null)
+        {
+            _ui.Post(_ => ApplyUpdateCheckResult(result), null);
+        }
+        else
+        {
+            ApplyUpdateCheckResult(result);
+        }
+    }
+
+    private void ApplyUpdateCheckResult(UpdateCheckResult result)
+    {
+        UpdateStatus = result.Status;
+        LatestRelease = result.Release;
+        HasUpdateAvailable = result.Status == UpdateCheckStatus.UpdateAvailable;
+        RefreshLastCheckedText(result.CheckedAtUtc);
+
+        UpdateStatusMessage = result.Status switch
+        {
+            UpdateCheckStatus.UpdateAvailable when result.Release is not null =>
+                string.Format(CultureInfo.CurrentCulture, LocalizationManager.Instance["Settings_Updates_AvailableMsg"], result.Release.Version),
+            UpdateCheckStatus.UpToDate =>
+                string.Format(CultureInfo.CurrentCulture, LocalizationManager.Instance["Settings_Updates_UpToDateMsg"], CurrentAppVersion),
+            UpdateCheckStatus.NoReleasesPublished => LocalizationManager.Instance["Settings_Updates_NoReleasesMsg"],
+            UpdateCheckStatus.RateLimited => LocalizationManager.Instance["Settings_Updates_RateLimitedMsg"],
+            UpdateCheckStatus.Error => result.ErrorMessage ?? LocalizationManager.Instance["Settings_Updates_ErrorMsg"],
+            UpdateCheckStatus.Checking => LocalizationManager.Instance["Settings_Updates_Checking"],
+            _ => LocalizationManager.Instance["Settings_Updates_IdleHint"],
+        };
+    }
+
+    private void RefreshLastCheckedText(DateTimeOffset? checkedUtc)
+    {
+        LastCheckedText = checkedUtc is { } ts
+            ? ts.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture)
+            : LocalizationManager.Instance["Settings_Updates_NeverChecked"];
+    }
+
+    private void OnDownloadProgress(UpdateDownloadProgress progress)
+    {
+        DownloadPercent = progress.ProgressPercent;
+        DownloadSpeedText = UpdateDownloadChartControl.FormatSpeed(progress.InstantBytesPerSecond);
+        var downloadedMb = progress.BytesDownloaded / (1024.0 * 1024.0);
+        var totalMb = progress.TotalBytes / (1024.0 * 1024.0);
+        DownloadTransferredText = progress.TotalBytes > 0
+            ? $"{downloadedMb:0.0} / {totalMb:0.0} MB"
+            : $"{downloadedMb:0.0} MB";
+        DownloadEtaText = progress.EstimatedRemaining is { TotalSeconds: >= 0 } eta
+            ? eta.ToString(@"mm\:ss", CultureInfo.InvariantCulture)
+            : "--";
+
+        DownloadProgressReceived?.Invoke(this, progress);
     }
 }

@@ -64,6 +64,23 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Style="{StaticResource Text.Icon}" Text="{Binding Glyph}" FontSize="16" />
+                <Ellipse Width="7" Height="7" Fill="{DynamicResource Brush.Accent}"
+                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,9,10,0">
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding Key}" Value="settings" />
+                                        <Condition Binding="{Binding DataContext.HasAvailableUpdate, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
                 <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="{DynamicResource Font.Size.BodyLarge}" TextTrimming="CharacterEllipsis"
                            Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock.Text>
@@ -130,9 +147,30 @@
                          ItemTemplate="{StaticResource NavItemTemplate}" PreviewMouseLeftButtonUp="OnNavListMouseUp" />
 
                 <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,1,0,0" Padding="0,6,0,10">
-                    <ListBox Style="{StaticResource Nav.List}" ItemContainerStyle="{StaticResource Nav.Item}"
-                             ItemsSource="{Binding FooterItems}" SelectedItem="{Binding SelectedFooterItem}"
-                             ItemTemplate="{StaticResource NavItemTemplate}" PreviewMouseLeftButtonUp="OnNavListMouseUp" />
+                    <StackPanel>
+                        <Button Style="{StaticResource Button.Subtle}" Height="40" Margin="8,2" Padding="0"
+                                HorizontalContentAlignment="Stretch"
+                                Foreground="{DynamicResource Brush.TextSecondary}"
+                                Command="{Binding OpenAboutCommand}"
+                                ToolTipService.IsEnabled="{Binding IsSidebarCollapsed}"
+                                ToolTipService.Placement="Right"
+                                ToolTip="{l:Loc Nav_About}"
+                                AutomationProperties.Name="{l:Loc Nav_About}">
+                            <Grid Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE946;" FontSize="16" />
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="{DynamicResource Font.Size.BodyLarge}"
+                                           Text="{l:Loc Nav_About}" TextTrimming="CharacterEllipsis"
+                                           Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
+                            </Grid>
+                        </Button>
+                        <ListBox Style="{StaticResource Nav.List}" ItemContainerStyle="{StaticResource Nav.Item}"
+                                 ItemsSource="{Binding FooterItems}" SelectedItem="{Binding SelectedFooterItem}"
+                                 ItemTemplate="{StaticResource NavItemTemplate}" PreviewMouseLeftButtonUp="OnNavListMouseUp" />
+                    </StackPanel>
                 </Border>
             </Grid>
         </Border>

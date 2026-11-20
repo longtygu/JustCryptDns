@@ -23,6 +23,9 @@ public interface IAppearanceService
     /// <summary>Registers the main window for backdrop/corner handling. Call after its handle exists.</summary>
     void AttachWindow(Window window);
 
+    /// <summary>Registers a secondary window so it tracks backdrop, theme, and corner preferences.</summary>
+    void AttachSecondaryWindow(Window window) { }
+
     /// <summary>Applies all appearance settings. Idempotent and cheap when nothing changed.</summary>
     void Apply(AppearanceSettings settings);
 }
@@ -55,6 +58,7 @@ public sealed class AppearanceService : IAppearanceService
     private readonly IThemeService _theme;
     private readonly ILogger<AppearanceService> _logger;
     private readonly Dictionary<string, Color> _surfaceColors = [];
+    private readonly List<(Window Window, WindowBackdropController Controller)> _secondaryBackdrops = [];
     private AppearanceSettings _settings = new();
     private WindowBackdropController? _backdrop;
 
@@ -80,6 +84,26 @@ public sealed class AppearanceService : IAppearanceService
     {
         _backdrop = new WindowBackdropController(window, _logger);
         ApplyVisuals();
+    }
+
+    public void AttachSecondaryWindow(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        if (_secondaryBackdrops.Any(entry => ReferenceEquals(entry.Window, window)))
+        {
+            ApplyVisuals();
+            return;
+        }
+
+        var controller = new WindowBackdropController(window, _logger);
+        _secondaryBackdrops.Add((window, controller));
+        window.Closed += (_, _) => _secondaryBackdrops.RemoveAll(entry => ReferenceEquals(entry.Window, window));
+
+        var (kind, _) = AppearanceMath.Resolve(_settings, Support);
+        if (controller.IsReady)
+        {
+            _ = controller.Apply(kind, _theme.EffectiveTheme == AppTheme.Dark, _settings.CornerStyle);
+        }
     }
 
     public void Apply(AppearanceSettings settings)
@@ -120,6 +144,14 @@ public sealed class AppearanceService : IAppearanceService
 
         // Without an active backdrop the window stays fully opaque (transparency would only show black).
         var fraction = kind == BackdropKind.None ? 0 : AppearanceMath.RequestedFraction(settings);
+        var isDark = _theme.EffectiveTheme == AppTheme.Dark;
+        foreach (var (_, secondaryController) in _secondaryBackdrops.ToList())
+        {
+            if (secondaryController.IsReady)
+            {
+                _ = secondaryController.Apply(kind, isDark, settings.CornerStyle);
+            }
+        }
 
         // 2. Surfaces (theme palette, optional custom tint, opacity)
         var tint = settings.Theme == AppTheme.Custom ? (Color?)ParseColor(settings.CustomTintColor) : null;

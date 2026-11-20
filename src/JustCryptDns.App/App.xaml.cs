@@ -128,6 +128,7 @@ public partial class App : Application
 
         // Probe background service, recover orphaned backups, and auto-start local engines in standalone mode.
         _ = InitializeStandaloneEnginesAsync(_services, _logger);
+        _ = CheckForUpdatesInBackgroundAsync(_services, _logger);
 
         var window = _services.GetRequiredService<MainWindow>();
         _logger.LogDebug("Main window constructed.");
@@ -210,13 +211,14 @@ public partial class App : Application
                 {
                     Task.Run(() => dnsEngine.DisposeAsync().AsTask()).Wait(1500);
                 }
+
+                Task.Run(() => services.DisposeAsync().AsTask()).Wait(2000);
             }
-            catch (Exception ex) when (ex is AggregateException or OperationCanceledException or ObjectDisposedException)
+            catch (Exception ex) when (ex is AggregateException or OperationCanceledException or ObjectDisposedException or InvalidOperationException)
             {
                 _logger.LogWarning(ex, "Engine async disposal during exit did not finish cleanly.");
             }
 
-            services.Dispose();
             _services = null;
         }
 
@@ -423,6 +425,31 @@ public partial class App : Application
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Standalone startup initialization encountered an error.");
+        }
+    }
+
+    private static async Task CheckForUpdatesInBackgroundAsync(ServiceProvider services, ILogger<App> logger)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_DIR")))
+            {
+                return;
+            }
+
+            var settings = services.GetRequiredService<ISettingsService>();
+            if (!settings.Current.Updates.AutoCheckOnStartup)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(4)).ConfigureAwait(false);
+            var updateService = services.GetRequiredService<IUpdateService>();
+            await updateService.CheckForUpdatesAsync(settings.Current.Updates.IncludePrereleases).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Startup background update check failed safely.");
         }
     }
 
