@@ -7,6 +7,8 @@ Advanced DNS security, smart routing and gaming DNS optimization suite for Windo
 > Network Diagnostics, Virtualized Live Monitor, Appearance & Window Transparency, Background Windows Service, System Tray,
 > Resource Optimization, and Release Packaging (self-contained `win-x64` portable ZIP + Inno Setup installer) are implemented and verified.
 
+<img width="1183" height="765" alt="image" src="https://github.com/user-attachments/assets/80f394b2-b160-4c2b-98fa-4487d90ff019" />
+
 ## Features
 
 | Area | Status |
