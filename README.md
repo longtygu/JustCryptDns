@@ -7,7 +7,8 @@ Advanced DNS security, smart routing and gaming DNS optimization suite for Windo
 > Network Diagnostics, Virtualized Live Monitor, Appearance & Window Transparency, Background Windows Service, System Tray,
 > Resource Optimization, and Release Packaging (self-contained `win-x64` portable ZIP + Inno Setup installer) are implemented and verified.
 
-<img width="1183" height="765" alt="image" src="https://github.com/user-attachments/assets/80f394b2-b160-4c2b-98fa-4487d90ff019" />
+<img width="1182" height="759" alt="image" src="https://github.com/user-attachments/assets/5a72f284-1999-42d1-a7fc-1286c5d39cbd" />
+
 
 ## Features
 
@@ -105,7 +106,8 @@ Bộ công cụ bảo mật DNS nâng cao, định tuyến thông minh và tối
 > Tùy biến giao diện & Độ trong suốt cửa sổ, Dịch vụ chạy nền Windows Service, Khay hệ thống (System Tray), Tối ưu hóa tài nguyên
 > và Đóng gói phát hành (gói ZIP portable `win-x64` độc lập + trình cài đặt Inno Setup) đều đã được hoàn thiện và kiểm thử.
 
-<img width="1183" height="765" alt="image" src="https://github.com/user-attachments/assets/80f394b2-b160-4c2b-98fa-4487d90ff019" />
+<img width="1174" height="760" alt="image" src="https://github.com/user-attachments/assets/d9b94334-4911-48bf-9481-3ab493d76561" />
+
 
 ## Tính năng
 
