@@ -3147,4 +3147,127 @@
   <data name="Info_Connections_Grid_Meaning" xml:space="preserve">
     <value>Rời khỏi tab này hoặc thu nhỏ app sẽ dừng hoàn toàn vòng quét để giữ nguyên ping game và 0% CPU.</value>
   </data>
+  <data name="Trust_Unknown" xml:space="preserve">
+    <value>Chưa rõ</value>
+  </data>
+  <data name="Trust_TrustedSystem" xml:space="preserve">
+    <value>Hệ thống Windows</value>
+  </data>
+  <data name="Trust_Signed" xml:space="preserve">
+    <value>Đã ký số</value>
+  </data>
+  <data name="Trust_Unsigned" xml:space="preserve">
+    <value>Chưa ký số</value>
+  </data>
+  <data name="Trust_Suspicious" xml:space="preserve">
+    <value>Đáng ngờ</value>
+  </data>
+  <data name="Conn_Btn_BlockApp" xml:space="preserve">
+    <value>Chặn Ứng dụng (.exe)</value>
+  </data>
+  <data name="Conn_Btn_UnblockApp" xml:space="preserve">
+    <value>Bỏ chặn App (.exe)</value>
+  </data>
+  <data name="Conn_Btn_BlockedApps" xml:space="preserve">
+    <value>Ứng dụng chặn ({0})</value>
+  </data>
+  <data name="Conn_Btn_UpdateThreatFeeds" xml:space="preserve">
+    <value>Cập nhật CSDL Đe dọa</value>
+  </data>
+  <data name="Conn_Btn_Lockdown" xml:space="preserve">
+    <value>Khóa mạng Khẩn cấp</value>
+  </data>
+  <data name="Conn_Btn_UnlockNetwork" xml:space="preserve">
+    <value>Mở khóa Mạng</value>
+  </data>
+  <data name="Conn_Opt_DnsLeakGuard" xml:space="preserve">
+    <value>Chống rò rỉ DNS (53/853)</value>
+  </data>
+  <data name="Conn_Opt_ThreatShield" xml:space="preserve">
+    <value>Lá chắn Đe dọa IP</value>
+  </data>
+  <data name="Conn_Opt_AutoBlockThreat" xml:space="preserve">
+    <value>Tự động chặn IP độc hại</value>
+  </data>
+  <data name="Conn_Opt_VerifySignatures" xml:space="preserve">
+    <value>Xác minh Chữ ký Tiến trình</value>
+  </data>
+  <data name="Conn_Col_Trust" xml:space="preserve">
+    <value>Độ tin cậy</value>
+  </data>
+  <data name="Conn_Threat_MatchBadge" xml:space="preserve">
+    <value>ĐỘC HẠI: {0}</value>
+  </data>
+  <data name="Conn_AppBlocked_Badge" xml:space="preserve">
+    <value>Đã chặn App</value>
+  </data>
+  <data name="Conn_Ctx_BlockApp" xml:space="preserve">
+    <value>Chặn Ứng dụng (.exe)</value>
+  </data>
+  <data name="Conn_Ctx_UnblockApp" xml:space="preserve">
+    <value>Bỏ chặn Ứng dụng (.exe)</value>
+  </data>
+  <data name="Conn_Ctx_CheckAbuseIpDb" xml:space="preserve">
+    <value>Kiểm tra IP trên AbuseIPDB</value>
+  </data>
+  <data name="Conn_Ctx_CheckVirusTotal" xml:space="preserve">
+    <value>Kiểm tra IP trên VirusTotal</value>
+  </data>
+  <data name="Conn_Banner_LockdownActive" xml:space="preserve">
+    <value>CHẾ ĐỘ KHÓA MẠNG KHẨN CẤP ĐANG BẬT — Toàn bộ kết nối Internet công cộng đã bị chặn qua Windows Firewall (mạng LAN &amp; localhost vẫn giữ hoạt động).</value>
+  </data>
+  <data name="Conn_Alert_ThreatDetected" xml:space="preserve">
+    <value>Phát hiện IP độc hại: {0} → {1} ({2} — {3})</value>
+  </data>
+  <data name="Conn_Msg_DnsLeakGuardEnabled" xml:space="preserve">
+    <value>Đã bật Chống rò rỉ DNS — mọi truy vấn cổng 53/853 ra ngoài resolver đã chọn đều bị chặn.</value>
+  </data>
+  <data name="Conn_Msg_DnsLeakGuardDisabled" xml:space="preserve">
+    <value>Đã tắt Chống rò rỉ DNS.</value>
+  </data>
+  <data name="Conn_Msg_LockdownEnabled" xml:space="preserve">
+    <value>Đã kích hoạt Khóa mạng Khẩn cấp — ngắt toàn bộ lưu lượng Internet ra ngoài.</value>
+  </data>
+  <data name="Conn_Msg_LockdownDisabled" xml:space="preserve">
+    <value>Đã mở khóa mạng — kết nối Internet hoạt động bình thường trở lại.</value>
+  </data>
+  <data name="Conn_Msg_AppAdded" xml:space="preserve">
+    <value>Đã thêm ứng dụng '{0}' vào danh sách chặn. Nhấn Đồng bộ Firewall để áp dụng.</value>
+  </data>
+  <data name="Conn_Msg_AppAlreadyBlocked" xml:space="preserve">
+    <value>Ứng dụng '{0}' đã có sẵn trong danh sách chặn.</value>
+  </data>
+  <data name="Conn_Msg_AppRemoved" xml:space="preserve">
+    <value>Đã gỡ ứng dụng '{0}' khỏi danh sách chặn. Nhấn Đồng bộ Firewall để cập nhật.</value>
+  </data>
+  <data name="Conn_Msg_AppNotBlocked" xml:space="preserve">
+    <value>Ứng dụng '{0}' hiện không nằm trong danh sách chặn.</value>
+  </data>
+  <data name="Conn_Msg_ThreatFeedsUpdated" xml:space="preserve">
+    <value>Đã cập nhật CSDL Đe dọa: {0} chỉ báo ({1} IP, {2} dải CIDR).</value>
+  </data>
+  <data name="Conn_Msg_ThreatFeedsFailed" xml:space="preserve">
+    <value>Không thể cập nhật CSDL Đe dọa: {0}</value>
+  </data>
+  <data name="Conn_ThreatSummary_None" xml:space="preserve">
+    <value>CSDL Đe dọa: 0 chỉ báo (nhấn Cập nhật)</value>
+  </data>
+  <data name="Conn_ThreatSummary_Count" xml:space="preserve">
+    <value>CSDL Đe dọa: {0} chỉ báo</value>
+  </data>
+  <data name="Conn_Modal_BlockedApps_Title" xml:space="preserve">
+    <value>Danh sách Ứng dụng (.exe) đang chặn qua Firewall</value>
+  </data>
+  <data name="Conn_Shield_SectionTitle" xml:space="preserve">
+    <value>Lá chắn Bảo mật</value>
+  </data>
+  <data name="Info_Connections_Shield_Title" xml:space="preserve">
+    <value>Lá chắn Bảo mật Đa tầng &amp; Nhận diện Tổ chức Offline</value>
+  </data>
+  <data name="Info_Connections_Shield_Desc" xml:space="preserve">
+    <value>Kết hợp Chống rò rỉ DNS (cắt dải IP cổng 53/853), Chặn từng ứng dụng .exe, Xác minh chữ ký Authenticode offline, CSDL IP Độc hại (Abuse.ch Feodo + Spamhaus DROP) và Khóa mạng Khẩn cấp 1 chạm.</value>
+  </data>
+  <data name="Info_Connections_Shield_Meaning" xml:space="preserve">
+    <value>Toàn bộ tính năng dùng Windows Firewall chính thống, không kernel driver, an toàn tuyệt đối với Anti-Cheat game.</value>
+  </data>
 </root>

@@ -230,14 +230,30 @@ public sealed class ServiceStateManager : IServiceIpcHandler
                     payload = JsonSerializer.Deserialize<FirewallSyncRequestPayload>(request.StringValue, SettingsJson.Options);
                 }
 
-                var rules = payload?.Rules ?? [];
+                payload ??= new FirewallSyncRequestPayload([]);
+                if (payload.EnableDnsLeakGuard && (payload.AllowedDnsResolverIps is null || payload.AllowedDnsResolverIps.Count == 0))
+                {
+                    var ips = new List<string>();
+                    if (_resolverLibrary is not null)
+                    {
+                        foreach (var r in new[] { _resolverLibrary.GetPrimaryResolver(), _resolverLibrary.GetSecondaryResolver() })
+                        {
+                            if (!string.IsNullOrWhiteSpace(r.PrimaryIp)) ips.Add(r.PrimaryIp);
+                            if (!string.IsNullOrWhiteSpace(r.SecondaryIp)) ips.Add(r.SecondaryIp);
+                            if (!string.IsNullOrWhiteSpace(r.PrimaryIpv6)) ips.Add(r.PrimaryIpv6);
+                        }
+                    }
+
+                    payload = payload with { AllowedDnsResolverIps = ips };
+                }
+
                 var protectedContext = ProtectedIpContext.Build(
                     _networkInfo?.GetSnapshot(),
                     _resolverLibrary?.GetAll(),
                     _settings.Current.Dns,
                     _settings.Current.Bypass,
                     _reverseLookupCache);
-                var result = await _firewallManager.SyncRulesAsync(rules, protectedContext, cancellationToken).ConfigureAwait(false);
+                var result = await _firewallManager.SyncSecurityPoliciesAsync(payload, protectedContext, cancellationToken).ConfigureAwait(false);
                 var json = JsonSerializer.Serialize(result, SettingsJson.Options);
                 return new IpcResponse(
                     Success: result.Success,
@@ -253,7 +269,10 @@ public sealed class ServiceStateManager : IServiceIpcHandler
                     return new IpcResponse(false, GetSnapshot(), "FirewallUnavailable", "Windows Firewall manager is not registered.");
                 }
 
-                var result = await _firewallManager.ClearAllManagedRulesAsync(cancellationToken).ConfigureAwait(false);
+                var transientOnly = request.BoolValue == true;
+                var result = transientOnly
+                    ? await _firewallManager.ClearLockdownAndLeakGuardAsync(cancellationToken).ConfigureAwait(false)
+                    : await _firewallManager.ClearAllManagedRulesAsync(cancellationToken).ConfigureAwait(false);
                 var json = JsonSerializer.Serialize(result, SettingsJson.Options);
                 return new IpcResponse(
                     Success: result.Success,

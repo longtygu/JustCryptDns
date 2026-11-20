@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -47,6 +48,10 @@ public sealed partial class ConnectionRowViewModel : ObservableObject
     private string _processName = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrustTooltip))]
+    private string? _executablePath;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProtocolLabel))]
     private ConnectionProtocol _protocol;
 
@@ -73,6 +78,34 @@ public sealed partial class ConnectionRowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLan;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrustBadgeText))]
+    [NotifyPropertyChangedFor(nameof(TrustTooltip))]
+    private ProcessTrustLevel _trustLevel = ProcessTrustLevel.Unknown;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrustBadgeText))]
+    [NotifyPropertyChangedFor(nameof(TrustTooltip))]
+    private string? _publisher;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrustTooltip))]
+    private string? _riskReason;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrustBadgeText))]
+    [NotifyPropertyChangedFor(nameof(TrustTooltip))]
+    private bool _isThreatMatch;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrustBadgeText))]
+    [NotifyPropertyChangedFor(nameof(TrustTooltip))]
+    private string? _threatLabel;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrustBadgeText))]
+    private bool _isAppBlocked;
+
     public string FirstSeenText => FirstSeen.LocalDateTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
 
     public string LastSeenText => LastSeen.LocalDateTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
@@ -91,6 +124,60 @@ public sealed partial class ConnectionRowViewModel : ObservableObject
         : RemotePort.ToString(CultureInfo.InvariantCulture);
 
     public string StatusText => LocalizationManager.Instance.Get("ConnStatus_" + Status);
+
+    public string TrustBadgeText
+    {
+        get
+        {
+            if (IsThreatMatch && !string.IsNullOrWhiteSpace(ThreatLabel))
+            {
+                return LocalizationManager.Instance.Format("Conn_Threat_MatchBadge", ThreatLabel);
+            }
+
+            if (IsAppBlocked)
+            {
+                return LocalizationManager.Instance.Get("Conn_AppBlocked_Badge");
+            }
+
+            var baseText = LocalizationManager.Instance.Get("Trust_" + TrustLevel);
+            if ((TrustLevel is ProcessTrustLevel.Signed or ProcessTrustLevel.TrustedSystem)
+                && !string.IsNullOrWhiteSpace(Publisher))
+            {
+                return $"{baseText} ({Publisher})";
+            }
+
+            return baseText;
+        }
+    }
+
+    public string TrustTooltip
+    {
+        get
+        {
+            var sb = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(ExecutablePath))
+            {
+                sb.AppendLine(ExecutablePath);
+            }
+
+            if (!string.IsNullOrWhiteSpace(Publisher))
+            {
+                sb.AppendLine(Publisher);
+            }
+
+            if (!string.IsNullOrWhiteSpace(RiskReason))
+            {
+                sb.AppendLine(RiskReason);
+            }
+
+            if (IsThreatMatch && !string.IsNullOrWhiteSpace(ThreatLabel))
+            {
+                sb.Append(ThreatLabel);
+            }
+
+            return sb.ToString().Trim();
+        }
+    }
 
     public string Note
     {
@@ -115,10 +202,16 @@ public sealed partial class ConnectionRowViewModel : ObservableObject
         }
     }
 
-    public void NotifyLocalizationChanged() => OnPropertyChanged(nameof(StatusText));
+    public void NotifyLocalizationChanged()
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(TrustBadgeText));
+    }
 }
 
 public sealed record BlockedRuleItemViewModel(string Target, string? Note, DateTimeOffset AddedAtUtc, bool IsEnabled);
+
+public sealed record BlockedAppItemViewModel(string ExecutablePath, string ProcessName, string? Note, DateTimeOffset AddedAtUtc, bool IsEnabled);
 
 public sealed record IpNoteItemViewModel(string Ip, string Note);
 
@@ -134,11 +227,15 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     private readonly IResolverLibraryService _resolverLibrary;
     private readonly IDnsEngine _dnsEngine;
     private readonly ISettingsService _settings;
+    private readonly IProcessTrustInspector _trustInspector;
+    private readonly IThreatIntelligenceService _threatIntel;
     private readonly ILogger<ConnectionMonitorViewModel> _logger;
     private readonly DispatcherTimer _pollTimer;
     private readonly Dictionary<string, ConnectionRowViewModel> _rowsByKey = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _knownExternalProcesses = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _alertedThreats = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<(BlockedIpRule Rule, CidrNetwork Network)> _compiledRules = [];
+    private readonly HashSet<string> _blockedAppPaths = new(StringComparer.OrdinalIgnoreCase);
 
     private ProtectedIpContext? _cachedProtectedContext;
     private DateTimeOffset _protectedContextBuiltAt = DateTimeOffset.MinValue;
@@ -167,6 +264,22 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     private bool _autoScroll = true;
 
     [ObservableProperty]
+    private bool _enableDnsLeakGuard;
+
+    [ObservableProperty]
+    private bool _enableThreatIntelligence = true;
+
+    [ObservableProperty]
+    private bool _autoBlockDetectedThreats;
+
+    [ObservableProperty]
+    private bool _verifyProcessSignatures = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LockdownButtonLabel))]
+    private bool _isLockdownActive;
+
+    [ObservableProperty]
     private string _searchQuery = string.Empty;
 
     [ObservableProperty]
@@ -178,6 +291,10 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(BlockedListButtonLabel))]
     private int _blockedRuleCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BlockedAppsButtonLabel))]
+    private int _blockedAppCount;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SyncButtonLabel))]
@@ -199,6 +316,12 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     private string? _newProcessAlertText;
 
     [ObservableProperty]
+    private string? _threatAlertText;
+
+    [ObservableProperty]
+    private int _threatIndicatorCount;
+
+    [ObservableProperty]
     private bool _isBusy;
 
     [ObservableProperty]
@@ -209,6 +332,9 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
 
     [ObservableProperty]
     private bool _isBlockedListModalOpen;
+
+    [ObservableProperty]
+    private bool _isBlockedAppsModalOpen;
 
     [ObservableProperty]
     private bool _isNotesModalOpen;
@@ -249,6 +375,8 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         IResolverLibraryService resolverLibrary,
         IDnsEngine dnsEngine,
         ISettingsService settings,
+        IProcessTrustInspector trustInspector,
+        IThreatIntelligenceService threatIntel,
         ILogger<ConnectionMonitorViewModel> logger)
         : base("Nav_Connections", "Page_Connections_Subtitle")
     {
@@ -260,6 +388,8 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         _resolverLibrary = resolverLibrary;
         _dnsEngine = dnsEngine;
         _settings = settings;
+        _trustInspector = trustInspector;
+        _threatIntel = threatIntel;
         _logger = logger;
 
         ConnectionsView = CollectionViewSource.GetDefaultView(Connections);
@@ -267,6 +397,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
 
         LoadPreferencesFromSettings();
         RebuildCompiledRules();
+        UpdateThreatFeedSummary();
 
         _pollTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -288,19 +419,32 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
 
     public ObservableCollection<BlockedRuleItemViewModel> ManagedBlockedRules { get; } = [];
 
+    public ObservableCollection<BlockedAppItemViewModel> ManagedBlockedApps { get; } = [];
+
     public ObservableCollection<IpNoteItemViewModel> ManagedNotes { get; } = [];
 
     public bool IsEditingCell { get; set; }
 
     public bool IsAnyModalOpen =>
-        IsBlockCidrModalOpen || IsUnblockWebsiteModalOpen || IsBlockedListModalOpen || IsNotesModalOpen;
+        IsBlockCidrModalOpen || IsUnblockWebsiteModalOpen || IsBlockedListModalOpen || IsBlockedAppsModalOpen || IsNotesModalOpen;
 
     public string BlockedListButtonLabel =>
         LocalizationManager.Instance.Format("Conn_Btn_BlockedList", BlockedRuleCount);
 
+    public string BlockedAppsButtonLabel =>
+        LocalizationManager.Instance.Format("Conn_Btn_BlockedApps", BlockedAppCount);
+
     public string SyncButtonLabel => UnsyncedCount > 0
         ? LocalizationManager.Instance.Format("Conn_Btn_SyncBlocklistCount", UnsyncedCount)
         : LocalizationManager.Instance.Get("Conn_Btn_SyncBlocklist");
+
+    public string LockdownButtonLabel => IsLockdownActive
+        ? LocalizationManager.Instance.Get("Conn_Btn_UnlockNetwork")
+        : LocalizationManager.Instance.Get("Conn_Btn_Lockdown");
+
+    public string ThreatFeedSummaryText => ThreatIndicatorCount > 0
+        ? LocalizationManager.Instance.Format("Conn_ThreatSummary_Count", ThreatIndicatorCount)
+        : LocalizationManager.Instance.Get("Conn_ThreatSummary_None");
 
     public override void OnNavigatedTo()
     {
@@ -387,6 +531,10 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             AlertNewUnknownProcess = conn.AlertNewUnknownProcess;
             HideLanConnections = conn.HideLanConnections;
             AutoScroll = conn.AutoScroll;
+            EnableDnsLeakGuard = conn.EnableDnsLeakGuard;
+            EnableThreatIntelligence = conn.EnableThreatIntelligence;
+            AutoBlockDetectedThreats = conn.AutoBlockDetectedThreats;
+            VerifyProcessSignatures = conn.VerifyProcessSignatures;
         }
         finally
         {
@@ -394,7 +542,8 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         }
 
         BlockedRuleCount = conn.BlockedRules.Count(r => r.IsEnabled);
-        UnsyncedCount = conn.HasUnsyncedFirewallChanges ? Math.Max(1, BlockedRuleCount) : 0;
+        BlockedAppCount = conn.BlockedApps.Count(a => a.IsEnabled);
+        UnsyncedCount = conn.HasUnsyncedFirewallChanges ? Math.Max(1, BlockedRuleCount + BlockedAppCount) : 0;
         RefreshManagedCollections();
     }
 
@@ -409,7 +558,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         if (value && _isNavigatedActive && _isWindowVisible)
         {
             _enrichment.Resume();
-            foreach (var row in Connections.Where(r => !r.IsLan && r.RemoteIp != "*" && string.IsNullOrEmpty(r.Organization)).Take(25))
+            foreach (var row in Connections.Where(r => !r.IsLan && r.RemoteIp != "*" && !_enrichment.TryGetCached(r.RemoteIp, out _)).Take(25))
             {
                 _enrichment.EnqueueLookup(row.RemoteIp);
             }
@@ -453,6 +602,56 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         }
 
         _settings.UpdateDeferred(s => s.Connections.AutoScroll = value);
+    }
+
+    partial void OnEnableDnsLeakGuardChanged(bool value)
+    {
+        if (_suppressPreferencePersist)
+        {
+            return;
+        }
+
+        _settings.UpdateDeferred(s => s.Connections.EnableDnsLeakGuard = value);
+        _ = ApplySecurityShieldToggleAsync(isLeakToggle: true, desiredState: value);
+    }
+
+    partial void OnEnableThreatIntelligenceChanged(bool value)
+    {
+        if (_suppressPreferencePersist)
+        {
+            return;
+        }
+
+        _settings.UpdateDeferred(s => s.Connections.EnableThreatIntelligence = value);
+        if (!value)
+        {
+            ThreatAlertText = null;
+            foreach (var row in Connections)
+            {
+                row.IsThreatMatch = false;
+                row.ThreatLabel = null;
+            }
+        }
+    }
+
+    partial void OnAutoBlockDetectedThreatsChanged(bool value)
+    {
+        if (_suppressPreferencePersist)
+        {
+            return;
+        }
+
+        _settings.UpdateDeferred(s => s.Connections.AutoBlockDetectedThreats = value);
+    }
+
+    partial void OnVerifyProcessSignaturesChanged(bool value)
+    {
+        if (_suppressPreferencePersist)
+        {
+            return;
+        }
+
+        _settings.UpdateDeferred(s => s.Connections.VerifyProcessSignatures = value);
     }
 
     partial void OnSearchQueryChanged(string value) => RefreshFilterSafe();
@@ -520,8 +719,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         }
 
         var ip = SelectedConnection.RemoteIp;
-        var exactRemoved = RemoveExactTarget(ip);
-        if (exactRemoved)
+        if (RemoveExactTarget(ip))
         {
             return;
         }
@@ -538,6 +736,85 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         }
 
         SetBanner(LocalizationManager.Instance.Format("Conn_Modal_UnblockWeb_NoneFound", ip, ip), isError: false);
+    }
+
+    [RelayCommand]
+    private void BlockSelectedApp()
+    {
+        if (SelectedConnection is null)
+        {
+            SetBanner(LocalizationManager.Instance.Get("Conn_Msg_NoSelection"), isError: true);
+            return;
+        }
+
+        var eval = AppBlockerGuard.Evaluate(SelectedConnection.ExecutablePath);
+        if (!eval.IsValid || string.IsNullOrWhiteSpace(eval.NormalizedPath))
+        {
+            SetBanner(eval.ErrorMessage ?? "Cannot block selected process.", isError: true);
+            return;
+        }
+
+        var exePath = eval.NormalizedPath;
+        var procName = string.IsNullOrWhiteSpace(SelectedConnection.ProcessName)
+            ? Path.GetFileName(exePath)
+            : SelectedConnection.ProcessName;
+
+        var existing = _settings.Current.Connections.BlockedApps.FirstOrDefault(a =>
+            string.Equals(a.ExecutablePath, exePath, StringComparison.OrdinalIgnoreCase));
+        if (existing is { IsEnabled: true })
+        {
+            SetBanner(LocalizationManager.Instance.Format("Conn_Msg_AppAlreadyBlocked", procName), isError: false);
+            return;
+        }
+
+        _settings.UpdateDeferred(s =>
+        {
+            if (existing is not null)
+            {
+                var idx = s.Connections.BlockedApps.IndexOf(existing);
+                s.Connections.BlockedApps[idx] = existing with { IsEnabled = true };
+            }
+            else
+            {
+                s.Connections.BlockedApps.Add(new BlockedAppRule
+                {
+                    ExecutablePath = exePath,
+                    ProcessName = procName,
+                    Note = SelectedConnection.Note,
+                    AddedAtUtc = DateTimeOffset.UtcNow,
+                    IsEnabled = true,
+                });
+            }
+
+            s.Connections.HasUnsyncedFirewallChanges = true;
+        });
+
+        UnsyncedCount++;
+        RebuildCompiledRules();
+        RefreshManagedCollections();
+        RecomputeAllRowStatuses();
+        SetBanner(LocalizationManager.Instance.Format("Conn_Msg_AppAdded", procName), isError: false);
+    }
+
+    [RelayCommand]
+    private void UnblockSelectedApp()
+    {
+        if (SelectedConnection is null)
+        {
+            SetBanner(LocalizationManager.Instance.Get("Conn_Msg_NoSelection"), isError: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedConnection.ExecutablePath))
+        {
+            SetBanner(LocalizationManager.Instance.Format("Conn_Msg_AppNotBlocked", SelectedConnection.ProcessName), isError: false);
+            return;
+        }
+
+        if (!RemoveBlockedAppByPath(SelectedConnection.ExecutablePath))
+        {
+            SetBanner(LocalizationManager.Instance.Format("Conn_Msg_AppNotBlocked", SelectedConnection.ProcessName), isError: false);
+        }
     }
 
     [RelayCommand]
@@ -675,14 +952,21 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private void OpenBlockedAppsModal()
+    {
+        CancelModals();
+        RefreshManagedCollections();
+        IsBlockedAppsModalOpen = true;
+        NotifyModalFlagsChanged();
+    }
+
+    [RelayCommand]
     private void RemoveBlockedRule(string? target)
     {
-        if (string.IsNullOrWhiteSpace(target))
+        if (!string.IsNullOrWhiteSpace(target))
         {
-            return;
+            _ = RemoveExactTarget(target);
         }
-
-        _ = RemoveExactTarget(target);
     }
 
     [RelayCommand]
@@ -717,6 +1001,46 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private void RemoveBlockedApp(string? executablePath)
+    {
+        if (!string.IsNullOrWhiteSpace(executablePath))
+        {
+            _ = RemoveBlockedAppByPath(executablePath);
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleBlockedApp(string? executablePath)
+    {
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return;
+        }
+
+        var changed = false;
+        _settings.UpdateDeferred(s =>
+        {
+            var index = s.Connections.BlockedApps.FindIndex(a =>
+                string.Equals(a.ExecutablePath, executablePath, StringComparison.OrdinalIgnoreCase));
+            if (index >= 0)
+            {
+                var current = s.Connections.BlockedApps[index];
+                s.Connections.BlockedApps[index] = current with { IsEnabled = !current.IsEnabled };
+                s.Connections.HasUnsyncedFirewallChanges = true;
+                changed = true;
+            }
+        });
+
+        if (changed)
+        {
+            UnsyncedCount++;
+            RebuildCompiledRules();
+            RefreshManagedCollections();
+            RecomputeAllRowStatuses();
+        }
+    }
+
+    [RelayCommand]
     private async Task ClearAllFirewallRulesAsync()
     {
         IsBusy = true;
@@ -732,8 +1056,21 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                     _settings.UpdateDeferred(s =>
                     {
                         s.Connections.BlockedRules.Clear();
+                        s.Connections.BlockedApps.Clear();
+                        s.Connections.EnableDnsLeakGuard = false;
                         s.Connections.HasUnsyncedFirewallChanges = false;
                     });
+                    _suppressPreferencePersist = true;
+                    try
+                    {
+                        EnableDnsLeakGuard = false;
+                    }
+                    finally
+                    {
+                        _suppressPreferencePersist = false;
+                    }
+
+                    IsLockdownActive = false;
                     UnsyncedCount = 0;
                     RebuildCompiledRules();
                     RefreshManagedCollections();
@@ -750,6 +1087,67 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         {
             await RunOnUiAsync(() => IsBusy = false).ConfigureAwait(false);
         }
+    }
+
+    [RelayCommand]
+    private async Task ToggleEmergencyLockdownAsync()
+    {
+        var targetState = !IsLockdownActive;
+        await ApplySecurityShieldToggleAsync(isLeakToggle: false, desiredState: targetState).ConfigureAwait(false);
+    }
+
+    [RelayCommand]
+    private async Task UpdateThreatFeedsAsync()
+    {
+        IsBusy = true;
+        try
+        {
+            var status = await _threatIntel.RefreshFeedsAsync().ConfigureAwait(false);
+            await RunOnUiAsync(() =>
+            {
+                UpdateThreatFeedSummary();
+                if (string.IsNullOrWhiteSpace(status.LastError))
+                {
+                    SetBanner(
+                        LocalizationManager.Instance.Format("Conn_Msg_ThreatFeedsUpdated", status.IndicatorCount, status.IpCount, status.CidrCount),
+                        isError: false);
+                }
+                else
+                {
+                    SetBanner(
+                        LocalizationManager.Instance.Format("Conn_Msg_ThreatFeedsFailed", status.LastError),
+                        isError: status.IndicatorCount == 0);
+                }
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            await RunOnUiAsync(() => IsBusy = false).ConfigureAwait(false);
+        }
+    }
+
+    [RelayCommand]
+    private void InspectIpAbuseIpDb()
+    {
+        if (SelectedConnection is not { RemoteIp.Length: > 0 } row
+            || !IPAddress.TryParse(row.RemoteIp, out var ip))
+        {
+            return;
+        }
+
+        OpenExternalUrl($"https://www.abuseipdb.com/check/{Uri.EscapeDataString(ip.ToString())}");
+    }
+
+    [RelayCommand]
+    private void InspectIpVirusTotal()
+    {
+        if (SelectedConnection is not { RemoteIp.Length: > 0 } row
+            || !IPAddress.TryParse(row.RemoteIp, out var ip))
+        {
+            return;
+        }
+
+        OpenExternalUrl($"https://www.virustotal.com/gui/ip-address/{Uri.EscapeDataString(ip.ToString())}");
     }
 
     [RelayCommand]
@@ -789,12 +1187,10 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     [RelayCommand]
     private void DeleteNoteEntry(string? key)
     {
-        if (string.IsNullOrWhiteSpace(key))
+        if (!string.IsNullOrWhiteSpace(key))
         {
-            return;
+            PersistNoteForKey(key, string.Empty);
         }
-
-        PersistNoteForKey(key, string.Empty);
     }
 
     [RelayCommand]
@@ -803,6 +1199,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         IsBlockCidrModalOpen = false;
         IsUnblockWebsiteModalOpen = false;
         IsBlockedListModalOpen = false;
+        IsBlockedAppsModalOpen = false;
         IsNotesModalOpen = false;
         CidrValidationError = null;
         PendingRiskWarning = null;
@@ -817,8 +1214,14 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         IsBusy = true;
         try
         {
-            var rules = _settings.Current.Connections.BlockedRules.ToList();
-            var result = await _firewall.SyncAsync(rules).ConfigureAwait(false);
+            var conn = _settings.Current.Connections;
+            var payload = new FirewallSyncRequestPayload(
+                conn.BlockedRules.ToList(),
+                conn.BlockedApps.ToList(),
+                EnableDnsLeakGuard,
+                IsLockdownActive);
+
+            var result = await _firewall.SyncSecurityAsync(payload).ConfigureAwait(false);
 
             await RunOnUiAsync(() =>
             {
@@ -862,7 +1265,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
 
         var rows = ConnectionsView.Cast<ConnectionRowViewModel>().ToList();
         var sb = new StringBuilder();
-        sb.AppendLine("FirstSeen,LastSeen,Process,PID,Protocol,RemoteIP,Port,Count,Domain,Status,Organization,Note");
+        sb.AppendLine("FirstSeen,LastSeen,Process,PID,Protocol,RemoteIP,Port,Count,Domain,Status,Organization,Trust,Threat,ExecutablePath,Note");
         foreach (var row in rows)
         {
             sb.Append(CsvEscape(row.FirstSeen.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))).Append(',')
@@ -876,6 +1279,9 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
               .Append(CsvEscape(row.Domain)).Append(',')
               .Append(CsvEscape(row.StatusText)).Append(',')
               .Append(CsvEscape(row.Organization)).Append(',')
+              .Append(CsvEscape(row.TrustBadgeText)).Append(',')
+              .Append(CsvEscape(row.ThreatLabel)).Append(',')
+              .Append(CsvEscape(row.ExecutablePath)).Append(',')
               .AppendLine(CsvEscape(row.Note));
         }
 
@@ -914,6 +1320,9 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     private void DismissProcessAlert() => NewProcessAlertText = null;
 
     [RelayCommand]
+    private void DismissThreatAlert() => ThreatAlertText = null;
+
+    [RelayCommand]
     private void ClearClosedConnections()
     {
         var closedKeys = Connections
@@ -933,7 +1342,67 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         UpdateSummaryCounts();
     }
 
-    private void AddBlockedTarget(string canonicalTarget, string? note)
+    private async Task ApplySecurityShieldToggleAsync(bool isLeakToggle, bool desiredState)
+    {
+        IsBusy = true;
+        try
+        {
+            var conn = _settings.Current.Connections;
+            var payload = new FirewallSyncRequestPayload(
+                conn.BlockedRules.ToList(),
+                conn.BlockedApps.ToList(),
+                isLeakToggle ? desiredState : EnableDnsLeakGuard,
+                isLeakToggle ? IsLockdownActive : desiredState);
+
+            var result = await _firewall.SyncSecurityAsync(payload).ConfigureAwait(false);
+            await RunOnUiAsync(() =>
+            {
+                IsWindowsFirewallEnabled = result.IsWindowsFirewallEnabled;
+                RequiresElevationHint = result.RequiresElevation;
+                if (result.Success)
+                {
+                    if (!isLeakToggle)
+                    {
+                        IsLockdownActive = desiredState;
+                        SetBanner(
+                            LocalizationManager.Instance.Get(desiredState ? "Conn_Msg_LockdownEnabled" : "Conn_Msg_LockdownDisabled"),
+                            isError: false);
+                    }
+                    else
+                    {
+                        SetBanner(
+                            LocalizationManager.Instance.Get(desiredState ? "Conn_Msg_DnsLeakGuardEnabled" : "Conn_Msg_DnsLeakGuardDisabled"),
+                            isError: false);
+                    }
+                }
+                else
+                {
+                    if (isLeakToggle)
+                    {
+                        _suppressPreferencePersist = true;
+                        try
+                        {
+                            EnableDnsLeakGuard = !desiredState;
+                        }
+                        finally
+                        {
+                            _suppressPreferencePersist = false;
+                        }
+
+                        _settings.UpdateDeferred(s => s.Connections.EnableDnsLeakGuard = !desiredState);
+                    }
+
+                    SetBanner(result.Message ?? "Failed to update Windows Firewall security policy.", isError: true);
+                }
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            await RunOnUiAsync(() => IsBusy = false).ConfigureAwait(false);
+        }
+    }
+
+    private void AddBlockedTarget(string canonicalTarget, string? note, bool autoSyncIfRequested = false)
     {
         var existing = _settings.Current.Connections.BlockedRules.FirstOrDefault(r =>
             string.Equals(r.Target, canonicalTarget, StringComparison.OrdinalIgnoreCase));
@@ -980,6 +1449,11 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         RefreshManagedCollections();
         RecomputeAllRowStatuses();
         SetBanner(LocalizationManager.Instance.Format("Conn_Msg_RuleAdded", canonicalTarget), isError: false);
+
+        if (autoSyncIfRequested)
+        {
+            _ = SyncBlocklistAsync();
+        }
     }
 
     private bool RemoveExactTarget(string target)
@@ -1006,6 +1480,32 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             RefreshManagedCollections();
             RecomputeAllRowStatuses();
             SetBanner(LocalizationManager.Instance.Format("Conn_Msg_RuleRemoved", normalized), isError: false);
+        }
+
+        return removed;
+    }
+
+    private bool RemoveBlockedAppByPath(string executablePath)
+    {
+        var fullPath = Path.GetFullPath(executablePath.Trim());
+        var removed = false;
+        _settings.UpdateDeferred(s =>
+        {
+            removed = s.Connections.BlockedApps.RemoveAll(a =>
+                string.Equals(a.ExecutablePath, fullPath, StringComparison.OrdinalIgnoreCase)) > 0;
+            if (removed)
+            {
+                s.Connections.HasUnsyncedFirewallChanges = true;
+            }
+        });
+
+        if (removed)
+        {
+            UnsyncedCount++;
+            RebuildCompiledRules();
+            RefreshManagedCollections();
+            RecomputeAllRowStatuses();
+            SetBanner(LocalizationManager.Instance.Format("Conn_Msg_AppRemoved", Path.GetFileName(fullPath)), isError: false);
         }
 
         return removed;
@@ -1067,7 +1567,35 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                 await _firewall.PullReverseDnsFromServiceIfConnectedAsync().ConfigureAwait(false);
             }
 
-            var rawList = await Task.Run(() => _monitor.CaptureSnapshot()).ConfigureAwait(false);
+            var verifySigs = VerifyProcessSignatures;
+            var checkThreats = EnableThreatIntelligence;
+            var (rawList, trustByPath, threatsByIp) = await Task.Run(() =>
+            {
+                var snapshot = _monitor.CaptureSnapshot();
+                var trustMap = new Dictionary<string, ProcessTrustInfo>(StringComparer.OrdinalIgnoreCase);
+                var threatMap = new Dictionary<string, ThreatIntelMatch>(StringComparer.OrdinalIgnoreCase);
+                ProtectedIpContext? protectedCtx = null;
+
+                foreach (var raw in snapshot)
+                {
+                    if (verifySigs && !string.IsNullOrWhiteSpace(raw.ExecutablePath) && !trustMap.ContainsKey(raw.ExecutablePath))
+                    {
+                        trustMap[raw.ExecutablePath] = _trustInspector.Inspect(raw.ExecutablePath, raw.ProcessName);
+                    }
+
+                    if (checkThreats && raw.RemoteIp != "*" && !threatMap.ContainsKey(raw.RemoteIp))
+                    {
+                        protectedCtx ??= GetProtectedIpContext();
+                        if (_threatIntel.TryMatch(raw.RemoteIp, protectedCtx, out var threat))
+                        {
+                            threatMap[raw.RemoteIp] = threat;
+                        }
+                    }
+                }
+
+                return (snapshot, trustMap, threatMap);
+            }).ConfigureAwait(false);
+
             await RunOnUiAsync(() =>
             {
                 if (_disposed || !_isNavigatedActive)
@@ -1075,7 +1603,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                     return;
                 }
 
-                ApplySnapshotToUi(rawList);
+                ApplySnapshotToUi(rawList, trustByPath, threatsByIp);
             }).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -1088,7 +1616,10 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         }
     }
 
-    private void ApplySnapshotToUi(IReadOnlyList<RawSocketConnection> rawList)
+    private void ApplySnapshotToUi(
+        IReadOnlyList<RawSocketConnection> rawList,
+        Dictionary<string, ProcessTrustInfo> trustByPath,
+        Dictionary<string, ThreatIntelMatch> threatsByIp)
     {
         if (IsEditingCell || (ConnectionsView is IEditableCollectionView editable && (editable.IsEditingItem || editable.IsAddingNew)))
         {
@@ -1114,6 +1645,8 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
 
         ConnectionRowViewModel? lastNewVisible = null;
         var newlyAddedAny = false;
+        string? autoBlockTarget = null;
+        string? autoBlockReason = null;
 
         foreach (var (key, group) in grouped)
         {
@@ -1123,7 +1656,48 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             var isLan = !isUdp && CidrNetwork.IsLanOrLocalString(raw.RemoteIp);
             var status = EvaluateRowStatus(raw.RemoteIp, activeInSnapshot: true);
             var resolvedDomain = ResolveDisplayDomain(raw.RemoteIp);
-            var resolvedOrg = ResolveDisplayOrg(raw.RemoteIp);
+            var resolvedOrg = ResolveDisplayOrg(raw.RemoteIp, resolvedDomain);
+            var isAppBlocked = !string.IsNullOrWhiteSpace(raw.ExecutablePath) && _blockedAppPaths.Contains(raw.ExecutablePath);
+
+            ProcessTrustInfo? trustInfo = null;
+            if (!string.IsNullOrWhiteSpace(raw.ExecutablePath) && trustByPath.TryGetValue(raw.ExecutablePath, out var ti))
+            {
+                trustInfo = ti;
+            }
+            else if (string.Equals(raw.ProcessName, "System", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(raw.ProcessName, "System Idle", StringComparison.OrdinalIgnoreCase))
+            {
+                trustInfo = new ProcessTrustInfo(raw.ProcessName, ProcessTrustLevel.TrustedSystem, "Microsoft Windows", false, false, null);
+            }
+
+            var hasThreat = threatsByIp.TryGetValue(raw.RemoteIp, out var threatMatch);
+            var threatLabel = hasThreat && threatMatch is not null ? $"{threatMatch.Source} ({threatMatch.Category})" : null;
+
+            if (hasThreat && threatMatch is not null)
+            {
+                if (_alertedThreats.Add(raw.RemoteIp))
+                {
+                    ThreatAlertText = LocalizationManager.Instance.Format(
+                        "Conn_Alert_ThreatDetected",
+                        raw.ProcessName,
+                        raw.RemoteIp,
+                        threatMatch.Source,
+                        threatMatch.Category);
+                }
+
+                if (AutoBlockDetectedThreats
+                    && autoBlockTarget is null
+                    && status != ConnectionDisplayStatus.BlockedIp
+                    && status != ConnectionDisplayStatus.BlockedRange)
+                {
+                    var eval = IpBlockerGuard.Evaluate(raw.RemoteIp, GetProtectedIpContext());
+                    if (eval.IsValid && !eval.IsProtectedViolation && eval.NormalizedNetwork is { } cidr)
+                    {
+                        autoBlockTarget = cidr.CanonicalText;
+                        autoBlockReason = $"{threatMatch.Source}: {threatMatch.Category} ({raw.ProcessName})";
+                    }
+                }
+            }
 
             if (!isUdp && !isLan)
             {
@@ -1150,6 +1724,12 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                     row.ProcessName = raw.ProcessName;
                 }
 
+                if (!string.IsNullOrWhiteSpace(raw.ExecutablePath)
+                    && !string.Equals(row.ExecutablePath, raw.ExecutablePath, StringComparison.Ordinal))
+                {
+                    row.ExecutablePath = raw.ExecutablePath;
+                }
+
                 row.ConnectionCount = wasClosed
                     ? row.ConnectionCount + socketCount
                     : Math.Max(row.ConnectionCount, socketCount);
@@ -1168,6 +1748,17 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                 {
                     row.Status = status;
                 }
+
+                if (trustInfo is not null)
+                {
+                    row.TrustLevel = trustInfo.Level;
+                    row.Publisher = trustInfo.Publisher;
+                    row.RiskReason = trustInfo.RiskReason;
+                }
+
+                row.IsThreatMatch = hasThreat;
+                row.ThreatLabel = threatLabel;
+                row.IsAppBlocked = isAppBlocked;
             }
             else
             {
@@ -1177,6 +1768,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                     LastSeen = now,
                     ProcessId = raw.ProcessId,
                     ProcessName = raw.ProcessName,
+                    ExecutablePath = raw.ExecutablePath,
                     Protocol = raw.Protocol,
                     RemoteIp = raw.RemoteIp,
                     RemotePort = raw.RemotePort,
@@ -1185,6 +1777,12 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                     Organization = resolvedOrg,
                     Status = status,
                     IsLan = isLan,
+                    TrustLevel = trustInfo?.Level ?? ProcessTrustLevel.Unknown,
+                    Publisher = trustInfo?.Publisher,
+                    RiskReason = trustInfo?.RiskReason,
+                    IsThreatMatch = hasThreat,
+                    ThreatLabel = threatLabel,
+                    IsAppBlocked = isAppBlocked,
                 };
 
                 var noteKey = GetNoteStorageKey(created);
@@ -1203,13 +1801,12 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                 }
             }
 
-            if (EnableOnlineLookup && !isUdp && !isLan && string.IsNullOrEmpty(resolvedOrg))
+            if (EnableOnlineLookup && !isUdp && !isLan && !_enrichment.TryGetCached(raw.RemoteIp, out _))
             {
                 _enrichment.EnqueueLookup(raw.RemoteIp);
             }
         }
 
-        // Mark entries absent from the active snapshot as Closed (unless currently pinned by an active block rule? Keep Closed for exited sockets)
         foreach (var (key, row) in _rowsByKey)
         {
             if (!grouped.ContainsKey(key) && row.Status != ConnectionDisplayStatus.Closed)
@@ -1221,6 +1818,11 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         _baselineCaptured = true;
         PruneHistoryIfNeeded();
         UpdateSummaryCounts();
+
+        if (autoBlockTarget is not null)
+        {
+            AddBlockedTarget(autoBlockTarget, autoBlockReason, autoSyncIfRequested: true);
+        }
 
         if (newlyAddedAny && AutoScroll && lastNewVisible is not null && !IsEditingCell)
         {
@@ -1240,7 +1842,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             return cachedDomain;
         }
 
-        if (EnableOnlineLookup && _enrichment.TryGetCached(remoteIp, out var info) && !string.IsNullOrWhiteSpace(info.ReverseDns))
+        if (_enrichment.TryGetCached(remoteIp, out var info) && !string.IsNullOrWhiteSpace(info.ReverseDns))
         {
             return info.ReverseDns;
         }
@@ -1248,19 +1850,36 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         return string.Empty;
     }
 
-    private string ResolveDisplayOrg(string remoteIp)
+    private string ResolveDisplayOrg(string remoteIp, string? domain)
     {
-        if (remoteIp == "*" || !EnableOnlineLookup || !_enrichment.TryGetCached(remoteIp, out var info))
+        if (remoteIp == "*")
         {
             return string.Empty;
         }
 
-        if (!string.IsNullOrWhiteSpace(info.Organization) && !string.IsNullOrWhiteSpace(info.Country))
+        // 1. Persisted / online enrichment cache (zero network calls here)
+        if (_enrichment.TryGetCached(remoteIp, out var info) && !string.IsNullOrWhiteSpace(info.Organization))
         {
-            return $"{info.Organization} ({info.Country})";
+            return !string.IsNullOrWhiteSpace(info.Country)
+                ? $"{info.Organization} ({info.Country})"
+                : info.Organization;
         }
 
-        return info.Organization ?? info.Country ?? info.ReverseDns ?? string.Empty;
+        // 2. Instant zero-network offline IP CIDR + DNS suffix attribution
+        if (OfflineOrganizationDatabase.TryResolve(remoteIp, domain, out var offline))
+        {
+            return !string.IsNullOrWhiteSpace(offline.CountryCode)
+                ? $"{offline.Organization} ({offline.CountryCode})"
+                : offline.Organization;
+        }
+
+        // 3. Fallback cached rDNS hostname if any
+        if (info is not null && !string.IsNullOrWhiteSpace(info.ReverseDns))
+        {
+            return info.ReverseDns;
+        }
+
+        return string.Empty;
     }
 
     private ConnectionDisplayStatus EvaluateRowStatus(string remoteIp, bool activeInSnapshot)
@@ -1308,12 +1927,13 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     {
         foreach (var row in Connections)
         {
-            if (row.Status == ConnectionDisplayStatus.Closed)
+            if (row.Status != ConnectionDisplayStatus.Closed)
             {
-                continue;
+                row.Status = EvaluateRowStatus(row.RemoteIp, activeInSnapshot: true);
             }
 
-            row.Status = EvaluateRowStatus(row.RemoteIp, activeInSnapshot: true);
+            row.IsAppBlocked = !string.IsNullOrWhiteSpace(row.ExecutablePath)
+                && _blockedAppPaths.Contains(row.ExecutablePath);
         }
 
         UpdateSummaryCounts();
@@ -1324,6 +1944,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
         TotalCount = Connections.Count;
         ActiveCount = Connections.Count(r => r.Status != ConnectionDisplayStatus.Closed);
         BlockedRuleCount = _compiledRules.Count;
+        BlockedAppCount = _blockedAppPaths.Count;
     }
 
     private void RebuildCompiledRules()
@@ -1337,7 +1958,17 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             }
         }
 
+        _blockedAppPaths.Clear();
+        foreach (var appRule in _settings.Current.Connections.BlockedApps)
+        {
+            if (appRule.IsEnabled && !string.IsNullOrWhiteSpace(appRule.ExecutablePath))
+            {
+                _blockedAppPaths.Add(appRule.ExecutablePath);
+            }
+        }
+
         BlockedRuleCount = _compiledRules.Count;
+        BlockedAppCount = _blockedAppPaths.Count;
     }
 
     private void RefreshManagedCollections()
@@ -1348,11 +1979,23 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             ManagedBlockedRules.Add(new BlockedRuleItemViewModel(rule.Target, rule.Note, rule.AddedAtUtc, rule.IsEnabled));
         }
 
+        ManagedBlockedApps.Clear();
+        foreach (var appRule in _settings.Current.Connections.BlockedApps.OrderByDescending(a => a.AddedAtUtc))
+        {
+            ManagedBlockedApps.Add(new BlockedAppItemViewModel(appRule.ExecutablePath, appRule.ProcessName, appRule.Note, appRule.AddedAtUtc, appRule.IsEnabled));
+        }
+
         ManagedNotes.Clear();
         foreach (var (ip, note) in _settings.Current.Connections.IpNotes.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
         {
             ManagedNotes.Add(new IpNoteItemViewModel(ip, note));
         }
+    }
+
+    private void UpdateThreatFeedSummary()
+    {
+        ThreatIndicatorCount = _threatIntel.GetStatus().IndicatorCount;
+        OnPropertyChanged(nameof(ThreatFeedSummaryText));
     }
 
     private bool FilterConnection(object obj)
@@ -1379,6 +2022,9 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             || row.PortText.Contains(q, StringComparison.OrdinalIgnoreCase)
             || row.ProtocolLabel.Contains(q, StringComparison.OrdinalIgnoreCase)
             || row.Organization.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || row.TrustBadgeText.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || (!string.IsNullOrEmpty(row.ExecutablePath) && row.ExecutablePath.Contains(q, StringComparison.OrdinalIgnoreCase))
+            || (!string.IsNullOrEmpty(row.ThreatLabel) && row.ThreatLabel.Contains(q, StringComparison.OrdinalIgnoreCase))
             || row.Note.Contains(q, StringComparison.OrdinalIgnoreCase)
             || row.StatusText.Contains(q, StringComparison.OrdinalIgnoreCase);
     }
@@ -1442,6 +2088,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             {
                 IsWindowsFirewallEnabled = fwStatus.IsWindowsFirewallEnabled;
                 RequiresElevationHint = fwStatus.RequiresElevation;
+                IsLockdownActive = fwStatus.IsLockdownActive;
             }).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -1471,7 +2118,11 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
                     row.Domain = info.ReverseDns;
                 }
 
-                row.Organization = ResolveDisplayOrg(info.Ip);
+                var updatedOrg = ResolveDisplayOrg(info.Ip, row.Domain);
+                if (!string.IsNullOrWhiteSpace(updatedOrg))
+                {
+                    row.Organization = updatedOrg;
+                }
             }
         });
     }
@@ -1486,12 +2137,27 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
             }
 
             OnPropertyChanged(nameof(BlockedListButtonLabel));
+            OnPropertyChanged(nameof(BlockedAppsButtonLabel));
             OnPropertyChanged(nameof(SyncButtonLabel));
+            OnPropertyChanged(nameof(LockdownButtonLabel));
+            OnPropertyChanged(nameof(ThreatFeedSummaryText));
             foreach (var row in Connections)
             {
                 row.NotifyLocalizationChanged();
             }
         });
+    }
+
+    private void OpenExternalUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not launch browser URL {Url}.", url);
+        }
     }
 
     private void SetBanner(string message, bool isError)

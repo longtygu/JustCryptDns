@@ -20,6 +20,7 @@ using JustCryptDns.Network.Diagnostics;
 using JustCryptDns.Network.Failover;
 using JustCryptDns.Network.Gaming;
 using JustCryptDns.Network.Monitoring;
+using JustCryptDns.Network.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -60,6 +61,8 @@ public static class ServiceRegistration
         services.AddSingleton<INetworkDiagnosticsService, NetworkDiagnosticsService>();
         services.AddSingleton<IConnectionMonitorService, WindowsConnectionTableReader>();
         services.AddSingleton<IIpEnrichmentService, IpEnrichmentService>();
+        services.AddSingleton<IProcessTrustInspector, ProcessTrustInspector>();
+        services.AddSingleton<IThreatIntelligenceService, ThreatIntelligenceService>();
         services.AddSingleton<IWindowsFirewallManager, WindowsFirewallService>();
         services.AddSingleton<IFirewallBlocklistCoordinator, FirewallBlocklistCoordinator>();
         services.AddSingleton<IDnsEngine, DnsEngineService>();

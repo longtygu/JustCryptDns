@@ -7,28 +7,44 @@
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
              xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
-             mc:Ignorable="d" d:DesignWidth="980" d:DesignHeight="820"
+             mc:Ignorable="d" d:DesignWidth="1060" d:DesignHeight="880"
              d:DataContext="{d:DesignInstance Type=vm:ConnectionMonitorViewModel}">
     <UserControl.Resources>
         <Style x:Key="CompactCard" TargetType="Border" BasedOn="{StaticResource Card}">
-            <Setter Property="Padding" Value="16,12" />
-            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
 
         <Style x:Key="ToolbarButton" TargetType="Button" BasedOn="{StaticResource Button.Base}">
-            <Setter Property="Padding" Value="11,6" />
+            <Setter Property="Padding" Value="10,5" />
             <Setter Property="Margin" Value="0,0,6,6" />
             <Setter Property="FontSize" Value="{DynamicResource Font.Size.Caption}" />
         </Style>
 
         <Style x:Key="ToolbarPrimaryButton" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Padding" Value="11,5" />
             <Setter Property="Margin" Value="0,0,6,6" />
             <Setter Property="FontSize" Value="{DynamicResource Font.Size.Caption}" />
         </Style>
 
+        <Style x:Key="LockdownButton" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.Caption}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLockdownActive}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Danger}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
+                    <Setter Property="Foreground" Value="White" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="ToolbarOptionCheckBox" TargetType="CheckBox" BasedOn="{StaticResource Toggle.Switch}">
-            <Setter Property="Margin" Value="0,4,16,4" />
+            <Setter Property="Margin" Value="0,3,14,3" />
             <Setter Property="FontSize" Value="{DynamicResource Font.Size.Caption}" />
         </Style>
 
@@ -40,8 +56,9 @@
     </UserControl.Resources>
 
     <Grid>
-        <Grid Margin="32,4,32,20">
+        <Grid Margin="32,4,32,18">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -51,12 +68,12 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <StackPanel Margin="0,0,0,12">
+            <StackPanel Margin="0,0,0,10">
                 <TextBlock Style="{StaticResource Text.PageTitle}" Text="{l:Loc Nav_Connections}" />
-                <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Connections_Subtitle}" Margin="0,4,0,0" />
+                <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Connections_Subtitle}" Margin="0,3,0,0" />
             </StackPanel>
 
-            <!-- Action Toolbar & Options -->
+            <!-- Action Toolbar & Filter -->
             <Border Grid.Row="1" Style="{StaticResource CompactCard}"
                     controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Connections_Toolbar_Title}"
                     controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Connections_Toolbar_Desc}"
@@ -71,11 +88,17 @@
                                 Command="{Binding UnblockSelectedIpCommand}"
                                 Content="{l:Loc Conn_Btn_UnblockSelected}" />
                         <Button Style="{StaticResource ToolbarButton}"
+                                Command="{Binding BlockSelectedAppCommand}"
+                                Content="{l:Loc Conn_Btn_BlockApp}" />
+                        <Button Style="{StaticResource ToolbarButton}"
                                 Command="{Binding OpenUnblockWebsiteModalCommand}"
                                 Content="{l:Loc Conn_Btn_UnblockWebsite}" />
                         <Button Style="{StaticResource ToolbarButton}"
                                 Command="{Binding OpenBlockedListModalCommand}"
                                 Content="{Binding BlockedListButtonLabel}" />
+                        <Button Style="{StaticResource ToolbarButton}"
+                                Command="{Binding OpenBlockedAppsModalCommand}"
+                                Content="{Binding BlockedAppsButtonLabel}" />
                         <Button Style="{StaticResource ToolbarPrimaryButton}"
                                 Command="{Binding SyncBlocklistCommand}"
                                 Content="{Binding SyncButtonLabel}" />
@@ -93,7 +116,7 @@
                                 Content="{l:Loc Conn_Btn_ClearClosed}" />
                     </WrapPanel>
 
-                    <Grid Margin="0,4,0,0">
+                    <Grid Margin="0,2,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="290" />
@@ -116,7 +139,7 @@
 
                         <Grid Grid.Column="1" VerticalAlignment="Center">
                             <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="32"
+                                     Height="30"
                                      AutomationProperties.Name="{l:Loc Conn_Filter_Placeholder}" />
                             <TextBlock Text="{l:Loc Conn_Filter_Placeholder}"
                                        IsHitTestVisible="False"
@@ -144,23 +167,100 @@
                 </StackPanel>
             </Border>
 
-            <!-- Warnings & Alerts -->
-            <StackPanel Grid.Row="2">
-                <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,8"
+            <!-- Multi-Layer Security Shield Bar -->
+            <Border Grid.Row="2" Style="{StaticResource CompactCard}"
+                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Connections_Shield_Title}"
+                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Connections_Shield_Desc}"
+                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Connections_Shield_Meaning}"
+                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" Margin="0,2,12,2">
+                            <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Brush.Accent}" Text="{l:Loc Conn_Shield_SectionTitle}" />
+                        </Border>
+                        <CheckBox Style="{StaticResource ToolbarOptionCheckBox}"
+                                  IsChecked="{Binding EnableDnsLeakGuard}"
+                                  Content="{l:Loc Conn_Opt_DnsLeakGuard}" />
+                        <CheckBox Style="{StaticResource ToolbarOptionCheckBox}"
+                                  IsChecked="{Binding EnableThreatIntelligence}"
+                                  Content="{l:Loc Conn_Opt_ThreatShield}" />
+                        <CheckBox Style="{StaticResource ToolbarOptionCheckBox}"
+                                  IsChecked="{Binding AutoBlockDetectedThreats}"
+                                  Content="{l:Loc Conn_Opt_AutoBlockThreat}" />
+                        <CheckBox Style="{StaticResource ToolbarOptionCheckBox}"
+                                  IsChecked="{Binding VerifyProcessSignatures}"
+                                  Content="{l:Loc Conn_Opt_VerifySignatures}" />
+                    </WrapPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                                   Text="{Binding ThreatFeedSummaryText}" Margin="8,0,10,0" />
+                        <Button Padding="10,5" FontSize="{DynamicResource Font.Size.Caption}" Margin="0,0,8,0"
+                                Command="{Binding UpdateThreatFeedsCommand}"
+                                Content="{l:Loc Conn_Btn_UpdateThreatFeeds}" />
+                        <Button Style="{StaticResource LockdownButton}"
+                                Command="{Binding ToggleEmergencyLockdownCommand}"
+                                Content="{Binding LockdownButtonLabel}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Critical & Security Alerts -->
+            <StackPanel Grid.Row="3">
+                <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,6"
+                        Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                        Visibility="{Binding IsLockdownActive, Converter={StaticResource BoolToVisibility}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}"
+                                   FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Text="{l:Loc Conn_Banner_LockdownActive}" />
+                        <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Padding="12,5"
+                                Command="{Binding ToggleEmergencyLockdownCommand}"
+                                Content="{l:Loc Conn_Btn_UnlockNetwork}" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Padding="14,9" Margin="0,0,0,6"
+                        Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
+                        Visibility="{Binding ThreatAlertText, Converter={StaticResource NullToVisibility}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding ThreatAlertText}" />
+                        <Button Grid.Column="1" Style="{StaticResource Button.Subtle}" Padding="8,4"
+                                Command="{Binding DismissThreatAlertCommand}" Content="&#xE8BB;"
+                                FontFamily="{StaticResource Font.Icons}" FontSize="11" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Padding="14,9" Margin="0,0,0,6"
                         Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
                         Visibility="{Binding IsWindowsFirewallEnabled, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextPrimary}"
                                Text="{l:Loc Conn_Banner_FirewallDisabled}" />
                 </Border>
 
-                <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,8"
+                <Border Style="{StaticResource Card}" Padding="14,9" Margin="0,0,0,6"
                         Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
                         Visibility="{Binding RequiresElevationHint, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextPrimary}"
                                Text="{l:Loc Conn_Banner_RequiresElevation}" />
                 </Border>
 
-                <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,8"
+                <Border Style="{StaticResource Card}" Padding="14,9" Margin="0,0,0,6"
                         Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
                         Visibility="{Binding NewProcessAlertText, Converter={StaticResource NullToVisibility}}">
                     <Grid>
@@ -178,7 +278,7 @@
             </StackPanel>
 
             <!-- Status / Feedback Banner -->
-            <Border Grid.Row="3" Padding="14,10" Margin="0,0,0,10"
+            <Border Grid.Row="4" Padding="14,9" Margin="0,0,0,8"
                     Visibility="{Binding StatusBannerText, Converter={StaticResource NullToVisibility}}">
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource Card}">
@@ -206,7 +306,7 @@
             </Border>
 
             <!-- Virtualized Live Connection Table -->
-            <Border Grid.Row="4" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,10"
+            <Border Grid.Row="5" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
                     controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Connections_Grid_Title}"
                     controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Connections_Grid_Desc}"
                     controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Connections_Grid_Meaning}"
@@ -223,10 +323,16 @@
                     <DataGrid.RowStyle>
                         <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsThreatMatch}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ConnectionDisplayStatus.BlockedIp}">
                                     <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ConnectionDisplayStatus.BlockedRange}">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsAppBlocked}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ConnectionDisplayStatus.Closed}">
@@ -246,21 +352,94 @@
                             <MenuItem Header="{l:Loc Conn_Ctx_UnblockIp}"
                                       Command="{Binding PlacementTarget.DataContext.UnblockSelectedIpCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                             <Separator />
+                            <MenuItem Header="{l:Loc Conn_Ctx_BlockApp}"
+                                      Command="{Binding PlacementTarget.DataContext.BlockSelectedAppCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            <MenuItem Header="{l:Loc Conn_Ctx_UnblockApp}"
+                                      Command="{Binding PlacementTarget.DataContext.UnblockSelectedAppCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            <Separator />
+                            <MenuItem Header="{l:Loc Conn_Ctx_CheckAbuseIpDb}"
+                                      Command="{Binding PlacementTarget.DataContext.InspectIpAbuseIpDbCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            <MenuItem Header="{l:Loc Conn_Ctx_CheckVirusTotal}"
+                                      Command="{Binding PlacementTarget.DataContext.InspectIpVirusTotalCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            <Separator />
                             <MenuItem Header="{l:Loc Conn_Ctx_EditNote}"
                                       Command="{Binding PlacementTarget.DataContext.RequestEditNoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                         </ContextMenu>
                     </DataGrid.ContextMenu>
 
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_FirstSeen}" Binding="{Binding FirstSeenText}" Width="76" IsReadOnly="True" />
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_LastSeen}" Binding="{Binding LastSeenText}" Width="76" IsReadOnly="True" />
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_Process}" Binding="{Binding ProcessName}" Width="135" IsReadOnly="True" />
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_Proto}" Binding="{Binding ProtocolLabel}" Width="56" IsReadOnly="True" />
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_RemoteIp}" Binding="{Binding RemoteIp}" Width="132" IsReadOnly="True" />
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_Port}" Binding="{Binding PortText}" Width="78" IsReadOnly="True" />
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_Count}" Binding="{Binding ConnectionCount}" Width="58" IsReadOnly="True" />
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_Domain}" Binding="{Binding Domain}" Width="180*" IsReadOnly="True" />
-                        <DataGridTemplateColumn Header="{l:Loc Conn_Col_Status}" Width="118" IsReadOnly="True">
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_FirstSeen}" Binding="{Binding FirstSeenText}" Width="72" IsReadOnly="True" />
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_LastSeen}" Binding="{Binding LastSeenText}" Width="72" IsReadOnly="True" />
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_Process}" Binding="{Binding ProcessName}" Width="125" IsReadOnly="True" />
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_Proto}" Binding="{Binding ProtocolLabel}" Width="52" IsReadOnly="True" />
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_RemoteIp}" Binding="{Binding RemoteIp}" Width="128" IsReadOnly="True" />
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_Port}" Binding="{Binding PortText}" Width="74" IsReadOnly="True" />
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_Count}" Binding="{Binding ConnectionCount}" Width="52" IsReadOnly="True" />
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_Domain}" Binding="{Binding Domain}" Width="155*" IsReadOnly="True" />
+                        <DataGridTextColumn Header="{l:Loc Conn_Col_Org}" Binding="{Binding Organization}" Width="145" IsReadOnly="True" />
+                        <DataGridTemplateColumn Header="{l:Loc Conn_Col_Trust}" Width="138" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type vm:ConnectionRowViewModel}">
+                                    <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left"
+                                            ToolTip="{Binding TrustTooltip}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.NeutralSubtle}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding TrustLevel}" Value="{x:Static models:ProcessTrustLevel.TrustedSystem}">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding TrustLevel}" Value="{x:Static models:ProcessTrustLevel.Signed}">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding TrustLevel}" Value="{x:Static models:ProcessTrustLevel.Unsigned}">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding TrustLevel}" Value="{x:Static models:ProcessTrustLevel.Suspicious}">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsAppBlocked}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsThreatMatch}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.DangerSubtle}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding TrustBadgeText}" FontSize="{DynamicResource Font.Size.Small}"
+                                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="120">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Neutral}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding TrustLevel}" Value="{x:Static models:ProcessTrustLevel.TrustedSystem}">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding TrustLevel}" Value="{x:Static models:ProcessTrustLevel.Signed}">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding TrustLevel}" Value="{x:Static models:ProcessTrustLevel.Unsigned}">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding TrustLevel}" Value="{x:Static models:ProcessTrustLevel.Suspicious}">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsAppBlocked}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsThreatMatch}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="{l:Loc Conn_Col_Status}" Width="112" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate DataType="{x:Type vm:ConnectionRowViewModel}">
                                     <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left">
@@ -302,18 +481,17 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="{l:Loc Conn_Col_Org}" Binding="{Binding Organization}" Width="145" IsReadOnly="True" />
                         <DataGridTextColumn x:Name="NoteColumn"
                                             Header="{l:Loc Conn_Col_Note}"
                                             Binding="{Binding Note, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                                             EditingElementStyle="{StaticResource InlineEditTextBox}"
-                                            Width="155" IsReadOnly="False" />
+                                            Width="135" IsReadOnly="False" />
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>
 
             <!-- Summary Status Bar -->
-            <Border Grid.Row="5" Style="{StaticResource Card}" Padding="16,10">
+            <Border Grid.Row="6" Style="{StaticResource Card}" Padding="16,9">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -323,15 +501,15 @@
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Conn_Stat_Active}" Margin="0,0,6,0" />
                         <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Success}"
-                                   Text="{Binding ActiveCount}" Margin="0,0,18,0" />
+                                   Text="{Binding ActiveCount}" Margin="0,0,16,0" />
 
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Conn_Stat_Total}" Margin="0,0,6,0" />
                         <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold"
-                                   Text="{Binding TotalCount}" Margin="0,0,18,0" />
+                                   Text="{Binding TotalCount}" Margin="0,0,16,0" />
 
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Conn_Stat_Blocked}" Margin="0,0,6,0" />
                         <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Danger}"
-                                   Text="{Binding BlockedRuleCount}" Margin="0,0,18,0" />
+                                   Text="{Binding BlockedRuleCount}" Margin="0,0,16,0" />
 
                         <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Conn_Stat_Unsynced}" Margin="0,0,6,0" />
                         <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Warning}"
@@ -346,7 +524,7 @@
             </Border>
         </Grid>
 
-        <!-- Modal Overlays (Block CIDR / Unblock Website / Blocked List / Manage Notes) -->
+        <!-- Modal Overlays (Block CIDR / Unblock Website / Blocked List / Blocked Apps / Manage Notes) -->
         <Grid Background="#99000000" Visibility="{Binding IsAnyModalOpen, Converter={StaticResource BoolToVisibility}}">
             <!-- 1. Block IP/CIDR Overlay -->
             <Border Style="{StaticResource Card}" Width="490" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -407,7 +585,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- 3. Blocked List Overlay -->
+            <!-- 3. Blocked IP/CIDR List Overlay -->
             <Border Style="{StaticResource Card}" Width="620" MaxHeight="520" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Background="{DynamicResource Brush.Popup}" BorderBrush="{DynamicResource Brush.ControlBorder}"
                     Visibility="{Binding IsBlockedListModalOpen, Converter={StaticResource BoolToVisibility}}">
@@ -461,7 +639,56 @@
                 </Grid>
             </Border>
 
-            <!-- 4. Manage Notes Overlay -->
+            <!-- 4. Blocked Apps (.exe) List Overlay -->
+            <Border Style="{StaticResource Card}" Width="660" MaxHeight="520" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{DynamicResource Brush.Popup}" BorderBrush="{DynamicResource Brush.ControlBorder}"
+                    Visibility="{Binding IsBlockedAppsModalOpen, Converter={StaticResource BoolToVisibility}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Conn_Modal_BlockedApps_Title}" Margin="0,0,0,12" />
+
+                    <ListBox Grid.Row="1" ItemsSource="{Binding ManagedBlockedApps}" Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" MaxHeight="340">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:BlockedAppItemViewModel}">
+                                <Border Style="{StaticResource Card}" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
+                                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding ProcessName}" />
+                                            <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}"
+                                                       Foreground="{DynamicResource Brush.TextSecondary}"
+                                                       Text="{Binding ExecutablePath}" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                                  Command="{Binding DataContext.ToggleBlockedAppCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  CommandParameter="{Binding ExecutablePath}" Margin="0,0,10,0" />
+                                        <Button Grid.Column="2" Content="{l:Loc Conn_Modal_Remove}" Padding="10,4"
+                                                Command="{Binding DataContext.RemoveBlockedAppCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding ExecutablePath}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Style="{StaticResource Button.Primary}" Content="{l:Loc Common_Close}"
+                                Command="{Binding CancelModalsCommand}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 5. Manage Notes Overlay -->
             <Border Style="{StaticResource Card}" Width="600" MaxHeight="520" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Background="{DynamicResource Brush.Popup}" BorderBrush="{DynamicResource Brush.ControlBorder}"
                     Visibility="{Binding IsNotesModalOpen, Converter={StaticResource BoolToVisibility}}">

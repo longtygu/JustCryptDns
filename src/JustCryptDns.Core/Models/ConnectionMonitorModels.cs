@@ -28,7 +28,51 @@ public sealed record RawSocketConnection(
     int RemotePort,
     string TcpState,
     int ProcessId,
-    string ProcessName);
+    string ProcessName,
+    string? ExecutablePath = null);
+
+[JsonConverter(typeof(JsonStringEnumConverter<ProcessTrustLevel>))]
+public enum ProcessTrustLevel
+{
+    Unknown,
+    TrustedSystem,
+    Signed,
+    Unsigned,
+    Suspicious,
+}
+
+public sealed record ProcessTrustInfo(
+    string ExecutablePath,
+    ProcessTrustLevel Level,
+    string? Publisher,
+    bool IsRiskyPath,
+    bool IsMasqueradingSystemBinary,
+    string? RiskReason);
+
+public sealed record BlockedAppRule
+{
+    public required string ExecutablePath { get; init; }
+
+    public required string ProcessName { get; init; }
+
+    public string? Note { get; init; }
+
+    public DateTimeOffset AddedAtUtc { get; init; } = DateTimeOffset.UtcNow;
+
+    public bool IsEnabled { get; init; } = true;
+}
+
+public sealed record ThreatIntelMatch(
+    string Indicator,
+    string Source,
+    string Category);
+
+public sealed record ThreatIntelStatus(
+    int IndicatorCount,
+    int IpCount,
+    int CidrCount,
+    DateTimeOffset? LastUpdatedUtc,
+    string? LastError = null);
 
 public sealed record BlockedIpRule
 {
@@ -51,7 +95,12 @@ public sealed record IpEnrichmentInfo(
     string? Country,
     DateTimeOffset CachedAtUtc);
 
-public sealed record FirewallSyncRequestPayload(IReadOnlyList<BlockedIpRule> Rules);
+public sealed record FirewallSyncRequestPayload(
+    IReadOnlyList<BlockedIpRule> Rules,
+    IReadOnlyList<BlockedAppRule>? BlockedApps = null,
+    bool EnableDnsLeakGuard = false,
+    bool EnableEmergencyLockdown = false,
+    IReadOnlyList<string>? AllowedDnsResolverIps = null);
 
 public sealed record FirewallSyncResult(
     bool Success,
@@ -68,7 +117,10 @@ public sealed record FirewallStatusSnapshot(
     bool IsWindowsFirewallEnabled,
     bool RequiresElevation,
     IReadOnlyList<string> ActiveTargets,
-    string? Message = null);
+    string? Message = null,
+    bool IsDnsLeakGuardActive = false,
+    bool IsLockdownActive = false,
+    int ManagedAppRuleCount = 0);
 
 public sealed record ReverseDnsMapping(
     string Ip,

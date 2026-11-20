@@ -306,3 +306,97 @@ public static class IpBlockerGuard
         return [.. list];
     }
 }
+
+public sealed record AppBlockValidationResult(
+    bool IsValid,
+    bool IsProtectedSystemApp,
+    string? NormalizedPath,
+    string? ErrorMessage);
+
+/// <summary>
+/// Prevents blocking core Windows processes or JustCryptDns executables via Per-App Firewall rules.
+/// </summary>
+public static class AppBlockerGuard
+{
+    private static readonly HashSet<string> ProtectedExecutableNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "JustCryptDns.exe",
+        "JustCryptDns.Service.exe",
+        "dnscrypt-proxy.exe",
+        "System",
+        "System Idle",
+        "Registry",
+        "smss.exe",
+        "csrss.exe",
+        "wininit.exe",
+        "services.exe",
+        "lsass.exe",
+        "winlogon.exe",
+        "svchost.exe",
+        "explorer.exe",
+        "dwm.exe",
+        "spoolsv.exe",
+        "MsMpEng.exe",
+        "NisSrv.exe",
+        "taskmgr.exe",
+        "conhost.exe",
+        "RuntimeBroker.exe",
+        "sihost.exe",
+    };
+
+    public static AppBlockValidationResult Evaluate(string? executablePath, string? appBaseDirectory = null)
+    {
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return new AppBlockValidationResult(false, false, null, "Executable full path is unavailable for this process.");
+        }
+
+        var trimmed = executablePath.Trim();
+        if (!Path.IsPathRooted(trimmed))
+        {
+            return new AppBlockValidationResult(false, false, null, "Executable path must be a rooted full path.");
+        }
+
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(trimmed);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return new AppBlockValidationResult(false, false, null, $"Invalid executable path: {ex.Message}");
+        }
+
+        if (!fullPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return new AppBlockValidationResult(false, false, null, "Only .exe executable files can be blocked by Windows Firewall.");
+        }
+
+        var fileName = Path.GetFileName(fullPath);
+        if (ProtectedExecutableNames.Contains(fileName))
+        {
+            return new AppBlockValidationResult(
+                false,
+                true,
+                fullPath,
+                $"Critical system or JustCryptDns executable '{fileName}' cannot be blocked.");
+        }
+
+        var effectiveBaseDir = appBaseDirectory ?? AppContext.BaseDirectory;
+        if (!string.IsNullOrWhiteSpace(effectiveBaseDir))
+        {
+            var normalizedBase = Path.GetFullPath(effectiveBaseDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            if (fullPath.StartsWith(normalizedBase, StringComparison.OrdinalIgnoreCase))
+            {
+                return new AppBlockValidationResult(
+                    false,
+                    true,
+                    fullPath,
+                    "Executables inside JustCryptDns application directory are protected from blocking.");
+            }
+        }
+
+        return new AppBlockValidationResult(true, false, fullPath, null);
+    }
+}

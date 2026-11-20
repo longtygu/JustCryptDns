@@ -270,11 +270,14 @@ public partial class App : Application
                     await windowsDns.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false, cts.Token).ConfigureAwait(false);
                 }
 
-                if (clearFirewall)
+                using (var fw = new WindowsFirewallService(loggerFactory.CreateLogger<WindowsFirewallService>()))
                 {
-                    using var fw = new WindowsFirewallService(loggerFactory.CreateLogger<WindowsFirewallService>());
-                    var fwRes = await fw.ClearAllManagedRulesAsync(cts.Token).ConfigureAwait(false);
-                    _logger.LogInformation("Uninstall firewall cleanup result: success={Success}, removed={Removed}, msg={Message}", fwRes.Success, fwRes.RemovedRuleCount, fwRes.Message);
+                    var fwRes = clearFirewall
+                        ? await fw.ClearAllManagedRulesAsync(cts.Token).ConfigureAwait(false)
+                        : await fw.ClearLockdownAndLeakGuardAsync(cts.Token).ConfigureAwait(false);
+                    _logger.LogInformation(
+                        "Boot recovery firewall cleanup (clearAll={ClearAll}): success={Success}, removed={Removed}, msg={Message}",
+                        clearFirewall, fwRes.Success, fwRes.RemovedRuleCount, fwRes.Message);
                 }
 
                 var dnsRemaining = windowsDns.HasActiveBackup();
@@ -340,6 +343,32 @@ public partial class App : Application
                 if (services.GetService<ISettingsService>() is { } settings)
                 {
                     await settings.FlushAsync(cts.Token).ConfigureAwait(false);
+                }
+
+                // Always lift transient Emergency Lockdown (and standalone DNS Leak Guard when service is not keeping DNS alive).
+                var svcState = services.GetService<IServiceClient>()?.ConnectionState;
+                if (svcState != ServiceConnectionState.Connected)
+                {
+                    if (services.GetService<IWindowsFirewallManager>() is { } fw)
+                    {
+                        await fw.ClearLockdownAndLeakGuardAsync(cts.Token).ConfigureAwait(false);
+                    }
+                }
+                else if (services.GetService<IFirewallBlocklistCoordinator>() is { } coordinator
+                    && services.GetService<ISettingsService>() is { } appSettings)
+                {
+                    var conn = appSettings.Current.Connections;
+                    var fwStatus = await coordinator.GetStatusAsync(cts.Token).ConfigureAwait(false);
+                    if (fwStatus.IsLockdownActive)
+                    {
+                        await coordinator.SyncSecurityAsync(
+                            new Core.Models.FirewallSyncRequestPayload(
+                                conn.BlockedRules,
+                                conn.BlockedApps,
+                                conn.EnableDnsLeakGuard,
+                                EnableEmergencyLockdown: false),
+                            cts.Token).ConfigureAwait(false);
+                    }
                 }
 
                 var hasDnsBackup = services.GetService<IWindowsDnsManager>()?.HasActiveBackup() == true;

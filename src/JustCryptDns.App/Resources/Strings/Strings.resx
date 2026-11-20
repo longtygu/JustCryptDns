@@ -3147,4 +3147,127 @@
   <data name="Info_Connections_Grid_Meaning" xml:space="preserve">
     <value>Leaving this tab or minimizing stops all connection polling immediately so gaming ping and CPU overhead stay untouched.</value>
   </data>
+  <data name="Trust_Unknown" xml:space="preserve">
+    <value>Unverified</value>
+  </data>
+  <data name="Trust_TrustedSystem" xml:space="preserve">
+    <value>Windows Verified</value>
+  </data>
+  <data name="Trust_Signed" xml:space="preserve">
+    <value>Signed</value>
+  </data>
+  <data name="Trust_Unsigned" xml:space="preserve">
+    <value>Unsigned</value>
+  </data>
+  <data name="Trust_Suspicious" xml:space="preserve">
+    <value>Suspicious</value>
+  </data>
+  <data name="Conn_Btn_BlockApp" xml:space="preserve">
+    <value>Block App (.exe)</value>
+  </data>
+  <data name="Conn_Btn_UnblockApp" xml:space="preserve">
+    <value>Unblock App (.exe)</value>
+  </data>
+  <data name="Conn_Btn_BlockedApps" xml:space="preserve">
+    <value>Blocked Apps ({0})</value>
+  </data>
+  <data name="Conn_Btn_UpdateThreatFeeds" xml:space="preserve">
+    <value>Update Threat Feeds</value>
+  </data>
+  <data name="Conn_Btn_Lockdown" xml:space="preserve">
+    <value>Emergency Lockdown</value>
+  </data>
+  <data name="Conn_Btn_UnlockNetwork" xml:space="preserve">
+    <value>Unlock Network</value>
+  </data>
+  <data name="Conn_Opt_DnsLeakGuard" xml:space="preserve">
+    <value>DNS Leak Guard (53/853)</value>
+  </data>
+  <data name="Conn_Opt_ThreatShield" xml:space="preserve">
+    <value>Threat Intel Shield</value>
+  </data>
+  <data name="Conn_Opt_AutoBlockThreat" xml:space="preserve">
+    <value>Auto-block Threats</value>
+  </data>
+  <data name="Conn_Opt_VerifySignatures" xml:space="preserve">
+    <value>Verify Signatures</value>
+  </data>
+  <data name="Conn_Col_Trust" xml:space="preserve">
+    <value>Trust / Security</value>
+  </data>
+  <data name="Conn_Threat_MatchBadge" xml:space="preserve">
+    <value>THREAT: {0}</value>
+  </data>
+  <data name="Conn_AppBlocked_Badge" xml:space="preserve">
+    <value>App Blocked</value>
+  </data>
+  <data name="Conn_Ctx_BlockApp" xml:space="preserve">
+    <value>Block App (.exe)</value>
+  </data>
+  <data name="Conn_Ctx_UnblockApp" xml:space="preserve">
+    <value>Unblock App (.exe)</value>
+  </data>
+  <data name="Conn_Ctx_CheckAbuseIpDb" xml:space="preserve">
+    <value>Check IP on AbuseIPDB</value>
+  </data>
+  <data name="Conn_Ctx_CheckVirusTotal" xml:space="preserve">
+    <value>Check IP on VirusTotal</value>
+  </data>
+  <data name="Conn_Banner_LockdownActive" xml:space="preserve">
+    <value>EMERGENCY NETWORK LOCKDOWN ACTIVE — All public Internet traffic is blocked via Windows Firewall (LAN and localhost remain reachable).</value>
+  </data>
+  <data name="Conn_Alert_ThreatDetected" xml:space="preserve">
+    <value>Threat Intelligence match: {0} → {1} ({2} — {3})</value>
+  </data>
+  <data name="Conn_Msg_DnsLeakGuardEnabled" xml:space="preserve">
+    <value>DNS Leak Guard activated — external port 53/853 DNS traffic outside authorized resolvers is now blocked.</value>
+  </data>
+  <data name="Conn_Msg_DnsLeakGuardDisabled" xml:space="preserve">
+    <value>DNS Leak Guard disabled.</value>
+  </data>
+  <data name="Conn_Msg_LockdownEnabled" xml:space="preserve">
+    <value>Emergency Lockdown active — public Internet traffic is blocked.</value>
+  </data>
+  <data name="Conn_Msg_LockdownDisabled" xml:space="preserve">
+    <value>Emergency Lockdown lifted — Internet access restored.</value>
+  </data>
+  <data name="Conn_Msg_AppAdded" xml:space="preserve">
+    <value>Added app '{0}' to blocklist. Click Sync Blocklist to enforce in Windows Firewall.</value>
+  </data>
+  <data name="Conn_Msg_AppAlreadyBlocked" xml:space="preserve">
+    <value>App '{0}' is already in the blocked apps list.</value>
+  </data>
+  <data name="Conn_Msg_AppRemoved" xml:space="preserve">
+    <value>Removed app '{0}' from blocklist. Click Sync Blocklist to update Windows Firewall.</value>
+  </data>
+  <data name="Conn_Msg_AppNotBlocked" xml:space="preserve">
+    <value>App '{0}' is not currently blocked.</value>
+  </data>
+  <data name="Conn_Msg_ThreatFeedsUpdated" xml:space="preserve">
+    <value>Updated Threat Intelligence feeds: {0} indicators ({1} IPs, {2} CIDRs).</value>
+  </data>
+  <data name="Conn_Msg_ThreatFeedsFailed" xml:space="preserve">
+    <value>Failed to update Threat Intelligence feeds: {0}</value>
+  </data>
+  <data name="Conn_ThreatSummary_None" xml:space="preserve">
+    <value>Threat DB: 0 indicators (click Update)</value>
+  </data>
+  <data name="Conn_ThreatSummary_Count" xml:space="preserve">
+    <value>Threat DB: {0} indicators</value>
+  </data>
+  <data name="Conn_Modal_BlockedApps_Title" xml:space="preserve">
+    <value>Managed Per-App Firewall Blocklist</value>
+  </data>
+  <data name="Conn_Shield_SectionTitle" xml:space="preserve">
+    <value>Security Shield</value>
+  </data>
+  <data name="Info_Connections_Shield_Title" xml:space="preserve">
+    <value>Multi-Layer Security Shield &amp; Offline Organization ID</value>
+  </data>
+  <data name="Info_Connections_Shield_Desc" xml:space="preserve">
+    <value>Combines DNS Leak Guard (port 53/853 firewall carving), Per-App .exe blocking, offline Authenticode signature verification, Threat Intelligence (Abuse.ch Feodo + Spamhaus DROP), and 1-click Emergency Lockdown.</value>
+  </data>
+  <data name="Info_Connections_Shield_Meaning" xml:space="preserve">
+    <value>All protections run using standard Windows Firewall COM rules with zero kernel drivers and full Anti-Cheat safety.</value>
+  </data>
 </root>

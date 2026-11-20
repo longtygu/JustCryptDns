@@ -13,6 +13,7 @@ public sealed class DnsBackgroundWorker : BackgroundService
     private readonly ServiceStateManager _state;
     private readonly IDnsEngine _dnsEngine;
     private readonly IBypassEngineService? _bypassEngine;
+    private readonly IWindowsFirewallManager? _firewallManager;
     private readonly NamedPipeIpcServer _ipcServer;
     private readonly ILogger<DnsBackgroundWorker> _logger;
 
@@ -21,13 +22,15 @@ public sealed class DnsBackgroundWorker : BackgroundService
         IDnsEngine dnsEngine,
         NamedPipeIpcServer ipcServer,
         ILogger<DnsBackgroundWorker> logger,
-        IBypassEngineService? bypassEngine = null)
+        IBypassEngineService? bypassEngine = null,
+        IWindowsFirewallManager? firewallManager = null)
     {
         _state = state;
         _dnsEngine = dnsEngine;
         _ipcServer = ipcServer;
         _logger = logger;
         _bypassEngine = bypassEngine;
+        _firewallManager = firewallManager;
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
@@ -57,6 +60,11 @@ public sealed class DnsBackgroundWorker : BackgroundService
         if (_bypassEngine is not null)
         {
             await _bypassEngine.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (_firewallManager is not null)
+        {
+            await _firewallManager.ClearLockdownAndLeakGuardAsync(cancellationToken).ConfigureAwait(false);
         }
 
         await _dnsEngine.StopAsync(cancellationToken).ConfigureAwait(false);

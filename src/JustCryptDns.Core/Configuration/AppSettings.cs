@@ -15,8 +15,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v12: Phases 1–14. v13: StatusPulseStyle. v14: GitHub auto-update settings. v15: Connection Monitor &amp; IP Blocker.</summary>
-    public const int CurrentSchemaVersion = 15;
+    /// <summary>v1–v14: Previous schemas. v15: Connection Monitor &amp; IP Blocker. v16: Security Shield &amp; App Block policies.</summary>
+    public const int CurrentSchemaVersion = 16;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -650,6 +650,8 @@ public sealed class ConnectionMonitorSettings
 {
     public List<BlockedIpRule> BlockedRules { get; set; } = [];
 
+    public List<BlockedAppRule> BlockedApps { get; set; } = [];
+
     public Dictionary<string, string> IpNotes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public bool EnableOnlineLookup { get; set; }
@@ -663,6 +665,14 @@ public sealed class ConnectionMonitorSettings
     public int PollIntervalMs { get; set; } = 1000;
 
     public bool HasUnsyncedFirewallChanges { get; set; }
+
+    public bool EnableDnsLeakGuard { get; set; }
+
+    public bool EnableThreatIntelligence { get; set; } = true;
+
+    public bool AutoBlockDetectedThreats { get; set; }
+
+    public bool VerifyProcessSignatures { get; set; } = true;
 
     internal void Normalize()
     {
@@ -689,6 +699,41 @@ public sealed class ConnectionMonitorSettings
         }
 
         BlockedRules = normalizedRules;
+
+        BlockedApps ??= [];
+        var normalizedApps = new List<BlockedAppRule>(BlockedApps.Count);
+        var seenAppPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var appRule in BlockedApps)
+        {
+            if (appRule is null || string.IsNullOrWhiteSpace(appRule.ExecutablePath))
+            {
+                continue;
+            }
+
+            var eval = AppBlockerGuard.Evaluate(appRule.ExecutablePath);
+            if (!eval.IsValid || string.IsNullOrWhiteSpace(eval.NormalizedPath))
+            {
+                continue;
+            }
+
+            if (!seenAppPaths.Add(eval.NormalizedPath))
+            {
+                continue;
+            }
+
+            var procName = string.IsNullOrWhiteSpace(appRule.ProcessName)
+                ? Path.GetFileName(eval.NormalizedPath)
+                : appRule.ProcessName.Trim();
+
+            normalizedApps.Add(appRule with
+            {
+                ExecutablePath = eval.NormalizedPath,
+                ProcessName = procName,
+                Note = string.IsNullOrWhiteSpace(appRule.Note) ? null : appRule.Note.Trim(),
+            });
+        }
+
+        BlockedApps = normalizedApps;
 
         var normalizedNotes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (IpNotes is not null)

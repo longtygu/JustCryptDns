@@ -9,8 +9,8 @@ using Microsoft.Extensions.Logging;
 namespace JustCryptDns.App.Services;
 
 /// <summary>
-/// Coordinates IP/CIDR blocklist synchronization with Windows Firewall via the elevated background service IPC,
-/// falling back cleanly to local COM firewall management when the service is offline or running standalone.
+/// Coordinates IP/CIDR, Per-App, DNS Leak Guard, and Emergency Lockdown policies with Windows Firewall
+/// via the elevated background service IPC, falling back cleanly to local COM management when standalone.
 /// </summary>
 public sealed class FirewallBlocklistCoordinator : IFirewallBlocklistCoordinator
 {
@@ -40,11 +40,26 @@ public sealed class FirewallBlocklistCoordinator : IFirewallBlocklistCoordinator
         _logger = logger;
     }
 
-    public async Task<FirewallSyncResult> SyncAsync(IReadOnlyList<BlockedIpRule> rules, CancellationToken cancellationToken = default)
+    public Task<FirewallSyncResult> SyncAsync(IReadOnlyList<BlockedIpRule> rules, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(rules);
+        var conn = _settings.Current.Connections;
+        return SyncSecurityAsync(
+            new FirewallSyncRequestPayload(
+                rules,
+                conn.BlockedApps,
+                conn.EnableDnsLeakGuard,
+                EnableEmergencyLockdown: false),
+            cancellationToken);
+    }
 
-        var payloadJson = JsonSerializer.Serialize(new FirewallSyncRequestPayload(rules), SettingsJson.Options);
+    public async Task<FirewallSyncResult> SyncSecurityAsync(
+        FirewallSyncRequestPayload payload,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+
+        var enrichedPayload = EnrichAllowedResolverIps(payload);
+        var payloadJson = JsonSerializer.Serialize(enrichedPayload, SettingsJson.Options);
         if (System.Text.Encoding.UTF8.GetByteCount(payloadJson) <= IpcConstants.MaxMessageBytes - 4096)
         {
             if (_serviceClient.ConnectionState != ServiceConnectionState.Connected)
@@ -77,14 +92,20 @@ public sealed class FirewallBlocklistCoordinator : IFirewallBlocklistCoordinator
         }
         else
         {
-            return new FirewallSyncResult(false, 0, 0, 0, true, false, "Blocklist payload exceeds IPC frame limit.");
+            return new FirewallSyncResult(false, 0, 0, 0, true, false, "Security policy payload exceeds IPC frame limit.");
         }
 
         var context = await Task.Run(BuildProtectedContext, cancellationToken).ConfigureAwait(false);
-        return await _localFirewall.SyncRulesAsync(rules, context, cancellationToken).ConfigureAwait(false);
+        return await _localFirewall.SyncSecurityPoliciesAsync(enrichedPayload, context, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<FirewallSyncResult> ClearAllAsync(CancellationToken cancellationToken = default)
+    public Task<FirewallSyncResult> ClearLockdownAndLeakGuardAsync(CancellationToken cancellationToken = default) =>
+        ClearCoreAsync(transientOnly: true, cancellationToken);
+
+    public Task<FirewallSyncResult> ClearAllAsync(CancellationToken cancellationToken = default) =>
+        ClearCoreAsync(transientOnly: false, cancellationToken);
+
+    private async Task<FirewallSyncResult> ClearCoreAsync(bool transientOnly, CancellationToken cancellationToken)
     {
         if (_serviceClient.ConnectionState != ServiceConnectionState.Connected)
         {
@@ -94,7 +115,7 @@ public sealed class FirewallBlocklistCoordinator : IFirewallBlocklistCoordinator
         if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
         {
             var ipcResponse = await _serviceClient.SendAsync(
-                new IpcRequest(IpcRequestKind.ClearFirewallBlocklist),
+                new IpcRequest(IpcRequestKind.ClearFirewallBlocklist, BoolValue: transientOnly),
                 cancellationToken).ConfigureAwait(false);
             if (ipcResponse is not null && !string.IsNullOrWhiteSpace(ipcResponse.Message))
             {
@@ -113,7 +134,9 @@ public sealed class FirewallBlocklistCoordinator : IFirewallBlocklistCoordinator
             }
         }
 
-        return await _localFirewall.ClearAllManagedRulesAsync(cancellationToken).ConfigureAwait(false);
+        return transientOnly
+            ? await _localFirewall.ClearLockdownAndLeakGuardAsync(cancellationToken).ConfigureAwait(false)
+            : await _localFirewall.ClearAllManagedRulesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<FirewallStatusSnapshot> GetStatusAsync(CancellationToken cancellationToken = default)
@@ -168,6 +191,60 @@ public sealed class FirewallBlocklistCoordinator : IFirewallBlocklistCoordinator
                 _logger.LogDebug(ex, "Failed to parse reverse DNS snapshot from service.");
             }
         }
+    }
+
+    private FirewallSyncRequestPayload EnrichAllowedResolverIps(FirewallSyncRequestPayload payload)
+    {
+        if (!payload.EnableDnsLeakGuard || (payload.AllowedDnsResolverIps is { Count: > 0 }))
+        {
+            return payload;
+        }
+
+        var resolverIps = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void TryAddIp(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return;
+            }
+
+            if (System.Net.IPAddress.TryParse(raw.Trim(), out var ip) && seen.Add(ip.ToString()))
+            {
+                resolverIps.Add(ip.ToString());
+            }
+        }
+
+        var primary = _resolverLibrary.GetPrimaryResolver();
+        var secondary = _resolverLibrary.GetSecondaryResolver();
+        foreach (var resolver in new[] { primary, secondary })
+        {
+            TryAddIp(resolver.PrimaryIp);
+            TryAddIp(resolver.SecondaryIp);
+            TryAddIp(resolver.PrimaryIpv6);
+        }
+
+        // Also keep currently cached resolved hosts of active DoH/DoT resolvers reachable.
+        foreach (var resolver in new[] { primary, secondary })
+        {
+            if (Uri.TryCreate(resolver.Endpoint, UriKind.Absolute, out var uri))
+            {
+                foreach (var cachedIp in _reverseCache.GetIpsForDomain(uri.Host).Take(2))
+                {
+                    TryAddIp(cachedIp);
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(resolver.Endpoint))
+            {
+                foreach (var cachedIp in _reverseCache.GetIpsForDomain(resolver.Endpoint).Take(2))
+                {
+                    TryAddIp(cachedIp);
+                }
+            }
+        }
+
+        return payload with { AllowedDnsResolverIps = resolverIps };
     }
 
     private ProtectedIpContext BuildProtectedContext()

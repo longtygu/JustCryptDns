@@ -24,6 +24,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
     private readonly ILogger<WindowsConnectionTableReader> _logger;
     private readonly object _procCacheLock = new();
     private Dictionary<int, string> _processNames = new();
+    private readonly Dictionary<int, (string Name, string? Path)> _exePathCache = new();
     private DateTimeOffset _processCacheUpdatedAt = DateTimeOffset.MinValue;
 
     public WindowsConnectionTableReader(ILogger<WindowsConnectionTableReader> logger)
@@ -72,7 +73,72 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
             }
         }
 
+        // Enrich executable full paths only for PIDs present in the current connection snapshot.
+        for (var i = 0; i < results.Count; i++)
+        {
+            var item = results[i];
+            if (item.ProcessId > 4)
+            {
+                var exePath = ResolveExecutablePathCached(item.ProcessId, item.ProcessName);
+                if (exePath is not null)
+                {
+                    results[i] = item with { ExecutablePath = exePath };
+                }
+            }
+        }
+
         return results;
+    }
+
+    private string? ResolveExecutablePathCached(int pid, string procName)
+    {
+        lock (_procCacheLock)
+        {
+            if (_exePathCache.TryGetValue(pid, out var cached)
+                && string.Equals(cached.Name, procName, StringComparison.OrdinalIgnoreCase))
+            {
+                return cached.Path;
+            }
+        }
+
+        var resolved = TryQueryExecutablePath(pid);
+        lock (_procCacheLock)
+        {
+            if (_exePathCache.Count > 1024)
+            {
+                _exePathCache.Clear();
+            }
+
+            _exePathCache[pid] = (procName, resolved);
+        }
+
+        return resolved;
+    }
+
+    private static string? TryQueryExecutablePath(int pid)
+    {
+        const uint processQueryLimitedInfo = 0x00001000;
+        var handle = NativeMethods.OpenProcess(processQueryLimitedInfo, false, (uint)pid);
+        if (handle == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        try
+        {
+            var buffer = new char[1024];
+            var size = buffer.Length;
+            if (NativeMethods.QueryFullProcessImageNameW(handle, 0, buffer, ref size) && size > 0)
+            {
+                return new string(buffer, 0, size);
+            }
+
+            return null;
+        }
+        finally
+        {
+            _ = NativeMethods.CloseHandle(handle);
+        }
     }
 
     private Dictionary<int, string> GetProcessNameMap()
@@ -440,6 +506,20 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool CloseHandle(nint hObject);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern nint OpenProcess(
+            uint dwDesiredAccess,
+            [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
+            uint dwProcessId);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool QueryFullProcessImageNameW(
+            nint hProcess,
+            uint dwFlags,
+            [Out] char[] lpExeName,
+            ref int lpdwSize);
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct ProcessEntry32W
