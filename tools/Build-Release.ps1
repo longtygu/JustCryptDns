@@ -72,10 +72,14 @@ try {
     Compress-Archive -Path "$PublishDir\*" -DestinationPath $ZipPath -CompressionLevel Optimal
 
     # Optional Inno Setup installer compilation
-    $Iscc = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue
+    $Iscc = (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1)
     if (-not $Iscc) {
-        $DefaultIscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-        if (Test-Path $DefaultIscc) { $Iscc = $DefaultIscc }
+        $IsccCandidates = @(
+            "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+        )
+        $Iscc = $IsccCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
     }
 
     if ($Iscc) {
