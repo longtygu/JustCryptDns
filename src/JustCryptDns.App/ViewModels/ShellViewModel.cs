@@ -78,6 +78,7 @@ public sealed partial class ShellViewModel : ObservableObject
             new NavItem(PageKeys.Filtering, "\uE71C", "Nav_Filtering"),
             new NavItem(PageKeys.Diagnostics, "\uE9D9", "Nav_Diagnostics"),
             new NavItem(PageKeys.Monitor, "\uE9D2", "Nav_Monitor"),
+            new NavItem(PageKeys.Connections, "\uE839", "Nav_Connections"),
         ];
         FooterItems = [new NavItem(PageKeys.Settings, "\uE713", "Nav_Settings")];
 

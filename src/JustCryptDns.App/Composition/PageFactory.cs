@@ -25,6 +25,7 @@ public sealed class PageFactory : IPageFactory
         PageKeys.Bypass => _services.GetRequiredService<BypassViewModel>(),
         PageKeys.Diagnostics => _services.GetRequiredService<DiagnosticsViewModel>(),
         PageKeys.Monitor => _services.GetRequiredService<LiveMonitorViewModel>(),
+        PageKeys.Connections => _services.GetRequiredService<ConnectionMonitorViewModel>(),
         _ => throw new ArgumentOutOfRangeException(nameof(pageKey), pageKey, "Unknown page."),
     };
 }

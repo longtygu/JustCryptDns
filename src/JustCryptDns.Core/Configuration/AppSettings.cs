@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json.Serialization;
 using JustCryptDns.Core.Models;
+using JustCryptDns.Core.Security;
 
 namespace JustCryptDns.Core.Configuration;
 
@@ -14,8 +15,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v12: Phases 1–14. v13: StatusPulseStyle. v14: GitHub auto-update settings.</summary>
-    public const int CurrentSchemaVersion = 14;
+    /// <summary>v1–v12: Phases 1–14. v13: StatusPulseStyle. v14: GitHub auto-update settings. v15: Connection Monitor &amp; IP Blocker.</summary>
+    public const int CurrentSchemaVersion = 15;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -41,6 +42,8 @@ public sealed class AppSettings
 
     public UpdateSettings Updates { get; set; } = new();
 
+    public ConnectionMonitorSettings Connections { get; set; } = new();
+
     /// <summary>Normalizes out-of-range or missing values after deserialization.</summary>
     public AppSettings Normalize()
     {
@@ -55,6 +58,7 @@ public sealed class AppSettings
         Performance ??= new PerformanceSettings();
         Bypass ??= new BypassSettings();
         Updates ??= new UpdateSettings();
+        Connections ??= new ConnectionMonitorSettings();
         General.Normalize();
         Appearance.Normalize();
         Dns.Normalize();
@@ -66,6 +70,7 @@ public sealed class AppSettings
         Performance.Normalize();
         Bypass.Normalize();
         Updates.Normalize();
+        Connections.Normalize();
         return this;
     }
 
@@ -638,6 +643,69 @@ public sealed class UpdateSettings
         RepositoryName = string.IsNullOrWhiteSpace(RepositoryName)
             ? DefaultRepositoryName
             : RepositoryName.Trim();
+    }
+}
+
+public sealed class ConnectionMonitorSettings
+{
+    public List<BlockedIpRule> BlockedRules { get; set; } = [];
+
+    public Dictionary<string, string> IpNotes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool EnableOnlineLookup { get; set; }
+
+    public bool AlertNewUnknownProcess { get; set; }
+
+    public bool HideLanConnections { get; set; } = true;
+
+    public bool AutoScroll { get; set; } = true;
+
+    public int PollIntervalMs { get; set; } = 1000;
+
+    public bool HasUnsyncedFirewallChanges { get; set; }
+
+    internal void Normalize()
+    {
+        BlockedRules ??= [];
+        var normalizedRules = new List<BlockedIpRule>(BlockedRules.Count);
+        var seenTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rule in BlockedRules)
+        {
+            if (rule is null || !CidrNetwork.TryParse(rule.Target, out var parsed, out _))
+            {
+                continue;
+            }
+
+            if (!seenTargets.Add(parsed.CanonicalText))
+            {
+                continue;
+            }
+
+            normalizedRules.Add(rule with
+            {
+                Target = parsed.CanonicalText,
+                Note = string.IsNullOrWhiteSpace(rule.Note) ? null : rule.Note.Trim(),
+            });
+        }
+
+        BlockedRules = normalizedRules;
+
+        var normalizedNotes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (IpNotes is not null)
+        {
+            foreach (var (key, value) in IpNotes)
+            {
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                normalizedNotes[key.Trim()] = value.Trim();
+            }
+        }
+
+        IpNotes = normalizedNotes;
+        PollIntervalMs = Math.Clamp(PollIntervalMs, 500, 5000);
     }
 }
 

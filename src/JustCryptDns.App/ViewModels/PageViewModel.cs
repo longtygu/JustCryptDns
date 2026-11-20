@@ -53,6 +53,7 @@ public static class PageKeys
     public const string Filtering = "Filtering";
     public const string Diagnostics = "Diagnostics";
     public const string Monitor = "Monitor";
+    public const string Connections = "Connections";
     public const string Settings = "Settings";
     public const string Appearance = "Appearance";
 }

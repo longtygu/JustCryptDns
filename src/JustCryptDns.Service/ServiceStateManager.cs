@@ -1,8 +1,10 @@
 using System.Reflection;
+using System.Text.Json;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
+using JustCryptDns.Core.Security;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.Service;
@@ -18,6 +20,10 @@ public sealed class ServiceStateManager : IServiceIpcHandler
     private readonly IWindowsDnsManager _windowsDns;
     private readonly IGamingEngineService? _gamingEngine;
     private readonly IBypassEngineService? _bypassEngine;
+    private readonly IWindowsFirewallManager? _firewallManager;
+    private readonly IDnsReverseLookupCache? _reverseLookupCache;
+    private readonly INetworkInfoService? _networkInfo;
+    private readonly IResolverLibraryService? _resolverLibrary;
     private readonly ILogger<ServiceStateManager> _logger;
     private readonly DateTimeOffset _startedAt = DateTimeOffset.UtcNow;
     private readonly string _version;
@@ -31,7 +37,11 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         IWindowsDnsManager windowsDns,
         ILogger<ServiceStateManager> logger,
         IGamingEngineService? gamingEngine = null,
-        IBypassEngineService? bypassEngine = null)
+        IBypassEngineService? bypassEngine = null,
+        IWindowsFirewallManager? firewallManager = null,
+        IDnsReverseLookupCache? reverseLookupCache = null,
+        INetworkInfoService? networkInfo = null,
+        IResolverLibraryService? resolverLibrary = null)
     {
         _settings = settings;
         _dnsEngine = dnsEngine;
@@ -39,6 +49,10 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         _logger = logger;
         _gamingEngine = gamingEngine;
         _bypassEngine = bypassEngine;
+        _firewallManager = firewallManager;
+        _reverseLookupCache = reverseLookupCache;
+        _networkInfo = networkInfo;
+        _resolverLibrary = resolverLibrary;
         _version = typeof(ServiceStateManager).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.1.0";
     }
@@ -201,6 +215,70 @@ public sealed class ServiceStateManager : IServiceIpcHandler
                     Status: GetSnapshot(),
                     ErrorCode: result.Success ? null : "RestoreFailed",
                     Message: result.ErrorMessage);
+            }
+
+            case IpcRequestKind.SyncFirewallBlocklist:
+            {
+                if (_firewallManager is null)
+                {
+                    return new IpcResponse(false, GetSnapshot(), "FirewallUnavailable", "Windows Firewall manager is not registered.");
+                }
+
+                FirewallSyncRequestPayload? payload = null;
+                if (!string.IsNullOrWhiteSpace(request.StringValue))
+                {
+                    payload = JsonSerializer.Deserialize<FirewallSyncRequestPayload>(request.StringValue, SettingsJson.Options);
+                }
+
+                var rules = payload?.Rules ?? [];
+                var protectedContext = ProtectedIpContext.Build(
+                    _networkInfo?.GetSnapshot(),
+                    _resolverLibrary?.GetAll(),
+                    _settings.Current.Dns,
+                    _settings.Current.Bypass,
+                    _reverseLookupCache);
+                var result = await _firewallManager.SyncRulesAsync(rules, protectedContext, cancellationToken).ConfigureAwait(false);
+                var json = JsonSerializer.Serialize(result, SettingsJson.Options);
+                return new IpcResponse(
+                    Success: result.Success,
+                    Status: GetSnapshot(),
+                    ErrorCode: result.Success ? null : "FirewallSyncFailed",
+                    Message: json);
+            }
+
+            case IpcRequestKind.ClearFirewallBlocklist:
+            {
+                if (_firewallManager is null)
+                {
+                    return new IpcResponse(false, GetSnapshot(), "FirewallUnavailable", "Windows Firewall manager is not registered.");
+                }
+
+                var result = await _firewallManager.ClearAllManagedRulesAsync(cancellationToken).ConfigureAwait(false);
+                var json = JsonSerializer.Serialize(result, SettingsJson.Options);
+                return new IpcResponse(
+                    Success: result.Success,
+                    Status: GetSnapshot(),
+                    ErrorCode: result.Success ? null : "FirewallClearFailed",
+                    Message: json);
+            }
+
+            case IpcRequestKind.GetFirewallBlocklistStatus:
+            {
+                if (_firewallManager is null)
+                {
+                    return new IpcResponse(false, GetSnapshot(), "FirewallUnavailable", "Windows Firewall manager is not registered.");
+                }
+
+                var fwStatus = await _firewallManager.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+                var json = JsonSerializer.Serialize(fwStatus, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.GetReverseDnsSnapshot:
+            {
+                var snapshot = _reverseLookupCache?.GetSnapshot(600) ?? [];
+                var json = JsonSerializer.Serialize(snapshot, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
             }
 
             default:

@@ -9,7 +9,7 @@
     <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
     <RuntimeIdentifier Condition="'$(OutputType)' == 'WinExe' Or '$(OutputType)' == 'Exe'">win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
-    <Version>1.4.0</Version>
+    <Version>1.5.0</Version>
     <Company>JustCryptDns</Company>
     <Product>JustCryptDns</Product>
     <Copyright>Copyright © 2026 JustCryptDns contributors</Copyright>

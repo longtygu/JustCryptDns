@@ -133,14 +133,14 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public void AllNineSectionsArePresent()
+    public void AllTenSectionsArePresent()
     {
         var (shell, _, _, _, _) = Create();
         var keys = shell.NavItems.Concat(shell.FooterItems).Select(i => i.Key).ToList();
 
         Assert.Equal(
             [PageKeys.Dashboard, PageKeys.DnsManager, PageKeys.Resolvers, PageKeys.Routing, PageKeys.Gaming,
-             PageKeys.Bypass, PageKeys.Filtering, PageKeys.Diagnostics, PageKeys.Monitor, PageKeys.Settings],
+             PageKeys.Bypass, PageKeys.Filtering, PageKeys.Diagnostics, PageKeys.Monitor, PageKeys.Connections, PageKeys.Settings],
             keys);
     }
 

@@ -284,7 +284,7 @@ public sealed class UpdateAndBugReportTests : IDisposable
         var loaded = store.Load();
 
         Assert.Equal(SettingsLoadOutcome.Migrated, loaded.Outcome);
-        Assert.Equal(14, loaded.Settings.SchemaVersion);
+        Assert.Equal(AppSettings.CurrentSchemaVersion, loaded.Settings.SchemaVersion);
         Assert.Equal(LanguageCodes.Vietnamese, loaded.Settings.General.Language);
         Assert.True(loaded.Settings.Updates.AutoCheckOnStartup);
         Assert.Equal("longtygu", loaded.Settings.Updates.RepositoryOwner);

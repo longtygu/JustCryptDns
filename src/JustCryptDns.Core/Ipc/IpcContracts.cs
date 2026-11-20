@@ -33,6 +33,10 @@ public enum IpcRequestKind
     SetGamingMode,
     RestoreOriginalDns,
     SetBypassEnabled,
+    SyncFirewallBlocklist,
+    ClearFirewallBlocklist,
+    GetFirewallBlocklistStatus,
+    GetReverseDnsSnapshot,
 }
 
 public sealed record IpcRequest(

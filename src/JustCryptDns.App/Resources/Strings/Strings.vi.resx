@@ -588,6 +588,9 @@
   <data name="Common_Cancel" xml:space="preserve">
     <value>Hủy</value>
   </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Đóng</value>
+  </data>
   <data name="ClosePrompt_Title" xml:space="preserve">
     <value>Đóng JustCryptDns?</value>
   </data>
@@ -2909,5 +2912,239 @@
   </data>
   <data name="Info_Appearance_Scaling_Meaning" xml:space="preserve">
     <value>Chọn Tắt ở mục Hoạt ảnh hoặc Nhấp nháy để dừng hoàn toàn mọi chuyển động trang trí nếu muốn tối đa hiệu năng.</value>
+  </data>
+  <data name="Nav_Connections" xml:space="preserve">
+    <value>Giám sát kết nối</value>
+  </data>
+  <data name="Page_Connections_Subtitle" xml:space="preserve">
+    <value>Theo dõi kết nối TCP/UDP thời gian thực &amp; chặn IP/CIDR an toàn qua Windows Firewall</value>
+  </data>
+  <data name="Conn_Btn_BlockSelected" xml:space="preserve">
+    <value>Chặn IP đã chọn</value>
+  </data>
+  <data name="Conn_Btn_UnblockSelected" xml:space="preserve">
+    <value>Bỏ chặn IP đã chọn</value>
+  </data>
+  <data name="Conn_Btn_UnblockWebsite" xml:space="preserve">
+    <value>Bỏ chặn Website</value>
+  </data>
+  <data name="Conn_Btn_BlockedList" xml:space="preserve">
+    <value>Danh sách chặn ({0})</value>
+  </data>
+  <data name="Conn_Btn_SyncBlocklist" xml:space="preserve">
+    <value>Đồng bộ Firewall</value>
+  </data>
+  <data name="Conn_Btn_SyncBlocklistCount" xml:space="preserve">
+    <value>Đồng bộ Firewall ({0})</value>
+  </data>
+  <data name="Conn_Btn_BlockCidr" xml:space="preserve">
+    <value>Chặn IP/CIDR</value>
+  </data>
+  <data name="Conn_Btn_ManageNotes" xml:space="preserve">
+    <value>Quản lý Ghi chú</value>
+  </data>
+  <data name="Conn_Btn_ExportCsv" xml:space="preserve">
+    <value>Xuất CSV</value>
+  </data>
+  <data name="Conn_Btn_ClearClosed" xml:space="preserve">
+    <value>Xóa đã đóng</value>
+  </data>
+  <data name="Conn_Opt_OnlineLookup" xml:space="preserve">
+    <value>Tra cứu Online (ipinfo.io)</value>
+  </data>
+  <data name="Conn_Opt_AlertNewProcess" xml:space="preserve">
+    <value>Cảnh báo tiến trình mới</value>
+  </data>
+  <data name="Conn_Opt_HideLan" xml:space="preserve">
+    <value>Ẩn mạng LAN</value>
+  </data>
+  <data name="Conn_Opt_AutoScroll" xml:space="preserve">
+    <value>Tự cuộn</value>
+  </data>
+  <data name="Conn_Filter_Placeholder" xml:space="preserve">
+    <value>Lọc theo IP, tên miền, tiến trình, cổng, tổ chức hoặc ghi chú…</value>
+  </data>
+  <data name="Conn_Col_FirstSeen" xml:space="preserve">
+    <value>Lần đầu</value>
+  </data>
+  <data name="Conn_Col_LastSeen" xml:space="preserve">
+    <value>Gần nhất</value>
+  </data>
+  <data name="Conn_Col_Process" xml:space="preserve">
+    <value>Tiến trình</value>
+  </data>
+  <data name="Conn_Col_Proto" xml:space="preserve">
+    <value>Loại</value>
+  </data>
+  <data name="Conn_Col_RemoteIp" xml:space="preserve">
+    <value>IP đích</value>
+  </data>
+  <data name="Conn_Col_Port" xml:space="preserve">
+    <value>Cổng</value>
+  </data>
+  <data name="Conn_Col_Count" xml:space="preserve">
+    <value>Số lần</value>
+  </data>
+  <data name="Conn_Col_Domain" xml:space="preserve">
+    <value>Tên miền</value>
+  </data>
+  <data name="Conn_Col_Status" xml:space="preserve">
+    <value>Trạng thái</value>
+  </data>
+  <data name="Conn_Col_Org" xml:space="preserve">
+    <value>Tổ chức / rDNS</value>
+  </data>
+  <data name="Conn_Col_Note" xml:space="preserve">
+    <value>Ghi chú</value>
+  </data>
+  <data name="ConnStatus_Active" xml:space="preserve">
+    <value>Đang kết nối</value>
+  </data>
+  <data name="ConnStatus_Closed" xml:space="preserve">
+    <value>Đã đóng</value>
+  </data>
+  <data name="ConnStatus_BlockedIp" xml:space="preserve">
+    <value>Đã chặn IP</value>
+  </data>
+  <data name="ConnStatus_BlockedRange" xml:space="preserve">
+    <value>Đã chặn dải IP</value>
+  </data>
+  <data name="Conn_Ctx_CopyIp" xml:space="preserve">
+    <value>Sao chép IP</value>
+  </data>
+  <data name="Conn_Ctx_BlockIp" xml:space="preserve">
+    <value>Chặn IP</value>
+  </data>
+  <data name="Conn_Ctx_UnblockIp" xml:space="preserve">
+    <value>Bỏ chặn IP</value>
+  </data>
+  <data name="Conn_Ctx_EditNote" xml:space="preserve">
+    <value>Sửa Ghi chú</value>
+  </data>
+  <data name="Conn_Stat_Active" xml:space="preserve">
+    <value>Đang hoạt động</value>
+  </data>
+  <data name="Conn_Stat_Total" xml:space="preserve">
+    <value>Tổng</value>
+  </data>
+  <data name="Conn_Stat_Blocked" xml:space="preserve">
+    <value>Đang chặn IP/Dải</value>
+  </data>
+  <data name="Conn_Stat_Unsynced" xml:space="preserve">
+    <value>Chưa đồng bộ</value>
+  </data>
+  <data name="Conn_ZeroOverhead_Hint" xml:space="preserve">
+    <value>0% CPU nền: tự động tạm dừng quét ngay khi rời tab hoặc thu nhỏ ứng dụng</value>
+  </data>
+  <data name="Conn_Banner_FirewallDisabled" xml:space="preserve">
+    <value>Windows Defender Firewall hiện đang TẮT trên mạng đang dùng. Các quy tắc chặn đã được lưu nhưng chỉ lọc lưu lượng thực tế khi bật lại Windows Firewall.</value>
+  </data>
+  <data name="Conn_Banner_RequiresElevation" xml:space="preserve">
+    <value>Dịch vụ nền JustCryptDns chưa chạy và ứng dụng đang ở quyền thường. Bạn vẫn theo dõi kết nối, sửa ghi chú &amp; xuất CSV bình thường; hãy bật JustCryptDnsService hoặc mở quyền Admin để ghi rule Windows Firewall.</value>
+  </data>
+  <data name="Conn_Alert_NewProcess" xml:space="preserve">
+    <value>Phát hiện tiến trình mới kết nối ra ngoài: {0} → {1}</value>
+  </data>
+  <data name="Conn_Msg_RuleAdded" xml:space="preserve">
+    <value>Đã thêm '{0}' vào danh sách chặn. Nhấn 'Đồng bộ Firewall' để áp dụng xuống Windows Firewall.</value>
+  </data>
+  <data name="Conn_Msg_RuleAlreadyBlocked" xml:space="preserve">
+    <value>'{0}' đã có sẵn trong danh sách chặn.</value>
+  </data>
+  <data name="Conn_Msg_RuleRemoved" xml:space="preserve">
+    <value>Đã gỡ '{0}' khỏi danh sách chặn. Nhấn 'Đồng bộ Firewall' để cập nhật Windows Firewall.</value>
+  </data>
+  <data name="Conn_Msg_CoveredByCidr" xml:space="preserve">
+    <value>IP '{0}' đang bị chặn bởi dải CIDR '{1}'. Hãy mở Danh sách chặn để gỡ quy tắc '{1}'.</value>
+  </data>
+  <data name="Conn_Msg_CannotBlockUdpWildcard" xml:space="preserve">
+    <value>Socket UDP '*' không có IP đích đơn lẻ. Hãy chọn kết nối TCP có IP đích hoặc dùng nút 'Chặn IP/CIDR'.</value>
+  </data>
+  <data name="Conn_Msg_Synced" xml:space="preserve">
+    <value>Đã đồng bộ {0} mục tiêu IP/CIDR xuống Windows Firewall (đã gỡ {1} rule cũ).</value>
+  </data>
+  <data name="Conn_Msg_SyncedWithRejected" xml:space="preserve">
+    <value>Đã đồng bộ {0} mục tiêu xuống Windows Firewall; tự động bỏ qua {1} IP hệ thống/DNS được bảo vệ.</value>
+  </data>
+  <data name="Conn_Msg_ClearedAll" xml:space="preserve">
+    <value>Đã gỡ bỏ sạch toàn bộ rule Firewall của JustCryptDns ({0} rule đã xóa).</value>
+  </data>
+  <data name="Conn_Msg_Exported" xml:space="preserve">
+    <value>Đã xuất {0} dòng kết nối ra tệp {1}.</value>
+  </data>
+  <data name="Conn_Msg_NoSelection" xml:space="preserve">
+    <value>Vui lòng chọn một dòng kết nối trước.</value>
+  </data>
+  <data name="Conn_Msg_ProtectedRejected" xml:space="preserve">
+    <value>Cơ chế chống tự khóa mạng: {0}</value>
+  </data>
+  <data name="Conn_Modal_BlockCidr_Title" xml:space="preserve">
+    <value>Chặn địa chỉ IP hoặc dải mạng CIDR</value>
+  </data>
+  <data name="Conn_Modal_TargetLabel" xml:space="preserve">
+    <value>Địa chỉ IP hoặc dải CIDR (ví dụ: 203.0.113.10 hoặc 198.51.100.0/24)</value>
+  </data>
+  <data name="Conn_Modal_NoteLabel" xml:space="preserve">
+    <value>Ghi chú cá nhân (tùy chọn)</value>
+  </data>
+  <data name="Conn_Modal_RiskAck" xml:space="preserve">
+    <value>Xác nhận chặn dải CIDR rộng hoặc dải CDN/Cloud dùng chung này</value>
+  </data>
+  <data name="Conn_Modal_AddBlock" xml:space="preserve">
+    <value>Thêm vào danh sách chặn</value>
+  </data>
+  <data name="Conn_Modal_UnblockWeb_Title" xml:space="preserve">
+    <value>Bỏ chặn Website / Tên miền</value>
+  </data>
+  <data name="Conn_Modal_DomainLabel" xml:space="preserve">
+    <value>Tên miền website (ví dụ: steamcommunity.com hoặc facebook.com)</value>
+  </data>
+  <data name="Conn_Modal_UnblockWeb_Action" xml:space="preserve">
+    <value>Phân giải &amp; Bỏ chặn</value>
+  </data>
+  <data name="Conn_Modal_UnblockWeb_NoneFound" xml:space="preserve">
+    <value>Không có quy tắc chặn nào khớp với IP phân giải được của '{0}' ({1}).</value>
+  </data>
+  <data name="Conn_Modal_UnblockWeb_Removed" xml:space="preserve">
+    <value>Đã gỡ {0} quy tắc chặn khớp với '{1}'. Nhấn 'Đồng bộ Firewall' để cập nhật.</value>
+  </data>
+  <data name="Conn_Modal_BlockedList_Title" xml:space="preserve">
+    <value>Danh sách IP &amp; CIDR đang quản lý</value>
+  </data>
+  <data name="Conn_Modal_ClearAllFirewall" xml:space="preserve">
+    <value>Gỡ sạch toàn bộ rule Firewall</value>
+  </data>
+  <data name="Conn_Modal_Notes_Title" xml:space="preserve">
+    <value>Quản lý Ghi chú IP &amp; Máy chủ</value>
+  </data>
+  <data name="Conn_Modal_IpKeyLabel" xml:space="preserve">
+    <value>Địa chỉ IP hoặc CIDR</value>
+  </data>
+  <data name="Conn_Modal_SaveNote" xml:space="preserve">
+    <value>Lưu ghi chú</value>
+  </data>
+  <data name="Conn_Modal_Remove" xml:space="preserve">
+    <value>Xóa</value>
+  </data>
+  <data name="Conn_Modal_EmptyList" xml:space="preserve">
+    <value>Chưa có mục nào.</value>
+  </data>
+  <data name="Info_Connections_Toolbar_Title" xml:space="preserve">
+    <value>Điều khiển Chặn IP/CIDR, Đồng bộ Firewall &amp; Bộ lọc</value>
+  </data>
+  <data name="Info_Connections_Toolbar_Desc" xml:space="preserve">
+    <value>Tạo/gỡ rule mang nhóm JustCryptDns_IPBlock trong Windows Firewall, đồng thời bảo vệ cứng loopback, gateway, DNS mạng LAN và resolver đang cấu hình.</value>
+  </data>
+  <data name="Info_Connections_Toolbar_Meaning" xml:space="preserve">
+    <value>Tra cứu Online mặc định TẮT để không phát sinh lưu lượng nền; tên miền được ghép tự động từ bộ nhớ đệm DNS cục bộ.</value>
+  </data>
+  <data name="Info_Connections_Grid_Title" xml:space="preserve">
+    <value>Bảng Kết nối TCP/UDP Thời gian thực &amp; Ghi chú Trực tiếp</value>
+  </data>
+  <data name="Info_Connections_Grid_Desc" xml:space="preserve">
+    <value>Quét mỗi giây một lần qua Win32 iphlpapi bằng DataGrid ảo hóa, tô màu Đang kết nối / Đã chặn / Đã đóng, hỗ trợ chuột phải và sửa Ghi chú tại chỗ.</value>
+  </data>
+  <data name="Info_Connections_Grid_Meaning" xml:space="preserve">
+    <value>Rời khỏi tab này hoặc thu nhỏ app sẽ dừng hoàn toàn vòng quét để giữ nguyên ping game và 0% CPU.</value>
   </data>
 </root>

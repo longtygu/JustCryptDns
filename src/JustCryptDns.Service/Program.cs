@@ -61,8 +61,10 @@ public static class Program
             builder.Services.AddSingleton<IDnsRoutingService, DnsRoutingService>();
             builder.Services.AddSingleton<IDnsFilteringService, DnsFilteringService>();
             builder.Services.AddSingleton<IDnsCacheService, DnsCacheService>();
+            builder.Services.AddSingleton<IDnsReverseLookupCache, DnsReverseLookupCache>();
             builder.Services.AddSingleton<IDnsFailoverService, DnsFailoverService>();
             builder.Services.AddSingleton<INetworkDiagnosticsService, NetworkDiagnosticsService>();
+            builder.Services.AddSingleton<IWindowsFirewallManager, WindowsFirewallService>();
             builder.Services.AddSingleton<IDnsEngine, DnsEngineService>();
             builder.Services.AddSingleton<IGamingEngineService, GamingEngineService>();
             builder.Services.AddSingleton<IBypassEngineService, BypassEngineService>();

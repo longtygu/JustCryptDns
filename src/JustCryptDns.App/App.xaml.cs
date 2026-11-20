@@ -56,6 +56,8 @@ public partial class App : Application
 
         var isRecoveryMode = e.Args.Any(a =>
             string.Equals(a, RegistryBootRecoveryRegistrar.RecoveryArgument, StringComparison.OrdinalIgnoreCase));
+        var clearFirewallOnRecovery = e.Args.Any(a =>
+            string.Equals(a, "--clear-firewall", StringComparison.OrdinalIgnoreCase));
 
         _instanceGuard = SingleInstanceGuard.Acquire("JustCryptDns");
         if (!_instanceGuard.IsPrimary)
@@ -82,7 +84,7 @@ public partial class App : Application
         if (isRecoveryMode)
         {
             _recoveryLoggerFactory = loggerFactory;
-            var exitCode = RunHeadlessBootRecovery(paths, loggerFactory);
+            var exitCode = RunHeadlessBootRecovery(paths, loggerFactory, clearFirewallOnRecovery);
             Shutdown(exitCode);
             return;
         }
@@ -233,9 +235,9 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private int RunHeadlessBootRecovery(AppPaths paths, ILoggerFactory loggerFactory)
+    private int RunHeadlessBootRecovery(AppPaths paths, ILoggerFactory loggerFactory, bool clearFirewall = false)
     {
-        _logger.LogInformation("Running headless boot recovery ({Arg}).", RegistryBootRecoveryRegistrar.RecoveryArgument);
+        _logger.LogInformation("Running headless boot recovery ({Arg}, clearFirewall={ClearFirewall}).", RegistryBootRecoveryRegistrar.RecoveryArgument, clearFirewall);
         try
         {
             return Task.Run(async () =>
@@ -266,6 +268,13 @@ public partial class App : Application
                 if (serviceClient.ConnectionState != ServiceConnectionState.Connected)
                 {
                     await windowsDns.RecoverAfterCrashIfNeededAsync(proxyIsRunning: false, cts.Token).ConfigureAwait(false);
+                }
+
+                if (clearFirewall)
+                {
+                    using var fw = new WindowsFirewallService(loggerFactory.CreateLogger<WindowsFirewallService>());
+                    var fwRes = await fw.ClearAllManagedRulesAsync(cts.Token).ConfigureAwait(false);
+                    _logger.LogInformation("Uninstall firewall cleanup result: success={Success}, removed={Removed}, msg={Message}", fwRes.Success, fwRes.RemovedRuleCount, fwRes.Message);
                 }
 
                 var dnsRemaining = windowsDns.HasActiveBackup();

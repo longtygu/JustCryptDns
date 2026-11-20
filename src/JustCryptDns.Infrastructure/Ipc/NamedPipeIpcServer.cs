@@ -148,7 +148,7 @@ public sealed class NamedPipeIpcServer : IAsyncDisposable
             await using (stream.ConfigureAwait(false))
             {
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(20));
 
                 var request = await IpcFraming.ReadMessageAsync<IpcRequest>(stream, timeoutCts.Token).ConfigureAwait(false);
                 if (request is null)

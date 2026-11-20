@@ -31,6 +31,7 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly IDnsFailoverService? _failoverService;
     private readonly INetworkDiagnosticsService? _diagnosticsService;
     private readonly INetworkInfoService? _networkInfo;
+    private readonly IDnsReverseLookupCache? _reverseLookupCache;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
@@ -60,7 +61,8 @@ public sealed class DnsEngineService : IDnsEngine
         IDnsCacheService? cacheService = null,
         IDnsFailoverService? failoverService = null,
         INetworkDiagnosticsService? diagnosticsService = null,
-        INetworkInfoService? networkInfo = null)
+        INetworkInfoService? networkInfo = null,
+        IDnsReverseLookupCache? reverseLookupCache = null)
     {
         _settings = settings;
         _dnsCryptManager = dnsCryptManager;
@@ -73,6 +75,7 @@ public sealed class DnsEngineService : IDnsEngine
         _failoverService = failoverService;
         _diagnosticsService = diagnosticsService;
         _networkInfo = networkInfo;
+        _reverseLookupCache = reverseLookupCache;
 
         _defaultDoh = new DohDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
@@ -556,6 +559,12 @@ public sealed class DnsEngineService : IDnsEngine
 
         foreach (var answer in packet.Answers)
         {
+            if (answer.Type is DnsRecordType.A or DnsRecordType.AAAA
+                && IPAddress.TryParse(answer.DataSummary, out var anyIp))
+            {
+                _reverseLookupCache?.Record(anyIp, host, answer.Ttl);
+            }
+
             if (answer.Type == recordType
                 && IPAddress.TryParse(answer.DataSummary, out var ip)
                 && !destination.Contains(ip))
@@ -612,6 +621,11 @@ public sealed class DnsEngineService : IDnsEngine
         if (_cacheService is { IsEnabled: true }
             && _cacheService.TryGetResponse(queryWire.Span, out var cachedBytes))
         {
+            if (hasParsed)
+            {
+                RecordReverseDnsFromResponse(qDomain, cachedBytes);
+            }
+
             Interlocked.Increment(ref _totalQueries);
             Interlocked.Increment(ref _successfulQueries);
             _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
@@ -686,11 +700,38 @@ public sealed class DnsEngineService : IDnsEngine
 
         if (result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize)
         {
+            if (hasParsed)
+            {
+                RecordReverseDnsFromResponse(qDomain, result.ResponseBytes);
+            }
+
             _cacheService?.StoreResponse(queryWire.Span, result.ResponseBytes);
             return result.ResponseBytes;
         }
 
         return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.ServFail);
+    }
+
+    private void RecordReverseDnsFromResponse(string queryDomain, ReadOnlySpan<byte> responseWire)
+    {
+        if (_reverseLookupCache is null || string.IsNullOrWhiteSpace(queryDomain))
+        {
+            return;
+        }
+
+        if (!DnsPacket.TryParse(responseWire, out var responsePacket) || responsePacket is null)
+        {
+            return;
+        }
+
+        foreach (var answer in responsePacket.Answers)
+        {
+            if (answer.Type is DnsRecordType.A or DnsRecordType.AAAA
+                && IPAddress.TryParse(answer.DataSummary, out var ip))
+            {
+                _reverseLookupCache.Record(ip, queryDomain, answer.Ttl);
+            }
+        }
     }
 
     private void RecordQueryOutcome(DnsQueryResult result)

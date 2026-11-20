@@ -588,6 +588,9 @@
   <data name="Common_Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
   <data name="ClosePrompt_Title" xml:space="preserve">
     <value>Close JustCryptDns?</value>
   </data>
@@ -2909,5 +2912,239 @@
   </data>
   <data name="Info_Appearance_Scaling_Meaning" xml:space="preserve">
     <value>Set Animations to Off or Status Pulse to Off anytime to completely disable ambient pulse effects.</value>
+  </data>
+  <data name="Nav_Connections" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="Page_Connections_Subtitle" xml:space="preserve">
+    <value>Live TCP/UDP connection monitor &amp; safe Windows Firewall IP/CIDR blocker</value>
+  </data>
+  <data name="Conn_Btn_BlockSelected" xml:space="preserve">
+    <value>Block Selected IP</value>
+  </data>
+  <data name="Conn_Btn_UnblockSelected" xml:space="preserve">
+    <value>Unblock Selected IP</value>
+  </data>
+  <data name="Conn_Btn_UnblockWebsite" xml:space="preserve">
+    <value>Unblock Website</value>
+  </data>
+  <data name="Conn_Btn_BlockedList" xml:space="preserve">
+    <value>Blocked List ({0})</value>
+  </data>
+  <data name="Conn_Btn_SyncBlocklist" xml:space="preserve">
+    <value>Sync Blocklist</value>
+  </data>
+  <data name="Conn_Btn_SyncBlocklistCount" xml:space="preserve">
+    <value>Sync Blocklist ({0})</value>
+  </data>
+  <data name="Conn_Btn_BlockCidr" xml:space="preserve">
+    <value>Block IP/CIDR</value>
+  </data>
+  <data name="Conn_Btn_ManageNotes" xml:space="preserve">
+    <value>Manage Notes</value>
+  </data>
+  <data name="Conn_Btn_ExportCsv" xml:space="preserve">
+    <value>Export CSV</value>
+  </data>
+  <data name="Conn_Btn_ClearClosed" xml:space="preserve">
+    <value>Clear Closed</value>
+  </data>
+  <data name="Conn_Opt_OnlineLookup" xml:space="preserve">
+    <value>Online Lookup (ipinfo.io)</value>
+  </data>
+  <data name="Conn_Opt_AlertNewProcess" xml:space="preserve">
+    <value>Alert New Unknown Process</value>
+  </data>
+  <data name="Conn_Opt_HideLan" xml:space="preserve">
+    <value>Hide LAN</value>
+  </data>
+  <data name="Conn_Opt_AutoScroll" xml:space="preserve">
+    <value>Auto-scroll</value>
+  </data>
+  <data name="Conn_Filter_Placeholder" xml:space="preserve">
+    <value>Filter by IP, domain, process, port, org or note…</value>
+  </data>
+  <data name="Conn_Col_FirstSeen" xml:space="preserve">
+    <value>First Seen</value>
+  </data>
+  <data name="Conn_Col_LastSeen" xml:space="preserve">
+    <value>Last Seen</value>
+  </data>
+  <data name="Conn_Col_Process" xml:space="preserve">
+    <value>Process</value>
+  </data>
+  <data name="Conn_Col_Proto" xml:space="preserve">
+    <value>Proto</value>
+  </data>
+  <data name="Conn_Col_RemoteIp" xml:space="preserve">
+    <value>Remote IP</value>
+  </data>
+  <data name="Conn_Col_Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="Conn_Col_Count" xml:space="preserve">
+    <value>Count</value>
+  </data>
+  <data name="Conn_Col_Domain" xml:space="preserve">
+    <value>Domain</value>
+  </data>
+  <data name="Conn_Col_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Conn_Col_Org" xml:space="preserve">
+    <value>Org / rDNS</value>
+  </data>
+  <data name="Conn_Col_Note" xml:space="preserve">
+    <value>Note</value>
+  </data>
+  <data name="ConnStatus_Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="ConnStatus_Closed" xml:space="preserve">
+    <value>Closed</value>
+  </data>
+  <data name="ConnStatus_BlockedIp" xml:space="preserve">
+    <value>Blocked IP</value>
+  </data>
+  <data name="ConnStatus_BlockedRange" xml:space="preserve">
+    <value>Blocked Range</value>
+  </data>
+  <data name="Conn_Ctx_CopyIp" xml:space="preserve">
+    <value>Copy IP</value>
+  </data>
+  <data name="Conn_Ctx_BlockIp" xml:space="preserve">
+    <value>Block IP</value>
+  </data>
+  <data name="Conn_Ctx_UnblockIp" xml:space="preserve">
+    <value>Unblock IP</value>
+  </data>
+  <data name="Conn_Ctx_EditNote" xml:space="preserve">
+    <value>Edit Note</value>
+  </data>
+  <data name="Conn_Stat_Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Conn_Stat_Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="Conn_Stat_Blocked" xml:space="preserve">
+    <value>Blocked IPs/Ranges</value>
+  </data>
+  <data name="Conn_Stat_Unsynced" xml:space="preserve">
+    <value>Unsynced</value>
+  </data>
+  <data name="Conn_ZeroOverhead_Hint" xml:space="preserve">
+    <value>Zero-overhead: polling pauses automatically when navigating away or minimizing</value>
+  </data>
+  <data name="Conn_Banner_FirewallDisabled" xml:space="preserve">
+    <value>Windows Defender Firewall is currently turned OFF for your active network profile. Block rules are saved but will not filter packets until Windows Firewall is enabled.</value>
+  </data>
+  <data name="Conn_Banner_RequiresElevation" xml:space="preserve">
+    <value>JustCryptDns background service is not running and this window is not elevated. Live monitoring, notes, and CSV export still work; start JustCryptDnsService or run as Administrator to apply Windows Firewall rules.</value>
+  </data>
+  <data name="Conn_Alert_NewProcess" xml:space="preserve">
+    <value>New external connection detected: {0} → {1}</value>
+  </data>
+  <data name="Conn_Msg_RuleAdded" xml:space="preserve">
+    <value>Added '{0}' to blocklist. Click Sync Blocklist to apply it to Windows Firewall.</value>
+  </data>
+  <data name="Conn_Msg_RuleAlreadyBlocked" xml:space="preserve">
+    <value>'{0}' is already in the blocklist.</value>
+  </data>
+  <data name="Conn_Msg_RuleRemoved" xml:space="preserve">
+    <value>Removed '{0}' from blocklist. Click Sync Blocklist to update Windows Firewall.</value>
+  </data>
+  <data name="Conn_Msg_CoveredByCidr" xml:space="preserve">
+    <value>IP '{0}' is blocked by CIDR rule '{1}'. Open Blocked List or remove '{1}' directly to unblock.</value>
+  </data>
+  <data name="Conn_Msg_CannotBlockUdpWildcard" xml:space="preserve">
+    <value>UDP socket entry '*' has no fixed remote IP. Select a TCP connection or use Block IP/CIDR.</value>
+  </data>
+  <data name="Conn_Msg_Synced" xml:space="preserve">
+    <value>Synced {0} IP/CIDR block target(s) to Windows Firewall ({1} old rule(s) removed).</value>
+  </data>
+  <data name="Conn_Msg_SyncedWithRejected" xml:space="preserve">
+    <value>Synced {0} target(s) to Windows Firewall; skipped {1} protected system/DNS target(s).</value>
+  </data>
+  <data name="Conn_Msg_ClearedAll" xml:space="preserve">
+    <value>Cleared all JustCryptDns Windows Firewall block rules ({0} removed).</value>
+  </data>
+  <data name="Conn_Msg_Exported" xml:space="preserve">
+    <value>Exported {0} connection row(s) to {1}.</value>
+  </data>
+  <data name="Conn_Msg_NoSelection" xml:space="preserve">
+    <value>Select a connection row first.</value>
+  </data>
+  <data name="Conn_Msg_ProtectedRejected" xml:space="preserve">
+    <value>Anti-self-lockout guard: {0}</value>
+  </data>
+  <data name="Conn_Modal_BlockCidr_Title" xml:space="preserve">
+    <value>Block IP Address or CIDR Range</value>
+  </data>
+  <data name="Conn_Modal_TargetLabel" xml:space="preserve">
+    <value>IP address or CIDR range (e.g. 203.0.113.10 or 198.51.100.0/24)</value>
+  </data>
+  <data name="Conn_Modal_NoteLabel" xml:space="preserve">
+    <value>Personal note (optional)</value>
+  </data>
+  <data name="Conn_Modal_RiskAck" xml:space="preserve">
+    <value>Confirm blocking this wide CIDR range or shared CDN/cloud prefix</value>
+  </data>
+  <data name="Conn_Modal_AddBlock" xml:space="preserve">
+    <value>Add Block Rule</value>
+  </data>
+  <data name="Conn_Modal_UnblockWeb_Title" xml:space="preserve">
+    <value>Unblock Website / Domain</value>
+  </data>
+  <data name="Conn_Modal_DomainLabel" xml:space="preserve">
+    <value>Website domain (e.g. steamcommunity.com or facebook.com)</value>
+  </data>
+  <data name="Conn_Modal_UnblockWeb_Action" xml:space="preserve">
+    <value>Resolve &amp; Unblock</value>
+  </data>
+  <data name="Conn_Modal_UnblockWeb_NoneFound" xml:space="preserve">
+    <value>No active blocklist rule matched any IP resolved for '{0}' ({1}).</value>
+  </data>
+  <data name="Conn_Modal_UnblockWeb_Removed" xml:space="preserve">
+    <value>Removed {0} block rule(s) matching '{1}'. Click Sync Blocklist to update Windows Firewall.</value>
+  </data>
+  <data name="Conn_Modal_BlockedList_Title" xml:space="preserve">
+    <value>Managed IP &amp; CIDR Blocklist</value>
+  </data>
+  <data name="Conn_Modal_ClearAllFirewall" xml:space="preserve">
+    <value>Remove All Firewall Rules</value>
+  </data>
+  <data name="Conn_Modal_Notes_Title" xml:space="preserve">
+    <value>Manage IP &amp; Host Notes</value>
+  </data>
+  <data name="Conn_Modal_IpKeyLabel" xml:space="preserve">
+    <value>IP address or CIDR</value>
+  </data>
+  <data name="Conn_Modal_SaveNote" xml:space="preserve">
+    <value>Save Note</value>
+  </data>
+  <data name="Conn_Modal_Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Conn_Modal_EmptyList" xml:space="preserve">
+    <value>No entries yet.</value>
+  </data>
+  <data name="Info_Connections_Toolbar_Title" xml:space="preserve">
+    <value>Connection Actions, Firewall Guard &amp; Display Filters</value>
+  </data>
+  <data name="Info_Connections_Toolbar_Desc" xml:space="preserve">
+    <value>Blocks/unblocks remote IPs or CIDR ranges via tagged JustCryptDns_IPBlock rules in Windows Firewall while protecting loopback, gateways, LAN DNS, and configured encrypted resolvers.</value>
+  </data>
+  <data name="Info_Connections_Toolbar_Meaning" xml:space="preserve">
+    <value>Online Lookup stays OFF by default to emit zero background traffic; domain names resolve automatically from your local DNS proxy cache.</value>
+  </data>
+  <data name="Info_Connections_Grid_Title" xml:space="preserve">
+    <value>Live TCP/UDP Connections &amp; Inline Notes</value>
+  </data>
+  <data name="Info_Connections_Grid_Desc" xml:space="preserve">
+    <value>Updates once per second using lightweight Win32 iphlpapi tables with UI row virtualization, color-coded states, right-click menu, and editable Note column.</value>
+  </data>
+  <data name="Info_Connections_Grid_Meaning" xml:space="preserve">
+    <value>Leaving this tab or minimizing stops all connection polling immediately so gaming ping and CPU overhead stay untouched.</value>
   </data>
 </root>

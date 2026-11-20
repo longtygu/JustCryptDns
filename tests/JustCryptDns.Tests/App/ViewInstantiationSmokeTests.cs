@@ -11,9 +11,22 @@ using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using Xunit.Abstractions;
+
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+[assembly: TestCollectionOrderer("JustCryptDns.Tests.App.WpfLastCollectionOrderer", "JustCryptDns.Tests")]
+
 namespace JustCryptDns.Tests.App;
 
-[Collection("WpfApplication")]
+public sealed class WpfLastCollectionOrderer : ITestCollectionOrderer
+{
+    public IEnumerable<ITestCollection> OrderTestCollections(IEnumerable<ITestCollection> testCollections) =>
+        testCollections.OrderBy(c =>
+            string.Equals(c.DisplayName, "WpfViewSmoke", StringComparison.Ordinal) ? 2 :
+            string.Equals(c.DisplayName, "WpfApplication", StringComparison.Ordinal) ? 1 : 0);
+}
+
+[Collection("WpfViewSmoke")]
 public sealed class ViewInstantiationSmokeTests
 {
     [Fact]
@@ -44,11 +57,12 @@ public sealed class ViewInstantiationSmokeTests
                     new BypassView(),
                     new DiagnosticsView(),
                     new LiveMonitorView(),
+                    new ConnectionMonitorView(),
                     new SettingsView(),
                     new AppearanceView(),
                 ];
 
-                Assert.Equal(11, views.Length);
+                Assert.Equal(12, views.Length);
                 foreach (var view in views)
                 {
                     view.Measure(new Size(1000, 900));

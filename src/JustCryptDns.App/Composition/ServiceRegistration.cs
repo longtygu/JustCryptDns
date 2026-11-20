@@ -55,8 +55,13 @@ public static class ServiceRegistration
         services.AddSingleton<IDnsRoutingService, DnsRoutingService>();
         services.AddSingleton<IDnsFilteringService, DnsFilteringService>();
         services.AddSingleton<IDnsCacheService, DnsCacheService>();
+        services.AddSingleton<IDnsReverseLookupCache, DnsReverseLookupCache>();
         services.AddSingleton<IDnsFailoverService, DnsFailoverService>();
         services.AddSingleton<INetworkDiagnosticsService, NetworkDiagnosticsService>();
+        services.AddSingleton<IConnectionMonitorService, WindowsConnectionTableReader>();
+        services.AddSingleton<IIpEnrichmentService, IpEnrichmentService>();
+        services.AddSingleton<IWindowsFirewallManager, WindowsFirewallService>();
+        services.AddSingleton<IFirewallBlocklistCoordinator, FirewallBlocklistCoordinator>();
         services.AddSingleton<IDnsEngine, DnsEngineService>();
         services.AddSingleton<IGamingEngineService, GamingEngineService>();
         services.AddSingleton<IBypassEngineService, BypassEngineService>();
@@ -88,6 +93,7 @@ public static class ServiceRegistration
         services.AddTransient<BypassViewModel>();
         services.AddTransient<DiagnosticsViewModel>();
         services.AddTransient<LiveMonitorViewModel>();
+        services.AddTransient<ConnectionMonitorViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<AppearanceViewModel>();
 

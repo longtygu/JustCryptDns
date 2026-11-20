@@ -217,6 +217,19 @@ internal sealed class MigrationV13ToV14 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v15 adds Connection Monitor &amp; IP Blocker preferences, blocklist, and IP notes (<see cref="ConnectionMonitorSettings"/>).
+/// </summary>
+internal sealed class MigrationV14ToV15 : ISettingsMigration
+{
+    public int FromVersion => 14;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; defaults are supplied by ConnectionMonitorSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -230,7 +243,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12(), new MigrationV12ToV13(), new MigrationV13ToV14()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12(), new MigrationV12ToV13(), new MigrationV13ToV14(), new MigrationV14ToV15()];
 
     public static int ReadVersion(JsonObject document)
     {

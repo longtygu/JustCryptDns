@@ -2,7 +2,7 @@
 ; Builds a signed-ready installer with Windows Service registration (LocalSystem) and clean uninstall.
 
 #define MyAppName "JustCryptDns"
-#define MyAppVersion "1.4.0"
+#define MyAppVersion "1.5.0"
 #define MyAppPublisher "Longtygu (JustCryptDns)"
 #define MyAppURL "https://github.com/longtygu/JustCryptDns"
 #define MyAppExeName "JustCryptDns.exe"
@@ -71,4 +71,4 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#MyAppExeName}"; Flags: runhidden; RunOnceId: "KillApp"
 Filename: "{sys}\sc.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden; RunOnceId: "StopSvc"
 Filename: "{sys}\sc.exe"; Parameters: "delete {#MyServiceName}"; Flags: runhidden; RunOnceId: "DelSvc"
-Filename: "{app}\{#MyAppExeName}"; Parameters: "--recover-and-exit"; Flags: runhidden; RunOnceId: "RecoverNetwork"
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--recover-and-exit --clear-firewall"; Flags: runhidden; RunOnceId: "RecoverNetwork"

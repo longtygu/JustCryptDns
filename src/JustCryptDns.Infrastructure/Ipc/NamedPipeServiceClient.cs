@@ -13,6 +13,7 @@ public sealed class NamedPipeServiceClient : IServiceClient
 {
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromMilliseconds(600);
     private static readonly TimeSpan IoTimeout = TimeSpan.FromSeconds(4);
+    private static readonly TimeSpan FirewallIoTimeout = TimeSpan.FromSeconds(15);
 
     private readonly string _pipeName;
     private readonly ILogger<NamedPipeServiceClient> _logger;
@@ -48,7 +49,10 @@ public sealed class NamedPipeServiceClient : IServiceClient
             }
 
             using var ioCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            ioCts.CancelAfter(IoTimeout);
+            var timeout = request.Kind is IpcRequestKind.SyncFirewallBlocklist or IpcRequestKind.ClearFirewallBlocklist
+                ? FirewallIoTimeout
+                : IoTimeout;
+            ioCts.CancelAfter(timeout);
 
             await IpcFraming.WriteMessageAsync(pipe, request, ioCts.Token).ConfigureAwait(false);
             var response = await IpcFraming.ReadMessageAsync<IpcResponse>(pipe, ioCts.Token).ConfigureAwait(false);
