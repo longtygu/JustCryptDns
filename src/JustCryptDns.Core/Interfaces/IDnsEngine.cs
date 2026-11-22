@@ -52,4 +52,13 @@ public interface IDnsEngine : IAsyncDisposable
         string host,
         bool includeIpv6 = false,
         CancellationToken cancellationToken = default);
+
+    Task<(bool Success, string? Error)> PauseForCaptivePortalAsync(
+        TimeSpan duration,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<(bool, string?)>((true, null));
+
+    Task<(bool Success, string? Error)> ResumeFromCaptivePortalAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<(bool, string?)>((true, null));
 }

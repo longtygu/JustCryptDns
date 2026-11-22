@@ -813,6 +813,8 @@ public enum SystemTrafficStatus
     NonStandardPort,
     AdapterNotConfigured,
     Ipv6DnsLeakDetected,
+    DeferredToVpn,
+    CaptivePortalDetected,
 }
 
 public sealed record AdapterDnsBackupEntry
@@ -908,4 +910,16 @@ public sealed record DnsEngineRuntimeStats
     public string? DnsCryptVersion { get; init; }
 
     public bool HasAdapterBackup { get; init; }
+
+    public string? ActiveVpnAdapterName { get; init; }
+
+    public bool IsCaptivePortalPaused { get; init; }
+
+    public DateTimeOffset? CaptivePortalPauseUntilUtc { get; init; }
+
+    public long RewrittenQueries { get; init; }
+
+    public long StaleCacheHits { get; init; }
+
+    public long PrefetchCount { get; init; }
 }

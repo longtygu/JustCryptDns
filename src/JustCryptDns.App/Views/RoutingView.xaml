@@ -280,6 +280,69 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
+            <!-- Local DNS Rewrites (LAN / Dev Overrides) -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Routing_LocalRewrites}" Margin="0,12,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Routing_LocalRewrites_Desc}" Margin="0,0,0,12" />
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="95" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding RewriteDomain, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="{StaticResource Font.Mono}" ToolTip="{l:Loc Routing_RewriteDomain}" Margin="0,0,8,0" />
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding RewriteRecordTypes}" SelectedItem="{Binding RewriteRecordType}"
+                                  ToolTip="{l:Loc Routing_RewriteType}" Margin="0,0,8,0" />
+                        <TextBox Grid.Column="2" Text="{Binding RewriteTarget, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="{StaticResource Font.Mono}" ToolTip="{l:Loc Routing_RewriteTarget}" Margin="0,0,8,0" />
+                        <TextBox Grid.Column="3" Text="{Binding RewriteTtlText, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="{StaticResource Font.Mono}" ToolTip="{l:Loc Routing_RewriteTtl}" Margin="0,0,8,0" />
+                        <Button Grid.Column="4" Style="{StaticResource Button.Primary}" Command="{Binding AddLocalRewriteCommand}"
+                                Content="{l:Loc Routing_RewriteAdd}" />
+                    </Grid>
+
+                    <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}"
+                               Text="{Binding RewriteError}" Visibility="{Binding RewriteError, Converter={StaticResource NullToVisibility}}"
+                               Margin="0,0,0,8" />
+
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Routing_RewriteEmpty}"
+                               Visibility="{Binding HasNoLocalRewrites, Converter={StaticResource BoolToVisibility}}" Margin="0,4,0,0" />
+
+                    <ItemsControl ItemsSource="{Binding LocalRewrites}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:LocalDnsRewriteRule}">
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="75" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="75" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource Text.Mono}" Text="{Binding Pattern}" VerticalAlignment="Center" Margin="0,0,8,0" TextTrimming="CharacterEllipsis" />
+                                    <Border Grid.Column="1" Style="{StaticResource Pill}" Background="{DynamicResource Brush.AccentSubtle}" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Small}" Text="{Binding RecordType}" Foreground="{DynamicResource Brush.Accent}" />
+                                    </Border>
+                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" Text="{Binding TargetValue}" VerticalAlignment="Center" Margin="0,0,8,0" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3" Style="{StaticResource Text.Caption}" Text="{Binding TtlSeconds, StringFormat={}{0}s}" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Command="{Binding DataContext.RemoveLocalRewriteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" Content="{l:Loc Common_Remove}" Margin="0,0,8,0" Padding="8,4" />
+                                        <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                                  Command="{Binding DataContext.ToggleLocalRewriteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                  CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
             <!-- Routing Log -->
             <Grid Margin="0,12,0,10">
                 <Grid.ColumnDefinitions>

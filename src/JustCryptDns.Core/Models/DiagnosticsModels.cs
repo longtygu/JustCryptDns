@@ -77,6 +77,7 @@ public enum DiagnosticTestCategory
     Restrictions,
     Compare,
     Propagation,
+    BrowserDoh,
 }
 
 public enum DiagnosticStepOutcome
@@ -115,4 +116,19 @@ public sealed record LiveQueryMonitorEntry
     public required DnsProtocol Protocol { get; init; }
 
     public double? LatencyMs { get; init; }
+}
+
+public sealed record BrowserDohCheckReport
+{
+    public required bool FirefoxCanaryBlocked { get; init; }
+
+    public required bool AdapterPointsToLocalProxy { get; init; }
+
+    public required bool BrowserPolicyDetected { get; init; }
+
+    public string? BrowserPolicyDetail { get; init; }
+
+    public required IReadOnlyList<string> Findings { get; init; }
+
+    public required string Summary { get; init; }
 }

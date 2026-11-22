@@ -1,0 +1,107 @@
+<Window x:Class="JustCryptDns.App.Views.TrayControlCenterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:JustCryptDns.App.Localization"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="Height"
+        Width="332"
+        Foreground="{DynamicResource Brush.TextPrimary}"
+        FontFamily="{StaticResource Font.UI}"
+        FontSize="{DynamicResource Font.Size.Body}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+    <Border Margin="8" Padding="16"
+            Background="{DynamicResource Brush.Popup}"
+            BorderBrush="{DynamicResource Brush.ControlBorder}"
+            BorderThickness="1"
+            CornerRadius="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.32" />
+        </Border.Effect>
+        <StackPanel>
+            <!-- Header -->
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc TrayPopup_Title}" />
+                    <TextBlock x:Name="ResolverSummaryText" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource Button.Subtle}" Height="28" Padding="8,0"
+                        VerticalAlignment="Top" Click="OnOpenDashboardClick" ToolTip="{l:Loc TrayPopup_OpenApp}">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8A7;" FontSize="13" />
+                </Button>
+            </Grid>
+
+            <Border Background="{DynamicResource Brush.Divider}" Height="1" Margin="0,0,0,12" />
+
+            <!-- Quick Protection Toggles -->
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc TrayPopup_DnsProtection}" VerticalAlignment="Center" />
+                <CheckBox x:Name="DnsToggle" Grid.Column="1" Style="{StaticResource Toggle.Switch}" Click="OnToggleDnsClick" />
+            </Grid>
+
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc TrayPopup_DpiBypass}" VerticalAlignment="Center" />
+                <CheckBox x:Name="DpiToggle" Grid.Column="1" Style="{StaticResource Toggle.Switch}" Click="OnToggleDpiClick" />
+            </Grid>
+
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc TrayPopup_GameMode}" VerticalAlignment="Center" />
+                <CheckBox x:Name="GameToggle" Grid.Column="1" Style="{StaticResource Toggle.Switch}" Click="OnToggleGameClick" />
+            </Grid>
+
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc TrayPopup_Lockdown}" Foreground="{DynamicResource Brush.Danger}" VerticalAlignment="Center" />
+                <CheckBox x:Name="LockdownToggle" Grid.Column="1" Style="{StaticResource Toggle.Switch}" Click="OnToggleLockdownClick" />
+            </Grid>
+
+            <!-- Secondary Actions -->
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="CaptiveButton" Grid.Column="0" Content="{l:Loc TrayPopup_CaptivePause}" Click="OnCaptiveToggleClick" />
+                <Button Grid.Column="2" Content="{l:Loc TrayPopup_FlushCache}" Click="OnFlushCacheClick" />
+            </Grid>
+
+            <Border Background="{DynamicResource Brush.Divider}" Height="1" Margin="0,0,0,12" />
+
+            <!-- Footer -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Style="{StaticResource Button.Primary}" Content="{l:Loc TrayPopup_OpenApp}"
+                        Click="OnOpenDashboardClick" Margin="0,0,8,0" />
+                <Button Grid.Column="1" Content="{l:Loc TrayPopup_Quit}" Click="OnQuitClick" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

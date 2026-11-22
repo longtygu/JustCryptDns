@@ -15,8 +15,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v14: Previous schemas. v15: Connection Monitor &amp; IP Blocker. v16: Security Shield &amp; App Block policies. v17: PUBG/Krafton built-in bypass defaults.</summary>
-    public const int CurrentSchemaVersion = 17;
+    /// <summary>v1–v16: Previous schemas. v17: PUBG/Krafton bypass defaults. v18: Network adaptation, Serve-Stale cache, Prefetch, Local DNS Rewrite.</summary>
+    public const int CurrentSchemaVersion = 18;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -318,6 +318,14 @@ public sealed class DnsSettings
 
     public int QueryTimeoutMs { get; set; } = 3500;
 
+    public bool AutoAdaptNetworkChanges { get; set; } = true;
+
+    public bool AutoDeferToVpn { get; set; } = true;
+
+    public bool AutoDetectCaptivePortal { get; set; } = true;
+
+    public bool BlockFirefoxDohCanary { get; set; } = true;
+
     internal void Normalize()
     {
         if (string.IsNullOrWhiteSpace(ActiveResolverId))
@@ -363,6 +371,8 @@ public sealed class RoutingSettings
 
     public List<DnsRoutingRule>? Rules { get; set; }
 
+    public List<LocalDnsRewriteRule> LocalRewrites { get; set; } = [];
+
     internal void Normalize()
     {
         if (string.IsNullOrWhiteSpace(ActiveProfileId))
@@ -376,6 +386,8 @@ public sealed class RoutingSettings
         {
             Rules = BuiltInRoutingProfiles.CreateDefaultRules().ToList();
         }
+
+        LocalRewrites ??= [];
     }
 }
 
@@ -415,12 +427,19 @@ public sealed class CacheSettings
 
     public int NegativeTtlSeconds { get; set; } = 60;
 
+    public bool EnableServeStale { get; set; } = true;
+
+    public int ServeStaleGraceSeconds { get; set; } = 60;
+
+    public bool EnablePrefetch { get; set; } = true;
+
     internal void Normalize()
     {
         MaxEntries = Math.Clamp(MaxEntries, 64, 65536);
         MinPositiveTtlSeconds = Math.Clamp(MinPositiveTtlSeconds, 1, 3600);
         MaxPositiveTtlSeconds = Math.Clamp(MaxPositiveTtlSeconds, MinPositiveTtlSeconds, 86400);
         NegativeTtlSeconds = Math.Clamp(NegativeTtlSeconds, 5, 3600);
+        ServeStaleGraceSeconds = Math.Clamp(ServeStaleGraceSeconds, 0, 3600);
     }
 }
 

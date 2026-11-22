@@ -60,7 +60,7 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         _diagnostics = diagnostics;
         _failover = failover;
         _version = typeof(ServiceStateManager).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.6.0";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.7.0";
     }
 
     public async Task InitializeFromSettingsAsync(CancellationToken cancellationToken = default)
@@ -428,6 +428,26 @@ public sealed class ServiceStateManager : IServiceIpcHandler
                 var events = _failover?.GetFailoverHistory().Take(100).ToList() ?? [];
                 var json = JsonSerializer.Serialize(events, SettingsJson.Options);
                 return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.PauseCaptivePortal:
+            {
+                var seconds = 300;
+                if (int.TryParse(request.StringValue, out var parsed) && parsed >= 30)
+                {
+                    seconds = parsed;
+                }
+
+                var (ok, err) = await _dnsEngine
+                    .PauseForCaptivePortalAsync(TimeSpan.FromSeconds(seconds), cancellationToken)
+                    .ConfigureAwait(false);
+                return new IpcResponse(ok, GetSnapshot(), ok ? null : "CaptivePauseFailed", err);
+            }
+
+            case IpcRequestKind.ResumeCaptivePortal:
+            {
+                var (ok, err) = await _dnsEngine.ResumeFromCaptivePortalAsync(cancellationToken).ConfigureAwait(false);
+                return new IpcResponse(ok, GetSnapshot(), ok ? null : "CaptiveResumeFailed", err);
             }
 
             default:

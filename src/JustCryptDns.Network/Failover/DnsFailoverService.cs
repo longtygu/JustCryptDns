@@ -22,6 +22,7 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
     private readonly ILogger<DnsFailoverService> _logger;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
+    private readonly DotDnsUpstream _defaultDot;
     private readonly ConcurrentDictionary<string, int> _consecutiveFailures = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<FailoverEventEntry> _history = new();
     private readonly object _historyLock = new();
@@ -40,10 +41,11 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
         _networkInfo = networkInfo;
 
         _defaultDoh = new DohDnsUpstream();
+        _defaultDot = new DotDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
         {
             _defaultDoh,
-            new DotDnsUpstream(),
+            _defaultDot,
             new UdpTcpDnsUpstream(),
         };
 
@@ -330,6 +332,7 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
 
         _disposed = true;
         _defaultDoh.Dispose();
+        _defaultDot.Dispose();
     }
 
     private void RecordFailoverEvent(

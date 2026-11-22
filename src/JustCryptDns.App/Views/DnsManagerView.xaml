@@ -125,6 +125,12 @@
                                 </TextBlock.Text>
                             </TextBlock>
                         </Button>
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding PauseForCaptivePortalCommand}"
+                                Content="{l:Loc Dns_PauseCaptivePortal}" Margin="0,0,8,4"
+                                Visibility="{Binding CanPauseCaptivePortal, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding ResumeFromCaptivePortalCommand}"
+                                Content="{l:Loc Dns_ResumeCaptivePortal}" Margin="0,0,8,4"
+                                Visibility="{Binding IsCaptivePortalPaused, Converter={StaticResource BoolToVisibility}}" />
                         <Button Command="{Binding TestLocalProxyCommand}" Content="{l:Loc DnsMgr_TestLocalProxy}" Margin="0,0,8,4" />
                         <Button Command="{Binding SwitchToPort53Command}" Content="{l:Loc DnsMgr_SwitchToPort53}" Margin="0,0,0,4"
                                 Visibility="{Binding IsNonStandardPort, Converter={StaticResource BoolToVisibility}}" />
@@ -444,6 +450,59 @@
                         </StackPanel>
                         <Button Grid.Column="1" Command="{Binding EmergencyRestoreDnsCommand}" Content="{l:Loc Tray_RestoreDns}" VerticalAlignment="Center" />
                     </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Network Adaptation & Browser DoH Canary Guard -->
+            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Dns_AdaptationSection}" Margin="0,12,0,10" />
+            <Border Style="{StaticResource SectionCard}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Dns_AutoAdaptNetwork}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dns_AutoAdaptNetwork_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding AutoAdaptNetworkChanges}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Dns_AutoDeferVpn}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dns_AutoDeferVpn_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding AutoDeferToVpn}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Dns_BlockFirefoxCanary}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Dns_BlockFirefoxCanary_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding BlockFirefoxDohCanary}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <Button Command="{Binding PauseForCaptivePortalCommand}" Content="{l:Loc Dns_PauseCaptivePortal}"
+                                Margin="0,0,8,0" Visibility="{Binding IsCaptivePortalPaused, Converter={StaticResource InverseBoolToVisibility}}" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding ResumeFromCaptivePortalCommand}"
+                                Content="{l:Loc Dns_ResumeCaptivePortal}"
+                                Visibility="{Binding IsCaptivePortalPaused, Converter={StaticResource BoolToVisibility}}" />
+                    </WrapPanel>
                 </StackPanel>
             </Border>
 

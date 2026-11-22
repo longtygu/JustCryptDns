@@ -110,6 +110,12 @@ public sealed record DnsCacheStats
 
     public required long ExpiredEvictions { get; init; }
 
+    public long StaleHits { get; init; }
+
+    public long PrefetchCount { get; init; }
+
+    public int StaleEntries { get; init; }
+
     public double HitRatioPercent
     {
         get

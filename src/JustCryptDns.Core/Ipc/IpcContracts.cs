@@ -45,6 +45,8 @@ public enum IpcRequestKind
     TestLocalProxy,
     GetLiveQueriesSnapshot,
     GetFailoverEventsSnapshot,
+    PauseCaptivePortal,
+    ResumeCaptivePortal,
 }
 
 public sealed record IpcRequest(

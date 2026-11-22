@@ -61,4 +61,19 @@ public interface INetworkDiagnosticsService
         string recordType,
         IProgress<DiagnosticStepProgress>? progress,
         CancellationToken cancellationToken = default);
+
+    Task<BrowserDohCheckReport> CheckBrowserDohBypassAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(new BrowserDohCheckReport
+        {
+            FirefoxCanaryBlocked = false,
+            AdapterPointsToLocalProxy = false,
+            BrowserPolicyDetected = false,
+            Findings = [],
+            Summary = "Not implemented.",
+        });
+}
+
+public interface IBrowserPolicyInspector
+{
+    IReadOnlyList<string> InspectConfiguredBrowserDohPolicies();
 }

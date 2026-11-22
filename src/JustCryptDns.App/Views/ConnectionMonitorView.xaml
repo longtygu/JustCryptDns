@@ -305,12 +305,18 @@
                 </Grid>
             </Border>
 
-            <!-- Virtualized Live Connection Table -->
-            <Border Grid.Row="5" Style="{StaticResource Card}" Padding="10" Margin="0,0,0,8"
-                    controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Connections_Grid_Title}"
-                    controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Connections_Grid_Desc}"
-                    controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Connections_Grid_Meaning}"
-                    controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
+            <!-- Virtualized Live Connection Table + Master-Detail Inspector Drawer -->
+            <Grid Grid.Row="5" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="10"
+                        controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Connections_Grid_Title}"
+                        controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Connections_Grid_Desc}"
+                        controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Connections_Grid_Meaning}"
+                        controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
                 <DataGrid x:Name="ConnectionsGrid"
                           ItemsSource="{Binding ConnectionsView}"
                           SelectedItem="{Binding SelectedConnection, Mode=TwoWay}"
@@ -489,6 +495,84 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>
+
+            <!-- Master-Detail Inspector Drawer -->
+            <Border Grid.Column="1" Width="320" Margin="10,0,0,0" Style="{StaticResource Card}" Padding="16"
+                    Visibility="{Binding IsInspectorOpen, Converter={StaticResource BoolToVisibility}}">
+                <Grid Visibility="{Binding SelectedConnection, Converter={StaticResource NullToVisibility}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc ConnInspector_Title}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Style="{StaticResource Button.Subtle}" Width="28" Height="28" Padding="0"
+                                Command="{Binding CloseInspectorCommand}" ToolTip="{l:Loc ConnInspector_Close}">
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8BB;" FontSize="11" />
+                        </Button>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel DataContext="{Binding SelectedConnection}">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc ConnInspector_Process}" Margin="0,0,0,4" />
+                            <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding ProcessName}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ProcessId, StringFormat='PID: {0}'}" Margin="0,2,0,4" />
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding ExecutablePath, Mode=OneWay}"
+                                     Visibility="{Binding ExecutablePath, Converter={StaticResource NullToVisibility}}" Margin="0,0,0,12" />
+
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc ConnInspector_Endpoint}" Margin="0,4,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" Text="{Binding RemoteIp, Mode=OneWay}" Margin="0,0,6,0" />
+                                <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding PortText, StringFormat=':{0}'}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Domain}" TextWrapping="Wrap"
+                                       Visibility="{Binding Domain, Converter={StaticResource NullToVisibility}}" Margin="0,0,0,4" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Margin="0,0,0,12">
+                                <Run Text="{Binding ProtocolLabel, Mode=OneWay}" />
+                                <Run Text=" · " />
+                                <Run Text="{Binding StatusText, Mode=OneWay}" />
+                                <Run Text=" · " />
+                                <Run Text="{Binding LastSeenText, Mode=OneWay}" />
+                            </TextBlock>
+
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc ConnInspector_Trust}" Margin="0,4,0,4" />
+                            <TextBlock Style="{StaticResource Text.Body}" Text="{Binding Organization}"
+                                       Visibility="{Binding Organization, Converter={StaticResource NullToVisibility}}" Margin="0,0,0,4" />
+                            <TextBlock Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding TrustBadgeText}" Margin="0,0,0,4" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}"
+                                       Text="{Binding ThreatLabel}"
+                                       Visibility="{Binding ThreatLabel, Converter={StaticResource NullToVisibility}}" Margin="0,0,0,10" />
+
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc ConnInspector_Note}" Margin="0,4,0,4" />
+                            <TextBox Text="{Binding Note, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,12" />
+
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc ConnInspector_Actions}" Margin="0,4,0,6" />
+                            <WrapPanel Orientation="Horizontal">
+                                <Button Content="{l:Loc Conn_Ctx_CopyIp}" Margin="0,0,6,6" Padding="10,5"
+                                        Command="{Binding DataContext.CopySelectedIpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <Button Content="{l:Loc Conn_Ctx_BlockIp}" Margin="0,0,6,6" Padding="10,5"
+                                        Command="{Binding DataContext.BlockSelectedIpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <Button Content="{l:Loc Conn_Ctx_UnblockIp}" Margin="0,0,6,6" Padding="10,5"
+                                        Command="{Binding DataContext.UnblockSelectedIpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <Button Content="{l:Loc Conn_Ctx_BlockApp}" Margin="0,0,6,6" Padding="10,5"
+                                        Command="{Binding DataContext.BlockSelectedAppCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <Button Content="{l:Loc Conn_Ctx_UnblockApp}" Margin="0,0,6,6" Padding="10,5"
+                                        Command="{Binding DataContext.UnblockSelectedAppCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <Button Content="{l:Loc Conn_Ctx_CheckAbuseIpDb}" Margin="0,0,6,6" Padding="10,5"
+                                        Command="{Binding DataContext.InspectIpAbuseIpDbCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <Button Content="{l:Loc Conn_Ctx_CheckVirusTotal}" Margin="0,0,6,6" Padding="10,5"
+                                        Command="{Binding DataContext.InspectIpVirusTotalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
 
             <!-- Summary Status Bar -->
             <Border Grid.Row="6" Style="{StaticResource Card}" Padding="16,9">

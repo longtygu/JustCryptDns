@@ -249,6 +249,44 @@ public sealed class HybridDnsEngineProxy : IDnsEngine
         CancellationToken cancellationToken = default) =>
         _local.ResolveHostAsync(host, includeIpv6, cancellationToken);
 
+    public async Task<(bool Success, string? Error)> PauseForCaptivePortalAsync(
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsDelegatingToService)
+        {
+            return await _local.PauseForCaptivePortalAsync(duration, cancellationToken).ConfigureAwait(false);
+        }
+
+        var seconds = ((int)Math.Max(30, duration.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var response = await _serviceClient
+            .SendAsync(new IpcRequest(IpcRequestKind.PauseCaptivePortal, StringValue: seconds), cancellationToken)
+            .ConfigureAwait(false);
+
+        await RefreshFromServiceAsync(cancellationToken).ConfigureAwait(false);
+        return response is null
+            ? (false, "Background service did not respond.")
+            : (response.Success, response.Message);
+    }
+
+    public async Task<(bool Success, string? Error)> ResumeFromCaptivePortalAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsDelegatingToService)
+        {
+            return await _local.ResumeFromCaptivePortalAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var response = await _serviceClient
+            .SendAsync(new IpcRequest(IpcRequestKind.ResumeCaptivePortal), cancellationToken)
+            .ConfigureAwait(false);
+
+        await RefreshFromServiceAsync(cancellationToken).ConfigureAwait(false);
+        return response is null
+            ? (false, "Background service did not respond.")
+            : (response.Success, response.Message);
+    }
+
     /// <summary>Stops only the in-process fallback engine if it was somehow started.</summary>
     public async Task StopLocalFallbackOnlyAsync(CancellationToken cancellationToken = default)
     {

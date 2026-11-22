@@ -4,6 +4,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Localization;
+using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Models;
 using Microsoft.Win32;
@@ -40,6 +41,7 @@ public sealed partial class FilteringViewModel : PageViewModel
 {
     private readonly IDnsFilteringService _filtering;
     private readonly IDnsCacheService _cache;
+    private readonly ISettingsService? _settings;
     private bool _loading;
 
     [ObservableProperty] private bool _isFilteringEnabled = true;
@@ -54,23 +56,29 @@ public sealed partial class FilteringViewModel : PageViewModel
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private string? _errorMessage;
 
-    // Cache stats
+    // Cache stats & batch-2 knobs
     [ObservableProperty] private bool _isCacheEnabled = true;
+    [ObservableProperty] private bool _enableServeStale = true;
+    [ObservableProperty] private bool _enablePrefetch = true;
     [ObservableProperty] private int _cacheCurrentEntries;
     [ObservableProperty] private int _cacheMaxEntries = 4096;
     [ObservableProperty] private long _cacheHits;
     [ObservableProperty] private long _cacheMisses;
     [ObservableProperty] private long _cachePositiveEntries;
     [ObservableProperty] private long _cacheNegativeEntries;
+    [ObservableProperty] private long _cacheStaleHits;
+    [ObservableProperty] private long _cachePrefetchCount;
     [ObservableProperty] private string _cacheHitRatioText = "0%";
 
     public FilteringViewModel(
         IDnsFilteringService filtering,
-        IDnsCacheService cache)
+        IDnsCacheService cache,
+        ISettingsService? settings = null)
         : base("Nav_Filtering", "Page_Filtering_Subtitle")
     {
         _filtering = filtering;
         _cache = cache;
+        _settings = settings;
 
         RefreshAll();
     }
@@ -123,6 +131,22 @@ public sealed partial class FilteringViewModel : PageViewModel
         if (!_loading)
         {
             _ = _cache.SetEnabledAsync(value);
+        }
+    }
+
+    partial void OnEnableServeStaleChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = _settings?.UpdateAsync(s => s.Cache.EnableServeStale = value);
+        }
+    }
+
+    partial void OnEnablePrefetchChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = _settings?.UpdateAsync(s => s.Cache.EnablePrefetch = value);
         }
     }
 
@@ -327,6 +351,9 @@ public sealed partial class FilteringViewModel : PageViewModel
                 CustomBlockedDomains.Add(d);
             }
 
+            EnableServeStale = _settings?.Current.Cache.EnableServeStale ?? true;
+            EnablePrefetch = _settings?.Current.Cache.EnablePrefetch ?? true;
+
             ApplyCacheStats(_cache.GetStats());
             RefreshLogs();
         }
@@ -348,6 +375,8 @@ public sealed partial class FilteringViewModel : PageViewModel
         CacheMisses = stats.CacheMisses;
         CachePositiveEntries = stats.PositiveEntries;
         CacheNegativeEntries = stats.NegativeEntries;
+        CacheStaleHits = stats.StaleHits;
+        CachePrefetchCount = stats.PrefetchCount;
         CacheHitRatioText = string.Create(CultureInfo.InvariantCulture, $"{stats.HitRatioPercent:0.#}%");
     }
 

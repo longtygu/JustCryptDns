@@ -139,6 +139,12 @@
                                 </TextBlock.Text>
                             </TextBlock>
                         </Button>
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding PauseForCaptivePortalCommand}"
+                                Content="{l:Loc Dns_PauseCaptivePortal}" Margin="0,0,8,4"
+                                Visibility="{Binding CanPauseCaptivePortal, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding ResumeFromCaptivePortalCommand}"
+                                Content="{l:Loc Dns_ResumeCaptivePortal}" Margin="0,0,8,4"
+                                Visibility="{Binding IsCaptivePortalPaused, Converter={StaticResource BoolToVisibility}}" />
                         <Button Command="{Binding TestLocalProxyCommand}" Content="{l:Loc DnsMgr_TestLocalProxy}" Margin="0,0,8,4" />
                         <Button Command="{Binding OpenDnsManagerCommand}" Content="{l:Loc Nav_DnsManager}" Margin="0,0,0,4" />
                     </WrapPanel>

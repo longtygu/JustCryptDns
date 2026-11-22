@@ -507,7 +507,21 @@
                             </Button.Style>
                         </Button>
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding RunRestrictionScanCommand}" Content="{l:Loc Diag_Btn_Restrictions}" Margin="0,0,8,8" />
+                        <Button Command="{Binding RunBrowserDohCheckCommand}" Content="{l:Loc Diag_BrowserDohRun}" Margin="0,0,8,8" />
                     </WrapPanel>
+
+                    <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,8,0,0"
+                            Visibility="{Binding BrowserDohSummary, Converter={StaticResource NullToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource TextBox.SelectableReadOnlyMono}" FontSize="{DynamicResource Font.Size.Caption}"
+                                     Text="{Binding BrowserDohSummary, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding BrowserDohSummary}" />
+                        </Grid>
+                    </Border>
 
                     <Border Background="{DynamicResource Brush.SubtleHover}" CornerRadius="6" Padding="12,10" Margin="0,8,0,0"
                             Visibility="{Binding ExternalTestResult, Converter={StaticResource NullToVisibility}}">

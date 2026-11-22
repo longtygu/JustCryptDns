@@ -5,6 +5,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using JustCryptDns.App.Localization;
 using JustCryptDns.App.ViewModels;
+using JustCryptDns.App.Views;
+using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
@@ -52,6 +54,9 @@ public sealed class TrayIconService : ITrayIconService
     private readonly IGamingEngineService? _gamingEngine;
     private readonly IBypassEngineService? _bypassEngine;
     private readonly IWindowsProxyManager? _windowsProxy;
+    private readonly ISettingsService? _settings;
+    private readonly IFirewallBlocklistCoordinator? _firewall;
+    private readonly IDnsCacheService? _cache;
     private readonly INavigationService _navigation;
     private readonly ILogger<TrayIconService> _logger;
     private readonly uint _taskbarCreatedMsg;
@@ -61,6 +66,7 @@ public sealed class TrayIconService : ITrayIconService
     private bool _added;
     private bool _disposed;
     private ContextMenu? _contextMenu;
+    private TrayControlCenterWindow? _controlCenter;
 
     public TrayIconService(
         IServiceClient serviceClient,
@@ -70,7 +76,10 @@ public sealed class TrayIconService : ITrayIconService
         IWindowsDnsManager? windowsDns = null,
         IGamingEngineService? gamingEngine = null,
         IBypassEngineService? bypassEngine = null,
-        IWindowsProxyManager? windowsProxy = null)
+        IWindowsProxyManager? windowsProxy = null,
+        ISettingsService? settings = null,
+        IFirewallBlocklistCoordinator? firewall = null,
+        IDnsCacheService? cache = null)
     {
         _serviceClient = serviceClient;
         _navigation = navigation;
@@ -80,6 +89,9 @@ public sealed class TrayIconService : ITrayIconService
         _gamingEngine = gamingEngine;
         _bypassEngine = bypassEngine;
         _windowsProxy = windowsProxy;
+        _settings = settings;
+        _firewall = firewall;
+        _cache = cache;
         _taskbarCreatedMsg = RegisterWindowMessageW("TaskbarCreated");
     }
 
@@ -119,6 +131,19 @@ public sealed class TrayIconService : ITrayIconService
 
         _disposed = true;
         LocalizationManager.Instance.PropertyChanged -= OnLocalizationChanged;
+        if (_controlCenter is not null)
+        {
+            try
+            {
+                _controlCenter.Close();
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                _logger.LogDebug(ex, "Tray control center close ignored during disposal.");
+            }
+
+            _controlCenter = null;
+        }
         if (_added && _hwndSource is { Handle: var hwnd } && hwnd != IntPtr.Zero)
         {
             var data = CreateNotifyIconData(hwnd);
@@ -196,13 +221,26 @@ public sealed class TrayIconService : ITrayIconService
             switch (eventId)
             {
                 case WmLButtonUp:
-                case WmLButtonDblClk:
                 case NinSelect:
+                    ToggleControlCenter();
+                    handled = true;
+                    break;
+                case WmLButtonDblClk:
+                    if (_controlCenter is { IsVisible: true })
+                    {
+                        _controlCenter.Hide();
+                    }
+
                     OpenRequested?.Invoke(this, EventArgs.Empty);
                     handled = true;
                     break;
                 case WmRButtonUp:
                 case WmContextMenu:
+                    if (_controlCenter is { IsVisible: true })
+                    {
+                        _controlCenter.Hide();
+                    }
+
                     ShowContextMenu(hwnd);
                     handled = true;
                     break;
@@ -210,6 +248,35 @@ public sealed class TrayIconService : ITrayIconService
         }
 
         return IntPtr.Zero;
+    }
+
+    private void ToggleControlCenter()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = _serviceClient.RefreshStatusAsync();
+        _controlCenter ??= new TrayControlCenterWindow(
+            _serviceClient,
+            _localEngine,
+            _bypassEngine,
+            _gamingEngine,
+            _settings,
+            _firewall,
+            _cache,
+            () => OpenRequested?.Invoke(this, EventArgs.Empty),
+            () => ExitRequested?.Invoke(this, EventArgs.Empty));
+
+        if (_controlCenter.IsVisible)
+        {
+            _controlCenter.Hide();
+        }
+        else
+        {
+            _controlCenter.ShowNearTray();
+        }
     }
 
     private void ShowContextMenu(IntPtr hwnd)

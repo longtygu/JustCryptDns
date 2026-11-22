@@ -300,7 +300,7 @@
                     </Grid>
 
                     <Border Style="{StaticResource Divider}" />
-                    <UniformGrid Rows="1" Columns="4">
+                    <UniformGrid Rows="1" Columns="5">
                         <StackPanel>
                             <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_CacheHit}" />
                             <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding CacheHitRatioText}" Margin="0,4,0,0" />
@@ -329,7 +329,41 @@
                                 <Run Text="{Binding CacheNegativeEntries, Mode=OneWay}" />
                             </TextBlock>
                         </StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Cache_Stat_StalePrefetch}" />
+                            <TextBlock Style="{StaticResource Text.Body}" Margin="0,4,0,0">
+                                <Run Text="{Binding CacheStaleHits, Mode=OneWay}" />
+                                <Run Text="/" />
+                                <Run Text="{Binding CachePrefetchCount, Mode=OneWay}" />
+                            </TextBlock>
+                        </StackPanel>
                     </UniformGrid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Cache_ServeStale}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Cache_ServeStale_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding EnableServeStale}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Divider}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource RowTitle}" Text="{l:Loc Cache_Prefetch}" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc Cache_Prefetch_Desc}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Style="{StaticResource Toggle.Switch}" IsChecked="{Binding EnablePrefetch}" />
+                    </Grid>
                 </StackPanel>
             </Border>
         </StackPanel>

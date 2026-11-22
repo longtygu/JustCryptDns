@@ -3288,4 +3288,217 @@
   <data name="Info_Connections_Shield_Meaning" xml:space="preserve">
     <value>All protections run using standard Windows Firewall COM rules with zero kernel drivers and full Anti-Cheat safety.</value>
   </data>
+  <data name="NavGroup_Overview" xml:space="preserve">
+    <value>Overview</value>
+  </data>
+  <data name="NavGroup_Protection" xml:space="preserve">
+    <value>Protection</value>
+  </data>
+  <data name="NavGroup_Tools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="Strip_Dns" xml:space="preserve">
+    <value>DNS</value>
+  </data>
+  <data name="Strip_Dpi" xml:space="preserve">
+    <value>DPI</value>
+  </data>
+  <data name="Strip_LeakGuard" xml:space="preserve">
+    <value>Leak Guard</value>
+  </data>
+  <data name="Strip_Lockdown" xml:space="preserve">
+    <value>Lockdown</value>
+  </data>
+  <data name="Strip_On" xml:space="preserve">
+    <value>ON</value>
+  </data>
+  <data name="Strip_Off" xml:space="preserve">
+    <value>OFF</value>
+  </data>
+  <data name="Strip_Paused" xml:space="preserve">
+    <value>PAUSED</value>
+  </data>
+  <data name="Strip_VpnDefer" xml:space="preserve">
+    <value>VPN</value>
+  </data>
+  <data name="Strip_SearchHint" xml:space="preserve">
+    <value>Search or jump... (Ctrl+K)</value>
+  </data>
+  <data name="CmdPalette_Title" xml:space="preserve">
+    <value>Quick Command Palette</value>
+  </data>
+  <data name="CmdPalette_Placeholder" xml:space="preserve">
+    <value>Type a page name, setting, or quick action...</value>
+  </data>
+  <data name="CmdPalette_Empty" xml:space="preserve">
+    <value>No matching commands found.</value>
+  </data>
+  <data name="CmdPalette_Hint" xml:space="preserve">
+    <value>↑↓ Navigate  ·  Enter Run  ·  Esc Close</value>
+  </data>
+  <data name="CmdPalette_Action_ToggleDns" xml:space="preserve">
+    <value>Toggle DNS Protection (Start / Stop)</value>
+  </data>
+  <data name="CmdPalette_Action_ToggleDpi" xml:space="preserve">
+    <value>Toggle DPI Bypass (Start / Stop)</value>
+  </data>
+  <data name="CmdPalette_Action_FlushCache" xml:space="preserve">
+    <value>Flush DNS Response Cache</value>
+  </data>
+  <data name="CmdPalette_Action_ToggleLockdown" xml:space="preserve">
+    <value>Toggle Emergency Network Lockdown</value>
+  </data>
+  <data name="CmdPalette_Action_RunDiagnostics" xml:space="preserve">
+    <value>Open Network &amp; DNS Diagnostics</value>
+  </data>
+  <data name="CmdPalette_Action_PauseCaptive" xml:space="preserve">
+    <value>Pause Adapter DNS 5m (Captive Portal)</value>
+  </data>
+  <data name="CmdPalette_Cat_Page" xml:space="preserve">
+    <value>Page</value>
+  </data>
+  <data name="CmdPalette_Cat_Action" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="ConnInspector_Title" xml:space="preserve">
+    <value>Connection Inspector</value>
+  </data>
+  <data name="ConnInspector_Close" xml:space="preserve">
+    <value>Close Inspector</value>
+  </data>
+  <data name="ConnInspector_Process" xml:space="preserve">
+    <value>Process &amp; Binary</value>
+  </data>
+  <data name="ConnInspector_Endpoint" xml:space="preserve">
+    <value>Remote Endpoint &amp; Domain</value>
+  </data>
+  <data name="ConnInspector_Trust" xml:space="preserve">
+    <value>Organization &amp; Threat Status</value>
+  </data>
+  <data name="ConnInspector_Note" xml:space="preserve">
+    <value>User Note</value>
+  </data>
+  <data name="ConnInspector_Actions" xml:space="preserve">
+    <value>Quick Actions</value>
+  </data>
+  <data name="ConnInspector_Trusted" xml:space="preserve">
+    <value>Trusted Signed Binary</value>
+  </data>
+  <data name="ConnInspector_UnknownSig" xml:space="preserve">
+    <value>Unverified / Unsigned</value>
+  </data>
+  <data name="TrayPopup_Title" xml:space="preserve">
+    <value>JustCryptDns Control Center</value>
+  </data>
+  <data name="TrayPopup_OpenApp" xml:space="preserve">
+    <value>Open Dashboard</value>
+  </data>
+  <data name="TrayPopup_DnsProtection" xml:space="preserve">
+    <value>Encrypted DNS</value>
+  </data>
+  <data name="TrayPopup_DpiBypass" xml:space="preserve">
+    <value>DPI Bypass</value>
+  </data>
+  <data name="TrayPopup_GameMode" xml:space="preserve">
+    <value>Game Mode</value>
+  </data>
+  <data name="TrayPopup_Lockdown" xml:space="preserve">
+    <value>Emergency Lockdown</value>
+  </data>
+  <data name="TrayPopup_FlushCache" xml:space="preserve">
+    <value>Flush Cache</value>
+  </data>
+  <data name="TrayPopup_CaptivePause" xml:space="preserve">
+    <value>Pause 5m (Portal)</value>
+  </data>
+  <data name="TrayPopup_CaptiveResume" xml:space="preserve">
+    <value>Resume DNS</value>
+  </data>
+  <data name="TrayPopup_Quit" xml:space="preserve">
+    <value>Exit App</value>
+  </data>
+  <data name="TrafficWarn_DeferredToVpn" xml:space="preserve">
+    <value>Active VPN tunnel detected ({0}) — adapter DNS configuration was deferred so VPN routing stays intact.</value>
+  </data>
+  <data name="TrafficWarn_CaptivePortal" xml:space="preserve">
+    <value>Public Wi-Fi / Captive Portal detected (or paused) — pause local DNS briefly to complete portal sign-in.</value>
+  </data>
+  <data name="Dns_AdaptationSection" xml:space="preserve">
+    <value>Network Adaptation &amp; Browser Guard</value>
+  </data>
+  <data name="Dns_AutoAdaptNetwork" xml:space="preserve">
+    <value>Auto-adapt on network changes</value>
+  </data>
+  <data name="Dns_AutoAdaptNetwork_Desc" xml:space="preserve">
+    <value>Re-applies safe adapter DNS when Wi-Fi or Ethernet changes.</value>
+  </data>
+  <data name="Dns_AutoDeferVpn" xml:space="preserve">
+    <value>Auto-defer to active VPN tunnels</value>
+  </data>
+  <data name="Dns_AutoDeferVpn_Desc" xml:space="preserve">
+    <value>Restores original adapter DNS automatically while a VPN interface is up.</value>
+  </data>
+  <data name="Dns_BlockFirefoxCanary" xml:space="preserve">
+    <value>Block Firefox DoH Canary</value>
+  </data>
+  <data name="Dns_BlockFirefoxCanary_Desc" xml:space="preserve">
+    <value>Returns NXDOMAIN for use-application-dns.net so Firefox honors local filtering and routing.</value>
+  </data>
+  <data name="Dns_PauseCaptivePortal" xml:space="preserve">
+    <value>Pause 5 min (Captive Portal)</value>
+  </data>
+  <data name="Dns_ResumeCaptivePortal" xml:space="preserve">
+    <value>Resume DNS Protection</value>
+  </data>
+  <data name="Cache_ServeStale" xml:space="preserve">
+    <value>Serve stale records (RFC 8767)</value>
+  </data>
+  <data name="Cache_ServeStale_Desc" xml:space="preserve">
+    <value>Serves expired records with a 30s TTL when upstream DNS is temporarily unreachable.</value>
+  </data>
+  <data name="Cache_Prefetch" xml:space="preserve">
+    <value>Prefetch popular domains</value>
+  </data>
+  <data name="Cache_Prefetch_Desc" xml:space="preserve">
+    <value>Refreshes frequently hit cache entries in the background near TTL expiry.</value>
+  </data>
+  <data name="Cache_Stat_StalePrefetch" xml:space="preserve">
+    <value>Serve-Stale / Prefetch</value>
+  </data>
+  <data name="Diag_BrowserDohCheck" xml:space="preserve">
+    <value>Browser DoH Bypass Audit</value>
+  </data>
+  <data name="Diag_Cat_BrowserDoh" xml:space="preserve">
+    <value>Browser DoH Audit</value>
+  </data>
+  <data name="Diag_BrowserDohRun" xml:space="preserve">
+    <value>Check Browser DoH Policies</value>
+  </data>
+  <data name="Diag_BrowserDoh_None" xml:space="preserve">
+    <value>Click Check Browser DoH Policies to inspect Chrome, Edge, and Firefox DoH policy overrides.</value>
+  </data>
+  <data name="Routing_LocalRewrites" xml:space="preserve">
+    <value>Local DNS Rewrites (LAN / Dev Overrides)</value>
+  </data>
+  <data name="Routing_LocalRewrites_Desc" xml:space="preserve">
+    <value>Maps exact or *.wildcard domains directly to custom A, AAAA, or CNAME targets in the local proxy.</value>
+  </data>
+  <data name="Routing_RewriteDomain" xml:space="preserve">
+    <value>Domain (e.g. app.local or *.dev.local)</value>
+  </data>
+  <data name="Routing_RewriteType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Routing_RewriteTarget" xml:space="preserve">
+    <value>Target IP or CNAME host</value>
+  </data>
+  <data name="Routing_RewriteTtl" xml:space="preserve">
+    <value>TTL (sec)</value>
+  </data>
+  <data name="Routing_RewriteAdd" xml:space="preserve">
+    <value>Add Rewrite</value>
+  </data>
+  <data name="Routing_RewriteEmpty" xml:space="preserve">
+    <value>No local DNS rewrites configured.</value>
+  </data>
 </root>

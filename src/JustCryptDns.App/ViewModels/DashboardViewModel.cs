@@ -105,6 +105,8 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string? _conflictingServiceName;
     [ObservableProperty] private string? _testProxyFeedback;
     [ObservableProperty] private string? _engineError;
+    [ObservableProperty] private bool _canPauseCaptivePortal;
+    [ObservableProperty] private bool _isCaptivePortalPaused;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBypassRunning))]
@@ -588,9 +590,35 @@ public sealed partial class DashboardViewModel : PageViewModel
         TrafficStatus = stats.TrafficStatus;
         SuggestedLoopbackIp = stats.SuggestedLoopbackIp;
         ConflictingServiceName = stats.Port53ServiceName;
+        IsCaptivePortalPaused = stats.IsCaptivePortalPaused;
+        CanPauseCaptivePortal = stats.TrafficStatus == SystemTrafficStatus.CaptivePortalDetected && !stats.IsCaptivePortalPaused;
         TrafficWarningBanner = FormatTrafficWarning(stats);
         EngineError = stats.LastError;
         UpdateTelemetryTargets();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task PauseForCaptivePortalAsync()
+    {
+        var (ok, err) = await _dnsEngine.PauseForCaptivePortalAsync(TimeSpan.FromMinutes(5));
+        if (!ok)
+        {
+            EngineError = err;
+        }
+
+        ApplyEngineStats(_dnsEngine.GetStats());
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ResumeFromCaptivePortalAsync()
+    {
+        var (ok, err) = await _dnsEngine.ResumeFromCaptivePortalAsync();
+        if (!ok)
+        {
+            EngineError = err;
+        }
+
+        ApplyEngineStats(_dnsEngine.GetStats());
     }
 
     internal static string? FormatTrafficWarning(DnsEngineRuntimeStats stats)
@@ -611,6 +639,10 @@ public sealed partial class DashboardViewModel : PageViewModel
                 !string.IsNullOrWhiteSpace(stats.Port53OwnerDescription) || !string.IsNullOrWhiteSpace(stats.Port53ServiceName)
                     ? loc.Format("TrafficWarn_Ipv6DnsLeak_HintConflict", stats.Port53OwnerDescription ?? stats.Port53ServiceName!)
                     : loc["TrafficWarn_Ipv6DnsLeak_HintGeneral"]),
+            SystemTrafficStatus.DeferredToVpn => loc.Format(
+                "TrafficWarn_DeferredToVpn",
+                stats.ActiveVpnAdapterName ?? "VPN"),
+            SystemTrafficStatus.CaptivePortalDetected => loc["TrafficWarn_CaptivePortal"],
             _ => null,
         };
     }

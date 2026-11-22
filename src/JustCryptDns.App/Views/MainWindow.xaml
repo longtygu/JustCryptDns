@@ -81,6 +81,23 @@
                         </Style>
                     </Ellipse.Style>
                 </Ellipse>
+                <Ellipse Width="7" Height="7" Fill="{DynamicResource Brush.Danger}"
+                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,9,10,0">
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding Key}" Value="Connections" />
+                                        <Condition Binding="{Binding DataContext.HasConnectionSecurityAlert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
                 <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="{DynamicResource Font.Size.BodyLarge}" TextTrimming="CharacterEllipsis"
                            Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock.Text>
@@ -143,8 +160,27 @@
                 </StackPanel>
 
                 <ListBox Grid.Row="1" Style="{StaticResource Nav.List}" ItemContainerStyle="{StaticResource Nav.Item}"
-                         ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNavItem}"
-                         ItemTemplate="{StaticResource NavItemTemplate}" PreviewMouseLeftButtonUp="OnNavListMouseUp" />
+                         ItemsSource="{Binding NavItemsView}" SelectedItem="{Binding SelectedNavItem}"
+                         ItemTemplate="{StaticResource NavItemTemplate}" PreviewMouseLeftButtonUp="OnNavListMouseUp">
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="16,10,12,4" FontSize="10.5" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.TextTertiary}"
+                                               Visibility="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource LocKey}">
+                                                <Binding Path="Name" />
+                                                <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
+                </ListBox>
 
                 <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,1,0,0" Padding="0,6,0,10">
                     <StackPanel>
@@ -182,19 +218,173 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button Style="{StaticResource Button.Caption}" Content="&#xE921;" Click="OnMinimize"
-                        WindowChrome.IsHitTestVisibleInChrome="True"
-                        ToolTip="{l:Loc Window_Minimize}" AutomationProperties.Name="{l:Loc Window_Minimize}" />
-                <Button x:Name="MaximizeButton" Style="{StaticResource Button.Caption}" Content="&#xE922;" Click="OnMaximizeRestore"
-                        WindowChrome.IsHitTestVisibleInChrome="True"
-                        ToolTip="{l:Loc Window_Maximize}" AutomationProperties.Name="{l:Loc Window_Maximize}" />
-                <Button Style="{StaticResource Button.CaptionClose}" Content="&#xE8BB;" Click="OnClose"
-                        WindowChrome.IsHitTestVisibleInChrome="True"
-                        ToolTip="{l:Loc Window_Close}" AutomationProperties.Name="{l:Loc Window_Close}" />
-            </StackPanel>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Global Security Strip & Quick Command Palette Trigger -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="20,4,8,0"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Style="{StaticResource Button.Subtle}" Height="28" Padding="9,0" Margin="0,0,6,0"
+                            Command="{Binding NavigateFromStripCommand}" CommandParameter="{x:Static vm:PageKeys.DnsManager}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Neutral}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDnsProtected}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDnsVpnDeferred}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDnsCaptivePaused}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Warning}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{l:Loc Strip_Dns}" FontSize="11.5" Foreground="{DynamicResource Brush.TextSecondary}" Margin="0,0,4,0" />
+                            <TextBlock Text="{Binding DnsStripValue}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource Button.Subtle}" Height="28" Padding="9,0" Margin="0,0,6,0"
+                            Command="{Binding NavigateFromStripCommand}" CommandParameter="{x:Static vm:PageKeys.Bypass}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Neutral}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDpiActive}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Accent}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{l:Loc Strip_Dpi}" FontSize="11.5" Foreground="{DynamicResource Brush.TextSecondary}" Margin="0,0,4,0" />
+                            <TextBlock Text="{Binding DpiStripValue}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource Button.Subtle}" Height="28" Padding="9,0" Margin="0,0,6,0"
+                            Command="{Binding NavigateFromStripCommand}" CommandParameter="{x:Static vm:PageKeys.Connections}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Neutral}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLeakGuardActive}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Success}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{l:Loc Strip_LeakGuard}" FontSize="11.5" Foreground="{DynamicResource Brush.TextSecondary}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource Button.Subtle}" Height="28" Padding="9,0" Margin="0,0,8,0"
+                            Command="{Binding NavigateFromStripCommand}" CommandParameter="{x:Static vm:PageKeys.Connections}"
+                            Visibility="{Binding IsLockdownActive, Converter={StaticResource BoolToVisibility}}">
+                        <Border Background="{DynamicResource Brush.DangerSubtle}" CornerRadius="5" Padding="6,2">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource Brush.Danger}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{l:Loc Strip_Lockdown}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Danger}" />
+                            </StackPanel>
+                        </Border>
+                    </Button>
+
+                    <Button Style="{StaticResource Button.Base}" Height="28" Padding="10,0"
+                            Command="{Binding OpenCommandPaletteCommand}" ToolTip="{l:Loc Strip_SearchHint}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE721;" FontSize="12" Margin="0,0,6,0" />
+                            <TextBlock Text="{l:Loc Strip_SearchHint}" FontSize="11.5" Foreground="{DynamicResource Brush.TextSecondary}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <Button Style="{StaticResource Button.Caption}" Content="&#xE921;" Click="OnMinimize"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            ToolTip="{l:Loc Window_Minimize}" AutomationProperties.Name="{l:Loc Window_Minimize}" />
+                    <Button x:Name="MaximizeButton" Style="{StaticResource Button.Caption}" Content="&#xE922;" Click="OnMaximizeRestore"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            ToolTip="{l:Loc Window_Maximize}" AutomationProperties.Name="{l:Loc Window_Maximize}" />
+                    <Button Style="{StaticResource Button.CaptionClose}" Content="&#xE8BB;" Click="OnClose"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            ToolTip="{l:Loc Window_Close}" AutomationProperties.Name="{l:Loc Window_Close}" />
+                </StackPanel>
+            </Grid>
 
             <controls:AnimatedContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+        </Grid>
+
+        <!-- Command Palette modal overlay (Ctrl+K) -->
+        <Grid Grid.ColumnSpan="2" Background="#99000000" MouseDown="OnCommandPaletteBackdropMouseDown"
+              Visibility="{Binding IsCommandPaletteOpen, Converter={StaticResource BoolToVisibility}}">
+            <Border Style="{StaticResource Card}" Width="560" VerticalAlignment="Top" Margin="0,68,0,0"
+                    Background="{DynamicResource Brush.Popup}" BorderBrush="{DynamicResource Brush.ControlBorder}"
+                    MouseDown="OnCommandPaletteCardMouseDown">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc CmdPalette_Title}" Margin="0,0,0,8" />
+                    <TextBox x:Name="CommandPaletteSearchBox"
+                             Text="{Binding CommandPaletteQuery, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{l:Loc CmdPalette_Placeholder}" Margin="0,0,0,10" />
+                    <ListBox x:Name="CommandPaletteListBox"
+                             Style="{StaticResource Nav.List}"
+                             MaxHeight="320"
+                             ItemsSource="{Binding FilteredPaletteCommands}"
+                             SelectedItem="{Binding SelectedPaletteCommand}"
+                             PreviewMouseLeftButtonUp="OnCommandPaletteItemMouseUp"
+                             Visibility="{Binding HasPaletteMatches, Converter={StaticResource BoolToVisibility}}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:CommandPaletteItem}">
+                                <Grid Margin="4,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="28" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource Text.Icon}" Text="{Binding Glyph}" FontSize="14" />
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="{DynamicResource Font.Size.Body}"
+                                               Foreground="{DynamicResource Brush.TextPrimary}" TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource LocKey}">
+                                                <Binding Path="LabelKey" />
+                                                <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                    <Border Grid.Column="2" Background="{DynamicResource Brush.ControlFill}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                        <TextBlock FontSize="10.5" Foreground="{DynamicResource Brush.TextSecondary}">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource LocKey}">
+                                                    <Binding Path="CategoryKey" />
+                                                    <Binding Path="Culture" Source="{x:Static l:LocalizationManager.Instance}" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc CmdPalette_Empty}"
+                               Margin="4,10" HorizontalAlignment="Center"
+                               Visibility="{Binding HasPaletteMatches, Converter={StaticResource InverseBoolToVisibility}}" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{l:Loc CmdPalette_Hint}"
+                               Margin="0,10,0,0" Foreground="{DynamicResource Brush.TextTertiary}" />
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- Close behavior confirmation overlay (when CloseBehavior is AskEveryTime) -->

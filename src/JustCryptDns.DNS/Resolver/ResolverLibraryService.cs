@@ -19,6 +19,7 @@ public sealed class ResolverLibraryService : IResolverLibraryService, IDisposabl
     private readonly ILogger<ResolverLibraryService> _logger;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
+    private readonly DotDnsUpstream _defaultDot;
     private readonly ConcurrentDictionary<string, ResolverHealthStatus> _health = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
@@ -31,10 +32,11 @@ public sealed class ResolverLibraryService : IResolverLibraryService, IDisposabl
         _logger = logger;
 
         _defaultDoh = new DohDnsUpstream();
+        _defaultDot = new DotDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
         {
             _defaultDoh,
-            new DotDnsUpstream(),
+            _defaultDot,
             new UdpTcpDnsUpstream(),
         };
 
@@ -730,6 +732,7 @@ public sealed class ResolverLibraryService : IResolverLibraryService, IDisposabl
 
         _disposed = true;
         _defaultDoh.Dispose();
+        _defaultDot.Dispose();
     }
 
     private static DnsResolverEndpoint NormalizeResolver(DnsResolverEndpoint resolver, string id, bool isCustom)

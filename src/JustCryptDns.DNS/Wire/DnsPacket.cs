@@ -1,7 +1,9 @@
 using System.Buffers.Binary;
 using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using JustCryptDns.Core.Models;
 
 namespace JustCryptDns.DNS.Wire;
 
@@ -194,6 +196,149 @@ public sealed class DnsPacket
         }
 
         return response;
+    }
+
+    /// <summary>
+    /// Overwrites TTL values on answer resource records (e.g., to 30 seconds for RFC 8767 Serve-Stale responses).
+    /// </summary>
+    public static void RewriteAnswerTtls(Span<byte> wire, uint newTtlSeconds)
+    {
+        if (wire.Length < HeaderSize)
+        {
+            return;
+        }
+
+        ReadOnlySpan<byte> ro = wire;
+        var qdCount = BinaryPrimitives.ReadUInt16BigEndian(ro[4..6]);
+        var anCount = BinaryPrimitives.ReadUInt16BigEndian(ro[6..8]);
+        var offset = HeaderSize;
+
+        for (var i = 0; i < qdCount; i++)
+        {
+            if (!TryReadDomainName(ro, ref offset, out _) || offset + 4 > wire.Length)
+            {
+                return;
+            }
+
+            offset += 4;
+        }
+
+        for (var i = 0; i < anCount; i++)
+        {
+            if (!TryReadDomainName(ro, ref offset, out _) || offset + 10 > wire.Length)
+            {
+                return;
+            }
+
+            var rrType = (DnsRecordType)BinaryPrimitives.ReadUInt16BigEndian(ro.Slice(offset, 2));
+            var rdLength = BinaryPrimitives.ReadUInt16BigEndian(ro.Slice(offset + 8, 2));
+            if (offset + 10 + rdLength > wire.Length)
+            {
+                return;
+            }
+
+            if (rrType != DnsRecordType.OPT)
+            {
+                BinaryPrimitives.WriteUInt32BigEndian(wire.Slice(offset + 4, 4), newTtlSeconds);
+            }
+
+            offset += 10 + rdLength;
+        }
+    }
+
+    /// <summary>
+    /// Builds a valid RFC 1035 wire response answering the first question from a Local DNS Rewrite rule.
+    /// </summary>
+    public static byte[] CreateLocalRewriteResponse(
+        ReadOnlySpan<byte> requestWire,
+        LocalDnsRewriteRecordType recordType,
+        string targetValue,
+        uint ttlSeconds)
+    {
+        if (requestWire.Length < HeaderSize)
+        {
+            return [];
+        }
+
+        var id = BinaryPrimitives.ReadUInt16BigEndian(requestWire[0..2]);
+        var reqFlags = BinaryPrimitives.ReadUInt16BigEndian(requestWire[2..4]);
+        var qdCount = BinaryPrimitives.ReadUInt16BigEndian(requestWire[4..6]);
+        if (qdCount == 0)
+        {
+            return [];
+        }
+
+        var qEnd = HeaderSize;
+        if (!TryReadDomainName(requestWire, ref qEnd, out _) || qEnd + 4 > requestWire.Length)
+        {
+            return [];
+        }
+
+        qEnd += 4;
+
+        DnsRecordType wireType;
+        byte[] rdata;
+        var cleanTarget = (targetValue ?? string.Empty).Trim();
+        switch (recordType)
+        {
+            case LocalDnsRewriteRecordType.A:
+                if (!IPAddress.TryParse(cleanTarget, out var ipv4) || ipv4.AddressFamily != AddressFamily.InterNetwork)
+                {
+                    return [];
+                }
+
+                wireType = DnsRecordType.A;
+                rdata = ipv4.GetAddressBytes();
+                break;
+
+            case LocalDnsRewriteRecordType.AAAA:
+                if (!IPAddress.TryParse(cleanTarget, out var ipv6) || ipv6.AddressFamily != AddressFamily.InterNetworkV6)
+                {
+                    return [];
+                }
+
+                wireType = DnsRecordType.AAAA;
+                rdata = ipv6.GetAddressBytes();
+                break;
+
+            case LocalDnsRewriteRecordType.CNAME:
+            {
+                using var cnameStream = new MemoryStream(64);
+                WriteDomainName(cnameStream, cleanTarget);
+                wireType = DnsRecordType.CNAME;
+                rdata = cnameStream.ToArray();
+                break;
+            }
+
+            default:
+                return [];
+        }
+
+        var flags = (ushort)(0x8000 | (reqFlags & 0x0100) | 0x0080); // QR=1, RD=copied, RA=1, NOERROR
+        using var ms = new MemoryStream(qEnd + 16 + rdata.Length);
+
+        Span<byte> header = stackalloc byte[HeaderSize];
+        BinaryPrimitives.WriteUInt16BigEndian(header[0..2], id);
+        BinaryPrimitives.WriteUInt16BigEndian(header[2..4], flags);
+        BinaryPrimitives.WriteUInt16BigEndian(header[4..6], 1); // QDCOUNT
+        BinaryPrimitives.WriteUInt16BigEndian(header[6..8], 1); // ANCOUNT
+        BinaryPrimitives.WriteUInt16BigEndian(header[8..10], 0);
+        BinaryPrimitives.WriteUInt16BigEndian(header[10..12], 0);
+        ms.Write(header);
+
+        ms.Write(requestWire[HeaderSize..qEnd]);
+
+        Span<byte> rrHeader = stackalloc byte[12];
+        rrHeader[0] = 0xC0; // Compression pointer to QNAME at offset 12
+        rrHeader[1] = 0x0C;
+        BinaryPrimitives.WriteUInt16BigEndian(rrHeader[2..4], (ushort)wireType);
+        BinaryPrimitives.WriteUInt16BigEndian(rrHeader[4..6], 1); // IN
+        BinaryPrimitives.WriteUInt32BigEndian(rrHeader[6..10], Math.Max(1u, ttlSeconds));
+        BinaryPrimitives.WriteUInt16BigEndian(rrHeader[10..12], (ushort)rdata.Length);
+        ms.Write(rrHeader);
+        ms.Write(rdata);
+
+        return ms.ToArray();
     }
 
     public static bool TryParse(ReadOnlySpan<byte> buffer, out DnsPacket? packet)

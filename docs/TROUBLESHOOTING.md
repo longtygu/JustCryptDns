@@ -24,12 +24,17 @@
 - **A banking or intranet site dislikes TLS splitting:** Self-healing detects TLS Alerts or slow fragmented handshakes automatically and learns `Direct` for 30 minutes; you can also click **Direct** beside any entry in **Recent bypass connection stream** or add the domain under **Direct exclusions** for a permanent bypass exemption with instant Auto-PAC refresh.
 - **Emergency restore Windows Proxy:** If browser connections fail after an unclean shutdown, click **Restore Windows Proxy** inside **DPI Bypass & Tunnel** or right-click the tray icon and choose **Restore original DNS** (which also restores your per-user `%LOCALAPPDATA%\JustCryptDns\proxy-backup.json`).
 
-## 5. Window Transparency on Windows 10 vs. Windows 11
+## 5. VPN Coexistence & Public Wi-Fi Captive Portals (v1.7.0)
+- **Active VPN Tunnel:** With **Auto-defer to active VPN tunnels** enabled in **DNS Manager**, JustCryptDns detects WireGuard/WARP/OpenVPN/Tailscale interfaces and temporarily restores original adapter DNS while the VPN is up so your VPN's DNS routing isn't overridden.
+- **Public Wi-Fi Captive Portal Sign-In:** If a hotel, café, or airport Wi-Fi portal login fails to load, click **Pause 5 min (Captive Portal)** in the warning banner, **DNS Manager**, `Ctrl+K` Command Palette, or Tray Mini Control Center. Protection resumes automatically after 5 minutes (or immediately when you click **Resume DNS Protection**).
+- **Firefox Still Bypasses Local Rules:** Ensure **Block Firefox DoH Canary** (`use-application-dns.net` -> `NXDOMAIN`) is enabled in **DNS Manager**, and run **Check Browser DoH Policies** inside **Diagnostics** to detect enterprise DoH policies.
+
+## 6. Window Transparency on Windows 10 vs. Windows 11
 - **Windows 11 (build 22621+):** Supports hardware **Mica**, **Acrylic**, and **Rounded Corners** via DWM.
 - **Windows 10 (22H2):** Automatically falls back to **Windows DWM Blur** (`SetWindowCompositionAttribute`). Hardware rounded corners are Windows 11 only.
 - If transparency effects are disabled in Windows Personalization settings or in remote/virtual sessions, JustCryptDns gracefully renders an opaque surface with full readability.
 
-## 6. Inspecting Logs & Portable Mode
+## 7. Inspecting Logs & Portable Mode
 - Installed shared mode logs: `%ProgramData%\JustCryptDns\logs\ui-YYYYMMDD.log` and `service-YYYYMMDD.log` (legacy v1.5.x settings from `%LOCALAPPDATA%\JustCryptDns` are migrated automatically on first launch).
 - Portable ZIP mode (`portable.flag` beside `JustCryptDns.exe`): logs and settings live in `<AppDir>\data\`.
 - Custom data directory override: set environment variable `JUSTCRYPTDNS_DATA_DIR` before starting `JustCryptDns.exe`.

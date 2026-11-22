@@ -19,8 +19,10 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
     private readonly ISettingsService _settings;
     private readonly IResolverLibraryService _resolverLibrary;
     private readonly INetworkInfoService _networkInfo;
+    private readonly IBrowserPolicyInspector? _browserPolicy;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
+    private readonly DotDnsUpstream _defaultDot;
     private readonly LinkedList<LiveQueryMonitorEntry> _monitorEntries = new();
     private readonly object _monitorLock = new();
     private bool _disposed;
@@ -29,17 +31,20 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         ISettingsService settings,
         IResolverLibraryService resolverLibrary,
         INetworkInfoService networkInfo,
-        IEnumerable<IDnsUpstreamClient>? customUpstreams = null)
+        IEnumerable<IDnsUpstreamClient>? customUpstreams = null,
+        IBrowserPolicyInspector? browserPolicy = null)
     {
         _settings = settings;
         _resolverLibrary = resolverLibrary;
         _networkInfo = networkInfo;
+        _browserPolicy = browserPolicy;
 
         _defaultDoh = new DohDnsUpstream();
+        _defaultDot = new DotDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
         {
             _defaultDoh,
-            new DotDnsUpstream(),
+            _defaultDot,
             new UdpTcpDnsUpstream(),
         };
 
@@ -373,6 +378,50 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         });
     }
 
+    public Task<BrowserDohCheckReport> CheckBrowserDohBypassAsync(CancellationToken cancellationToken = default)
+    {
+        var dns = _settings.Current.Dns;
+        var canaryBlocked = dns.BlockFirefoxDohCanary;
+        var snapshot = _networkInfo.GetSnapshot();
+        var adapterDns = snapshot.PrimaryAdapter?.DnsServers ?? [];
+        var adapterLoopback = adapterDns.Count > 0 && adapterDns.All(IPAddress.IsLoopback);
+
+        var policies = _browserPolicy?.InspectConfiguredBrowserDohPolicies() ?? [];
+        var policyDetected = policies.Count > 0;
+        var findings = new List<string>
+        {
+            canaryBlocked
+                ? "Firefox DoH Canary Guard enabled (use-application-dns.net -> NXDOMAIN)."
+                : "Warning: Firefox DoH Canary Guard is disabled; Firefox may bypass local filtering.",
+            adapterLoopback
+                ? $"Windows primary adapter DNS routes to local proxy ({string.Join(", ", adapterDns)})."
+                : "Warning: Primary adapter DNS is not pointing exclusively to loopback local proxy.",
+        };
+
+        if (policyDetected)
+        {
+            findings.AddRange(policies);
+        }
+        else
+        {
+            findings.Add("No Chrome, Edge, or Firefox Group Policy DoH overrides found in registry.");
+        }
+
+        var summary = canaryBlocked && adapterLoopback
+            ? $"Browser DoH audit OK: Firefox canary blocked, adapter on local proxy{(policyDetected ? $" (browser policies: {policies.Count})" : ", no forced browser DoH policy")}."
+            : "Browser DoH bypass risk detected: ensure local adapter routes to loopback proxy and Firefox Canary Guard is enabled.";
+
+        return Task.FromResult(new BrowserDohCheckReport
+        {
+            FirefoxCanaryBlocked = canaryBlocked,
+            AdapterPointsToLocalProxy = adapterLoopback,
+            BrowserPolicyDetected = policyDetected,
+            BrowserPolicyDetail = policyDetected ? string.Join("; ", policies) : null,
+            Findings = findings,
+            Summary = summary,
+        });
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -382,6 +431,7 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
 
         _disposed = true;
         _defaultDoh.Dispose();
+        _defaultDot.Dispose();
     }
 
     private async Task<IReadOnlyList<ResolverComparisonEntry>> QueryMultipleResolversCoreAsync(

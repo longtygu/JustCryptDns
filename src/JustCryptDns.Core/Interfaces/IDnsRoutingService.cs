@@ -50,4 +50,19 @@ public interface IDnsRoutingService
     IReadOnlyList<RoutingLogEntry> GetRecentLogs();
 
     void ClearLogs();
+
+    IReadOnlyList<LocalDnsRewriteRule> GetLocalRewrites() => [];
+
+    Task<(bool Success, LocalDnsRewriteRule? Rule, string? Error)> AddOrUpdateLocalRewriteAsync(
+        LocalDnsRewriteRule rule,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<(bool, LocalDnsRewriteRule?, string?)>((false, null, "Not implemented."));
+
+    Task<bool> RemoveLocalRewriteAsync(string rewriteId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
+    Task SetLocalRewriteEnabledAsync(string rewriteId, bool enabled, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
+    LocalDnsRewriteRule? FindMatchingRewrite(string domain, string recordType) => null;
 }

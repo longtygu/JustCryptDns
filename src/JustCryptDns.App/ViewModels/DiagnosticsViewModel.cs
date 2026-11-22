@@ -66,6 +66,7 @@ public sealed partial class DiagnosticsViewModel : PageViewModel
     [ObservableProperty] private string? _lookupSummary;
     [ObservableProperty] private string? _externalTestResult;
     [ObservableProperty] private string? _restrictionSummary;
+    [ObservableProperty] private string? _browserDohSummary;
     [ObservableProperty] private string? _errorMessage;
 
     public DiagnosticsViewModel(
@@ -515,6 +516,41 @@ public sealed partial class DiagnosticsViewModel : PageViewModel
         {
             ErrorMessage = ex.Message;
             AddStepLog(DiagnosticTestCategory.Propagation, DiagnosticStepOutcome.Fail, LookupDomain, null, ex.Message);
+            FinishSession(cancelled: false);
+        }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task RunBrowserDohCheckAsync()
+    {
+        var token = StartSession(
+            DiagnosticTestCategory.BrowserDoh,
+            indeterminate: true,
+            "Browser DoH Audit",
+            "Inspecting Chrome, Edge, and Firefox DoH bypass policies and canary status...");
+        try
+        {
+            var report = await _diagnostics.CheckBrowserDohBypassAsync(token);
+            BrowserDohSummary = report.Summary;
+            var outcome = report.BrowserPolicyDetected || !report.FirefoxCanaryBlocked
+                ? DiagnosticStepOutcome.Warning
+                : DiagnosticStepOutcome.Pass;
+            AddStepLog(DiagnosticTestCategory.BrowserDoh, outcome, "Browser DoH Policies", null, report.Summary);
+            foreach (var finding in report.Findings)
+            {
+                AddStepLog(DiagnosticTestCategory.BrowserDoh, DiagnosticStepOutcome.Warning, "Policy Detail", null, finding);
+            }
+
+            FinishSession(cancelled: token.IsCancellationRequested);
+        }
+        catch (OperationCanceledException)
+        {
+            FinishSession(cancelled: true);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            AddStepLog(DiagnosticTestCategory.BrowserDoh, DiagnosticStepOutcome.Fail, "Browser DoH Policies", null, ex.Message);
             FinishSession(cancelled: false);
         }
     }

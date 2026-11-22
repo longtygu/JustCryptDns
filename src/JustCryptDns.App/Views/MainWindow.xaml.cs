@@ -36,8 +36,20 @@ public partial class MainWindow : Window
         };
         PreviewKeyDown += OnWindowPreviewKeyDown;
         Closing += OnWindowClosing;
+        Closed += (_, _) => viewModel.StopTimers();
         viewModel.HideToTrayRequested += (_, _) => HideToTray();
         viewModel.ExitRequested += (_, _) => Close();
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ShellViewModel.IsCommandPaletteOpen) && viewModel.IsCommandPaletteOpen)
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    CommandPaletteSearchBox?.Focus();
+                    CommandPaletteSearchBox?.SelectAll();
+                });
+            }
+        };
         LocalizationManager.Instance.PropertyChanged += (_, _) => UpdateMaximizedState();
     }
 
@@ -92,6 +104,46 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             Close();
+            return;
+        }
+
+        if (DataContext is not ShellViewModel vm)
+        {
+            return;
+        }
+
+        if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            vm.ToggleCommandPaletteCommand.Execute(null);
+            return;
+        }
+
+        if (!vm.IsCommandPaletteOpen)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Escape:
+                e.Handled = true;
+                vm.CloseCommandPaletteCommand.Execute(null);
+                break;
+            case Key.Down:
+                e.Handled = true;
+                vm.MovePaletteSelection(1);
+                CommandPaletteListBox?.ScrollIntoView(vm.SelectedPaletteCommand);
+                break;
+            case Key.Up:
+                e.Handled = true;
+                vm.MovePaletteSelection(-1);
+                CommandPaletteListBox?.ScrollIntoView(vm.SelectedPaletteCommand);
+                break;
+            case Key.Enter:
+                e.Handled = true;
+                _ = vm.ExecuteSelectedPaletteCommandCommand.ExecuteAsync(null);
+                break;
         }
     }
 
@@ -145,6 +197,24 @@ public partial class MainWindow : Window
             && vm.CurrentPageKey != item.Key)
         {
             vm.NavigateTo(item.Key);
+        }
+    }
+
+    private void OnCommandPaletteBackdropMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is ShellViewModel vm)
+        {
+            vm.CloseCommandPaletteCommand.Execute(null);
+        }
+    }
+
+    private void OnCommandPaletteCardMouseDown(object sender, MouseButtonEventArgs e) => e.Handled = true;
+
+    private void OnCommandPaletteItemMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is ShellViewModel vm && vm.SelectedPaletteCommand is { } item)
+        {
+            _ = vm.ExecutePaletteCommandCommand.ExecuteAsync(item);
         }
     }
 

@@ -58,6 +58,7 @@ public static class ServiceRegistration
         services.AddSingleton<IDnsCacheService, DnsCacheService>();
         services.AddSingleton<IDnsReverseLookupCache, DnsReverseLookupCache>();
         services.AddSingleton<IDnsFailoverService, DnsFailoverService>();
+        services.AddSingleton<IBrowserPolicyInspector, WindowsBrowserPolicyInspector>();
         services.AddSingleton<INetworkDiagnosticsService, NetworkDiagnosticsService>();
         services.AddSingleton<IConnectionMonitorService, WindowsConnectionTableReader>();
         services.AddSingleton<IIpEnrichmentService, IpEnrichmentService>();

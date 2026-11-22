@@ -387,6 +387,131 @@ public sealed class DnsRoutingService : IDnsRoutingService
         RaiseRoutingChanged();
     }
 
+    public IReadOnlyList<LocalDnsRewriteRule> GetLocalRewrites() =>
+        (_settings.Current.Routing.LocalRewrites ?? [])
+        .OrderBy(r => r.MatchKind)
+        .ThenByDescending(r => r.Pattern.Length)
+        .ThenBy(r => r.Pattern, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    public async Task<(bool Success, LocalDnsRewriteRule? Rule, string? Error)> AddOrUpdateLocalRewriteAsync(
+        LocalDnsRewriteRule rule,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(rule);
+
+        var normalized = rule with
+        {
+            Id = string.IsNullOrWhiteSpace(rule.Id)
+                ? GenerateSlug("rewrite", $"{rule.Pattern}-{rule.RecordType}-{Guid.NewGuid().ToString("N")[..6]}")
+                : rule.Id.Trim(),
+            Pattern = RoutingMatcher.NormalizeDomain(rule.Pattern),
+            TargetValue = (rule.TargetValue ?? string.Empty).Trim(),
+            TtlSeconds = Math.Clamp(rule.TtlSeconds, 1, 86400),
+            Note = (rule.Note ?? string.Empty).Trim(),
+        };
+
+        var (valid, validationError) = LocalDnsRewriteValidator.Validate(normalized);
+        if (!valid)
+        {
+            return (false, null, validationError);
+        }
+
+        if (normalized.RecordType == LocalDnsRewriteRecordType.CNAME)
+        {
+            normalized = normalized with { TargetValue = RoutingMatcher.NormalizeDomain(normalized.TargetValue) };
+        }
+
+        await _settings.UpdateAsync(s =>
+        {
+            s.Routing.LocalRewrites ??= [];
+            var idx = s.Routing.LocalRewrites.FindIndex(r => string.Equals(r.Id, normalized.Id, StringComparison.OrdinalIgnoreCase));
+            if (idx >= 0)
+            {
+                s.Routing.LocalRewrites[idx] = normalized;
+            }
+            else
+            {
+                s.Routing.LocalRewrites.Add(normalized);
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        _logger.LogInformation("Saved local DNS rewrite {Pattern} ({Type} -> {Target}).", normalized.Pattern, normalized.RecordType, normalized.TargetValue);
+        RaiseRoutingChanged();
+        return (true, normalized, null);
+    }
+
+    public async Task<bool> RemoveLocalRewriteAsync(string rewriteId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(rewriteId))
+        {
+            return false;
+        }
+
+        var removed = false;
+        await _settings.UpdateAsync(s =>
+        {
+            if (s.Routing.LocalRewrites is not null)
+            {
+                removed = s.Routing.LocalRewrites.RemoveAll(r => string.Equals(r.Id, rewriteId, StringComparison.OrdinalIgnoreCase)) > 0;
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        if (removed)
+        {
+            RaiseRoutingChanged();
+        }
+
+        return removed;
+    }
+
+    public async Task SetLocalRewriteEnabledAsync(string rewriteId, bool enabled, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(rewriteId))
+        {
+            return;
+        }
+
+        await _settings.UpdateAsync(s =>
+        {
+            if (s.Routing.LocalRewrites is not null)
+            {
+                var idx = s.Routing.LocalRewrites.FindIndex(r => string.Equals(r.Id, rewriteId, StringComparison.OrdinalIgnoreCase));
+                if (idx >= 0)
+                {
+                    s.Routing.LocalRewrites[idx] = s.Routing.LocalRewrites[idx] with { IsEnabled = enabled };
+                }
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        RaiseRoutingChanged();
+    }
+
+    public LocalDnsRewriteRule? FindMatchingRewrite(string domain, string recordType)
+    {
+        var normalized = RoutingMatcher.NormalizeDomain(domain);
+        if (string.IsNullOrEmpty(normalized)
+            || !Enum.TryParse<LocalDnsRewriteRecordType>(recordType, ignoreCase: true, out var targetType))
+        {
+            return null;
+        }
+
+        foreach (var rule in GetLocalRewrites())
+        {
+            if (!rule.IsEnabled || rule.RecordType != targetType)
+            {
+                continue;
+            }
+
+            if (RoutingMatcher.IsMatch(normalized, rule.Pattern, rule.MatchKind))
+            {
+                return rule;
+            }
+        }
+
+        return null;
+    }
+
     private DnsResolverEndpoint ResolveEndpoint(string? resolverId) =>
         _resolverLibrary is not null
             ? _resolverLibrary.GetByIdOrDefault(resolverId)

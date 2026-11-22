@@ -22,6 +22,18 @@ public interface IDnsCacheService
     /// </summary>
     bool TryGetResponse(ReadOnlySpan<byte> queryWire, out byte[] responseBytes);
 
+    bool TryGetResponse(ReadOnlySpan<byte> queryWire, out byte[] responseBytes, out bool shouldPrefetch)
+    {
+        shouldPrefetch = false;
+        return TryGetResponse(queryWire, out responseBytes);
+    }
+
+    bool TryGetStaleResponse(ReadOnlySpan<byte> queryWire, out byte[] responseBytes)
+    {
+        responseBytes = [];
+        return false;
+    }
+
     /// <summary>
     /// Stores a positive (NOERROR with answers) or negative (NXDOMAIN) DNS wire response using its TTL.
     /// </summary>

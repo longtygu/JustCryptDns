@@ -34,6 +34,11 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     [ObservableProperty] private string _listenPortText = "53";
     [ObservableProperty] private bool _enableIpv6;
     [ObservableProperty] private bool _configureWindowsAdapter;
+    [ObservableProperty] private bool _autoAdaptNetworkChanges = true;
+    [ObservableProperty] private bool _autoDeferToVpn = true;
+    [ObservableProperty] private bool _blockFirefoxDohCanary = true;
+    [ObservableProperty] private bool _canPauseCaptivePortal;
+    [ObservableProperty] private bool _isCaptivePortalPaused;
     [ObservableProperty] private bool _enableAutoFailover = true;
     [ObservableProperty] private FailoverPolicy _selectedFailoverPolicy = FailoverPolicy.EncryptedOnly;
     [ObservableProperty] private string _listenEndpoint = "127.0.0.1:53";
@@ -77,6 +82,9 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         _listenPortText = dns.ListenPort.ToString(CultureInfo.InvariantCulture);
         _enableIpv6 = dns.EnableIpv6;
         _configureWindowsAdapter = dns.ConfigureWindowsAdapter;
+        _autoAdaptNetworkChanges = dns.AutoAdaptNetworkChanges;
+        _autoDeferToVpn = dns.AutoDeferToVpn;
+        _blockFirefoxDohCanary = dns.BlockFirefoxDohCanary;
         _enableAutoFailover = settings.Current.Resilience.EnableAutoFailover;
         _selectedFailoverPolicy = settings.Current.Resilience.Policy;
         _loading = false;
@@ -462,6 +470,80 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task PauseForCaptivePortalAsync()
+    {
+        IsBusy = true;
+        InfoMessage = null;
+        try
+        {
+            var (ok, err) = await _dnsEngine.PauseForCaptivePortalAsync(TimeSpan.FromMinutes(5));
+            if (ok)
+            {
+                ErrorMessage = null;
+                InfoMessage = LocalizationManager.Instance["TrafficWarn_CaptivePortal"];
+            }
+            else
+            {
+                ErrorMessage = err;
+            }
+        }
+        finally
+        {
+            ApplyStats(_dnsEngine.GetStats());
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ResumeFromCaptivePortalAsync()
+    {
+        IsBusy = true;
+        InfoMessage = null;
+        try
+        {
+            var (ok, err) = await _dnsEngine.ResumeFromCaptivePortalAsync();
+            if (ok)
+            {
+                ErrorMessage = null;
+                InfoMessage = LocalizationManager.Instance["Dns_ResumeCaptivePortal"];
+            }
+            else
+            {
+                ErrorMessage = err;
+            }
+        }
+        finally
+        {
+            ApplyStats(_dnsEngine.GetStats());
+            IsBusy = false;
+        }
+    }
+
+    partial void OnAutoAdaptNetworkChangesChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = _settings.UpdateAsync(s => s.Dns.AutoAdaptNetworkChanges = value);
+        }
+    }
+
+    partial void OnAutoDeferToVpnChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = _settings.UpdateAsync(s => s.Dns.AutoDeferToVpn = value);
+        }
+    }
+
+    partial void OnBlockFirefoxDohCanaryChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _ = _settings.UpdateAsync(s => s.Dns.BlockFirefoxDohCanary = value);
+        }
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task InstallOrUpdateDnsCryptAsync()
     {
         IsBusy = true;
@@ -499,6 +581,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         IsNonStandardPort = stats.TrafficStatus == SystemTrafficStatus.NonStandardPort;
         SuggestedLoopbackIp = stats.SuggestedLoopbackIp ?? stats.PortConflict?.SuggestedLoopbackIp;
         ConflictingServiceName = stats.Port53ServiceName ?? stats.PortConflict?.ConflictingServiceName;
+        IsCaptivePortalPaused = stats.IsCaptivePortalPaused;
+        CanPauseCaptivePortal = stats.TrafficStatus == SystemTrafficStatus.CaptivePortalDetected && !stats.IsCaptivePortalPaused;
         TrafficWarningBanner = DashboardViewModel.FormatTrafficWarning(stats);
         PortConflict = stats.PortConflict;
         ErrorMessage = stats.PortConflict is null ? stats.LastError : null;

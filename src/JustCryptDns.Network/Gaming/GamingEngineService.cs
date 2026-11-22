@@ -20,6 +20,7 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
     private readonly ILogger<GamingEngineService> _logger;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
+    private readonly DotDnsUpstream _defaultDot;
     private readonly object _resultsLock = new();
     private List<ResolverBenchmarkResult> _lastResults = [];
     private string? _pinnedResolverId;
@@ -42,10 +43,11 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
         _logger = logger;
 
         _defaultDoh = new DohDnsUpstream();
+        _defaultDot = new DotDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
         {
             _defaultDoh,
-            new DotDnsUpstream(),
+            _defaultDot,
             new UdpTcpDnsUpstream(),
         };
 
@@ -552,6 +554,7 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
         _disposed = true;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
         _defaultDoh.Dispose();
+        _defaultDot.Dispose();
     }
 
     private static ResolverBenchmarkResult BuildBenchmarkMetric(

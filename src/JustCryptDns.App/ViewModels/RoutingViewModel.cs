@@ -74,6 +74,13 @@ public sealed partial class RoutingViewModel : PageViewModel
     [ObservableProperty] private RoutingDecision? _lastTestDecision;
     [ObservableProperty] private string? _lastTestSummary;
 
+    // Local DNS rewrite state
+    [ObservableProperty] private string _rewriteDomain = string.Empty;
+    [ObservableProperty] private LocalDnsRewriteRecordType _rewriteRecordType = LocalDnsRewriteRecordType.A;
+    [ObservableProperty] private string _rewriteTarget = string.Empty;
+    [ObservableProperty] private string _rewriteTtlText = "60";
+    [ObservableProperty] private string? _rewriteError;
+
     public RoutingViewModel(
         IDnsRoutingService routing,
         IResolverLibraryService resolvers)
@@ -96,11 +103,17 @@ public sealed partial class RoutingViewModel : PageViewModel
 
     public ObservableCollection<RoutingRuleItemViewModel> ProfileRules { get; } = [];
 
+    public ObservableCollection<LocalDnsRewriteRule> LocalRewrites { get; } = [];
+
     public ObservableCollection<RoutingLogEntry> RecentLogs { get; } = [];
 
     public IReadOnlyList<DnsResolverEndpoint> AvailableResolvers => _resolvers.GetEnabled();
 
     public IReadOnlyList<RoutingMatchKind> MatchKinds { get; } = Enum.GetValues<RoutingMatchKind>();
+
+    public IReadOnlyList<LocalDnsRewriteRecordType> RewriteRecordTypes { get; } = Enum.GetValues<LocalDnsRewriteRecordType>();
+
+    public bool HasNoLocalRewrites => LocalRewrites.Count == 0;
 
     public bool CanDeleteSelectedProfile => SelectedProfile is { IsBuiltIn: false };
 
@@ -327,6 +340,65 @@ public sealed partial class RoutingViewModel : PageViewModel
         RefreshLogs();
     }
 
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task AddLocalRewriteAsync()
+    {
+        RewriteError = null;
+        var rawPattern = RewriteDomain?.Trim() ?? string.Empty;
+        var matchKind = rawPattern.Contains('*', StringComparison.Ordinal)
+            ? RoutingMatchKind.Wildcard
+            : RoutingMatchKind.Exact;
+        var ttl = int.TryParse(RewriteTtlText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedTtl)
+            ? parsedTtl
+            : 60;
+
+        var rule = new LocalDnsRewriteRule
+        {
+            Id = string.Empty,
+            Pattern = rawPattern,
+            MatchKind = matchKind,
+            RecordType = RewriteRecordType,
+            TargetValue = RewriteTarget?.Trim() ?? string.Empty,
+            TtlSeconds = ttl,
+            IsEnabled = true,
+        };
+
+        var (ok, _, error) = await _routing.AddOrUpdateLocalRewriteAsync(rule);
+        if (!ok)
+        {
+            RewriteError = error ?? "Invalid local rewrite rule.";
+            return;
+        }
+
+        RewriteDomain = string.Empty;
+        RewriteTarget = string.Empty;
+        RefreshAll();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ToggleLocalRewriteAsync(LocalDnsRewriteRule? rule)
+    {
+        if (rule is null)
+        {
+            return;
+        }
+
+        await _routing.SetLocalRewriteEnabledAsync(rule.Id, !rule.IsEnabled);
+        RefreshAll();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task RemoveLocalRewriteAsync(LocalDnsRewriteRule? rule)
+    {
+        if (rule is null)
+        {
+            return;
+        }
+
+        await _routing.RemoveLocalRewriteAsync(rule.Id);
+        RefreshAll();
+    }
+
     public void RefreshAll()
     {
         _loading = true;
@@ -354,6 +426,13 @@ public sealed partial class RoutingViewModel : PageViewModel
                 ProfileRules.Add(new RoutingRuleItemViewModel(rule, resolver));
             }
 
+            LocalRewrites.Clear();
+            foreach (var rewrite in _routing.GetLocalRewrites())
+            {
+                LocalRewrites.Add(rewrite);
+            }
+
+            OnPropertyChanged(nameof(HasNoLocalRewrites));
             RefreshLogs();
         }
         finally

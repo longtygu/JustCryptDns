@@ -67,6 +67,7 @@ public static class Program
             builder.Services.AddSingleton<IDnsCacheService, DnsCacheService>();
             builder.Services.AddSingleton<IDnsReverseLookupCache, DnsReverseLookupCache>();
             builder.Services.AddSingleton<IDnsFailoverService, DnsFailoverService>();
+            builder.Services.AddSingleton<IBrowserPolicyInspector, WindowsBrowserPolicyInspector>();
             builder.Services.AddSingleton<INetworkDiagnosticsService, NetworkDiagnosticsService>();
             builder.Services.AddSingleton<IWindowsFirewallManager, WindowsFirewallService>();
             builder.Services.AddSingleton<IDnsEngine, DnsEngineService>();

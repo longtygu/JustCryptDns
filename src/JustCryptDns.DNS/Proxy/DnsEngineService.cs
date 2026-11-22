@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using JustCryptDns.Core.Configuration;
@@ -34,7 +35,9 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly IDnsReverseLookupCache? _reverseLookupCache;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
     private readonly DohDnsUpstream _defaultDoh;
+    private readonly DotDnsUpstream _defaultDot;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
+    private readonly ConcurrentDictionary<string, byte> _inFlightPrefetches = new(StringComparer.OrdinalIgnoreCase);
 
     private LocalDnsProxy? _proxy;
     private DnsEngineState _state = DnsEngineState.Stopped;
@@ -43,10 +46,19 @@ public sealed class DnsEngineService : IDnsEngine
     private long _totalQueries;
     private long _successfulQueries;
     private long _failedQueries;
+    private long _rewrittenQueries;
     private long _consecutiveFailures;
     private double? _lastLatencyMs;
     private string? _lastError;
     private PortConflictInfo? _portConflict;
+    private string? _lastAppliedAdapterId;
+    private string? _activeVpnAdapterName;
+    private bool _isCaptivePortalDetected;
+    private bool _isCaptivePortalPaused;
+    private DateTimeOffset? _captivePortalPauseUntilUtc;
+    private int _networkAdaptGeneration;
+    private int _captiveResumeGeneration;
+    private bool _networkSubscribed;
     private bool _disposed;
 
     public DnsEngineService(
@@ -78,10 +90,11 @@ public sealed class DnsEngineService : IDnsEngine
         _reverseLookupCache = reverseLookupCache;
 
         _defaultDoh = new DohDnsUpstream();
+        _defaultDot = new DotDnsUpstream();
         var defaultClients = new IDnsUpstreamClient[]
         {
             _defaultDoh,
-            new DotDnsUpstream(),
+            _defaultDot,
             new UdpTcpDnsUpstream(),
             new DnsCryptUpstream(_dnsCryptManager, () => _settings.Current.Dns.DnsCryptInternalPort),
         };
@@ -116,6 +129,14 @@ public sealed class DnsEngineService : IDnsEngine
                 trafficStatus = SystemTrafficStatus.NonStandardPort;
                 (port53Owner, port53Service) = ReadPort53ConflictOwner();
                 suggestedLoopback = PortConflictDetector.FindAvailableLoopbackForPort53(IPAddress.Loopback);
+            }
+            else if (!string.IsNullOrWhiteSpace(_activeVpnAdapterName))
+            {
+                trafficStatus = SystemTrafficStatus.DeferredToVpn;
+            }
+            else if (_isCaptivePortalPaused || _isCaptivePortalDetected)
+            {
+                trafficStatus = SystemTrafficStatus.CaptivePortalDetected;
             }
             else if (_networkInfo is not null)
             {
@@ -164,6 +185,12 @@ public sealed class DnsEngineService : IDnsEngine
             PortConflict = _portConflict,
             DnsCryptVersion = _dnsCryptManager.InstalledVersion,
             HasAdapterBackup = _windowsDns.HasActiveBackup(),
+            ActiveVpnAdapterName = _activeVpnAdapterName,
+            IsCaptivePortalPaused = _isCaptivePortalPaused,
+            CaptivePortalPauseUntilUtc = _captivePortalPauseUntilUtc,
+            RewrittenQueries = Interlocked.Read(ref _rewrittenQueries),
+            StaleCacheHits = cacheStats?.StaleHits ?? 0,
+            PrefetchCount = cacheStats?.PrefetchCount ?? 0,
         };
     }
 
@@ -238,26 +265,50 @@ public sealed class DnsEngineService : IDnsEngine
             _proxy = proxy;
             _listenEndpoint = $"{listenIp}:{proxy.BoundPort}";
             Interlocked.Exchange(ref _consecutiveFailures, 0);
+            _activeVpnAdapterName = null;
+            _isCaptivePortalDetected = false;
+            _isCaptivePortalPaused = false;
+            _captivePortalPauseUntilUtc = null;
+            _lastAppliedAdapterId = null;
 
+            var initialSnap = _networkInfo?.GetSnapshot();
             if (dns.ConfigureWindowsAdapter)
             {
-                var adapterResult = await _windowsDns.ApplyLocalProxyDnsAsync(
-                    dns.TargetAdapterId,
-                    listenIp.ToString(),
-                    proxy.IsIpv6Bound ? "::1" : null,
-                    async ct =>
-                    {
-                        var probe = await ProbeActiveResolverAsync(ct).ConfigureAwait(false);
-                        return probe.Success;
-                    },
-                    cancellationToken).ConfigureAwait(false);
-
-                if (!adapterResult.Success)
+                if (dns.AutoAdaptNetworkChanges
+                    && dns.AutoDeferToVpn
+                    && NetworkAdaptationEvaluator.DetectActiveVpnAdapter(initialSnap) is { } vpnAdapter)
                 {
-                    await StopCoreAsync().ConfigureAwait(false);
-                    SetState(DnsEngineState.Stopped, adapterResult.ErrorMessage, null);
-                    return (false, adapterResult.ErrorMessage);
+                    _activeVpnAdapterName = vpnAdapter.Name;
+                    _logger.LogInformation("Active VPN adapter detected ({Vpn}); deferring adapter DNS configuration safely.", vpnAdapter.Name);
                 }
+                else
+                {
+                    var adapterResult = await _windowsDns.ApplyLocalProxyDnsAsync(
+                        dns.TargetAdapterId,
+                        listenIp.ToString(),
+                        proxy.IsIpv6Bound ? "::1" : null,
+                        async ct =>
+                        {
+                            var probe = await ProbeActiveResolverAsync(ct).ConfigureAwait(false);
+                            return probe.Success;
+                        },
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (!adapterResult.Success)
+                    {
+                        await StopCoreAsync().ConfigureAwait(false);
+                        SetState(DnsEngineState.Stopped, adapterResult.ErrorMessage, null);
+                        return (false, adapterResult.ErrorMessage);
+                    }
+
+                    _lastAppliedAdapterId = initialSnap?.PrimaryAdapter?.Id;
+                }
+            }
+
+            if (_networkInfo is not null && !_networkSubscribed)
+            {
+                _networkInfo.NetworkChanged += OnNetworkChanged;
+                _networkSubscribed = true;
             }
 
             SetState(DnsEngineState.Running, error: null, conflict: null);
@@ -487,8 +538,39 @@ public sealed class DnsEngineService : IDnsEngine
         DnsRecordType recordType,
         TimeSpan timeout,
         List<IPAddress> destination,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int rewriteDepth = 0)
     {
+        if (rewriteDepth <= 3
+            && _routingService?.FindMatchingRewrite(host, recordType.ToString()) is { } directRewrite)
+        {
+            if (directRewrite.RecordType is LocalDnsRewriteRecordType.A or LocalDnsRewriteRecordType.AAAA
+                && IPAddress.TryParse(directRewrite.TargetValue, out var rewrittenIp)
+                && !destination.Contains(rewrittenIp))
+            {
+                _reverseLookupCache?.Record(rewrittenIp, host, (uint)Math.Max(1, directRewrite.TtlSeconds));
+                destination.Add(rewrittenIp);
+                return;
+            }
+        }
+
+        if (rewriteDepth <= 3
+            && recordType == DnsRecordType.A
+            && _routingService?.FindMatchingRewrite(host, nameof(LocalDnsRewriteRecordType.CNAME)) is { } cnameRewrite)
+        {
+            await ResolveRecordAddressesAsync(
+                cnameRewrite.TargetValue,
+                recordType,
+                timeout,
+                destination,
+                cancellationToken,
+                rewriteDepth + 1).ConfigureAwait(false);
+            if (destination.Count > 0)
+            {
+                return;
+            }
+        }
+
         byte[] queryWire;
         try
         {
@@ -501,7 +583,7 @@ public sealed class DnsEngineService : IDnsEngine
 
         byte[]? responseWire = null;
         if (_cacheService is { IsEnabled: true }
-            && _cacheService.TryGetResponse(queryWire, out var cachedBytes))
+            && _cacheService.TryGetResponse(queryWire, out var cachedBytes, out _))
         {
             responseWire = cachedBytes;
         }
@@ -552,6 +634,13 @@ public sealed class DnsEngineService : IDnsEngine
                     _logger.LogDebug(ex, "Encrypted DNS lookup failed for {Host} ({Type}).", host, recordType);
                 }
             }
+
+            if (responseWire is null
+                && _cacheService is { IsEnabled: true }
+                && _cacheService.TryGetStaleResponse(queryWire, out var staleBytes))
+            {
+                responseWire = staleBytes;
+            }
         }
 
         if (responseWire is null || !DnsPacket.TryParse(responseWire, out var packet) || packet is null)
@@ -576,6 +665,98 @@ public sealed class DnsEngineService : IDnsEngine
         }
     }
 
+    public async Task<(bool Success, string? Error)> PauseForCaptivePortalAsync(
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
+    {
+        var effectiveDuration = duration > TimeSpan.Zero ? duration : TimeSpan.FromMinutes(5);
+        await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_windowsDns.HasActiveBackup())
+            {
+                var restore = await _windowsDns.RestoreOriginalDnsAsync(
+                    _settings.Current.Dns.TargetAdapterId,
+                    cancellationToken).ConfigureAwait(false);
+                if (!restore.Success)
+                {
+                    return (false, restore.ErrorMessage);
+                }
+            }
+
+            _isCaptivePortalPaused = true;
+            _captivePortalPauseUntilUtc = DateTimeOffset.UtcNow.Add(effectiveDuration);
+            _lastAppliedAdapterId = null;
+            RaiseStateChanged();
+
+            var gen = Interlocked.Increment(ref _captiveResumeGeneration);
+            _ = AutoResumeAfterCaptivePauseAsync(effectiveDuration, gen);
+            _logger.LogInformation("Paused adapter DNS protection for {Minutes:0.#} min to allow captive portal sign-in.", effectiveDuration.TotalMinutes);
+            return (true, null);
+        }
+        finally
+        {
+            _lifecycleGate.Release();
+        }
+    }
+
+    public async Task<(bool Success, string? Error)> ResumeFromCaptivePortalAsync(
+        CancellationToken cancellationToken = default)
+    {
+        Interlocked.Increment(ref _captiveResumeGeneration);
+        await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _isCaptivePortalPaused = false;
+            _captivePortalPauseUntilUtc = null;
+            _isCaptivePortalDetected = false;
+
+            var dns = _settings.Current.Dns;
+            if (_state is DnsEngineState.Running or DnsEngineState.Degraded
+                && _proxy is { BoundPort: > 0 } proxy
+                && dns.ConfigureWindowsAdapter)
+            {
+                var snap = _networkInfo?.GetSnapshot();
+                if (dns.AutoAdaptNetworkChanges
+                    && dns.AutoDeferToVpn
+                    && NetworkAdaptationEvaluator.DetectActiveVpnAdapter(snap) is { } vpnAdapter)
+                {
+                    _activeVpnAdapterName = vpnAdapter.Name;
+                    RaiseStateChanged();
+                    return (true, null);
+                }
+
+                var listenIp = IPAddress.TryParse(dns.ListenAddress, out var parsed) ? parsed : IPAddress.Loopback;
+                var result = await _windowsDns.ApplyLocalProxyDnsAsync(
+                    dns.TargetAdapterId,
+                    listenIp.ToString(),
+                    proxy.IsIpv6Bound ? "::1" : null,
+                    async ct =>
+                    {
+                        var probe = await ProbeActiveResolverAsync(ct).ConfigureAwait(false);
+                        return probe.Success;
+                    },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!result.Success)
+                {
+                    RaiseStateChanged();
+                    return (false, result.ErrorMessage);
+                }
+
+                _lastAppliedAdapterId = snap?.PrimaryAdapter?.Id;
+            }
+
+            RaiseStateChanged();
+            _logger.LogInformation("Resumed adapter DNS protection after captive portal pause.");
+            return (true, null);
+        }
+        finally
+        {
+            _lifecycleGate.Release();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -586,6 +767,7 @@ public sealed class DnsEngineService : IDnsEngine
         await StopAsync().ConfigureAwait(false);
         _disposed = true;
         _defaultDoh.Dispose();
+        _defaultDot.Dispose();
         _lifecycleGate.Dispose();
     }
 
@@ -596,6 +778,56 @@ public sealed class DnsEngineService : IDnsEngine
 
         var qDomain = hasParsed ? parsed!.PrimaryQuestionName! : "unknown";
         var queryType = hasParsed ? parsed!.PrimaryQuestionType.ToString() : "A";
+
+        // 0A. Firefox DoH Canary Guard (RFC-recommended NXDOMAIN prevents silent bypass of local filtering/routing)
+        if (hasParsed
+            && _settings.Current.Dns.BlockFirefoxDohCanary
+            && string.Equals(RoutingMatcher.NormalizeDomain(qDomain), "use-application-dns.net", StringComparison.Ordinal))
+        {
+            Interlocked.Increment(ref _totalQueries);
+            _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+            {
+                Timestamp = DateTimeOffset.Now,
+                Domain = qDomain,
+                RecordType = queryType,
+                Outcome = "Canary",
+                ResolverName = "Firefox DoH Guard",
+                Protocol = _activeResolver.Protocol,
+                LatencyMs = 0.0,
+            });
+            RaiseStateChanged();
+            return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.NxDomain);
+        }
+
+        // 0B. Local DNS Rewrite rules (custom LAN/dev A/AAAA/CNAME overrides)
+        if (hasParsed
+            && _routingService?.FindMatchingRewrite(qDomain, queryType) is { } rewriteRule)
+        {
+            var rewriteWire = DnsPacket.CreateLocalRewriteResponse(
+                queryWire.Span,
+                rewriteRule.RecordType,
+                rewriteRule.TargetValue,
+                (uint)Math.Max(1, rewriteRule.TtlSeconds));
+            if (rewriteWire.Length >= DnsPacket.HeaderSize)
+            {
+                RecordReverseDnsFromResponse(qDomain, rewriteWire);
+                Interlocked.Increment(ref _totalQueries);
+                Interlocked.Increment(ref _successfulQueries);
+                Interlocked.Increment(ref _rewrittenQueries);
+                _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+                {
+                    Timestamp = DateTimeOffset.Now,
+                    Domain = qDomain,
+                    RecordType = queryType,
+                    Outcome = "Rewritten",
+                    ResolverName = $"Local Rewrite ({rewriteRule.TargetValue})",
+                    Protocol = _activeResolver.Protocol,
+                    LatencyMs = 0.0,
+                });
+                RaiseStateChanged();
+                return rewriteWire;
+            }
+        }
 
         // 1. DNS Filtering (Blocklists & Allowlist)
         if (hasParsed && _filteringService is not null)
@@ -619,13 +851,18 @@ public sealed class DnsEngineService : IDnsEngine
             }
         }
 
-        // 2. TTL-aware DNS Cache lookup
+        // 2. TTL-aware DNS Cache lookup (+ near-expiry background prefetch)
         if (_cacheService is { IsEnabled: true }
-            && _cacheService.TryGetResponse(queryWire.Span, out var cachedBytes))
+            && _cacheService.TryGetResponse(queryWire.Span, out var cachedBytes, out var shouldPrefetch))
         {
             if (hasParsed)
             {
                 RecordReverseDnsFromResponse(qDomain, cachedBytes);
+            }
+
+            if (shouldPrefetch && hasParsed)
+            {
+                SchedulePrefetch(qDomain, queryType, queryWire.ToArray());
             }
 
             Interlocked.Increment(ref _totalQueries);
@@ -656,6 +893,28 @@ public sealed class DnsEngineService : IDnsEngine
 
         if (!_upstreams.TryGetValue(resolver.Protocol, out var upstream))
         {
+            if (_cacheService is { IsEnabled: true }
+                && _cacheService.TryGetStaleResponse(queryWire.Span, out var staleBytes))
+            {
+                if (hasParsed)
+                {
+                    RecordReverseDnsFromResponse(qDomain, staleBytes);
+                }
+
+                _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+                {
+                    Timestamp = DateTimeOffset.Now,
+                    Domain = qDomain,
+                    RecordType = queryType,
+                    Outcome = "Stale",
+                    ResolverName = "Serve-Stale Cache",
+                    Protocol = _activeResolver.Protocol,
+                    LatencyMs = 0.1,
+                });
+                RaiseStateChanged();
+                return staleBytes;
+            }
+
             return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.ServFail);
         }
 
@@ -680,6 +939,31 @@ public sealed class DnsEngineService : IDnsEngine
         else
         {
             result = await upstream.QueryAsync(queryWire, resolver, timeout, cancellationToken).ConfigureAwait(false);
+        }
+
+        if ((!result.Success || result.ResponseBytes.Length < DnsPacket.HeaderSize)
+            && _cacheService is { IsEnabled: true }
+            && _cacheService.TryGetStaleResponse(queryWire.Span, out var staleFallback))
+        {
+            if (hasParsed)
+            {
+                RecordReverseDnsFromResponse(qDomain, staleFallback);
+            }
+
+            Interlocked.Increment(ref _totalQueries);
+            Interlocked.Increment(ref _successfulQueries);
+            _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+            {
+                Timestamp = DateTimeOffset.Now,
+                Domain = qDomain,
+                RecordType = queryType,
+                Outcome = "Stale",
+                ResolverName = $"Serve-Stale ({resolver.Name})",
+                Protocol = resolver.Protocol,
+                LatencyMs = 0.1,
+            });
+            RaiseStateChanged();
+            return staleFallback;
         }
 
         RecordQueryOutcome(result);
@@ -771,6 +1055,21 @@ public sealed class DnsEngineService : IDnsEngine
 
     private async Task StopCoreAsync()
     {
+        Interlocked.Increment(ref _networkAdaptGeneration);
+        Interlocked.Increment(ref _captiveResumeGeneration);
+
+        if (_networkInfo is not null && _networkSubscribed)
+        {
+            _networkInfo.NetworkChanged -= OnNetworkChanged;
+            _networkSubscribed = false;
+        }
+
+        _activeVpnAdapterName = null;
+        _isCaptivePortalDetected = false;
+        _isCaptivePortalPaused = false;
+        _captivePortalPauseUntilUtc = null;
+        _lastAppliedAdapterId = null;
+
         if (_proxy is not null)
         {
             await _proxy.DisposeAsync().ConfigureAwait(false);
@@ -778,6 +1077,215 @@ public sealed class DnsEngineService : IDnsEngine
         }
 
         await _dnsCryptManager.StopAsync().ConfigureAwait(false);
+    }
+
+    private void SchedulePrefetch(string domain, string queryType, byte[] queryWire)
+    {
+        if (_disposed
+            || _cacheService is not { IsEnabled: true }
+            || _state is not (DnsEngineState.Running or DnsEngineState.Degraded))
+        {
+            return;
+        }
+
+        var key = $"{domain}|{queryType}";
+        if (!_inFlightPrefetches.TryAdd(key, 0))
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (_disposed || _state is not (DnsEngineState.Running or DnsEngineState.Degraded))
+                {
+                    return;
+                }
+
+                var resolver = _activeResolver;
+                if (_routingService is { IsRoutingEnabled: true })
+                {
+                    var decision = _routingService.ResolveForDomain(domain);
+                    resolver = ResolveEndpoint(decision.ResolverId);
+                }
+
+                if (!_upstreams.TryGetValue(resolver.Protocol, out var upstream))
+                {
+                    return;
+                }
+
+                var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
+                using var cts = new CancellationTokenSource(timeout);
+                var result = await upstream.QueryAsync(queryWire, resolver, timeout, cts.Token).ConfigureAwait(false);
+                if (result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize)
+                {
+                    RecordReverseDnsFromResponse(domain, result.ResponseBytes);
+                    _cacheService?.StoreResponse(queryWire, result.ResponseBytes);
+                }
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or SocketException or IOException)
+            {
+                _logger.LogDebug(ex, "Background DNS cache prefetch failed for {Domain} ({Type}).", domain, queryType);
+            }
+            finally
+            {
+                _inFlightPrefetches.TryRemove(key, out _);
+            }
+        });
+    }
+
+    private void OnNetworkChanged(object? sender, EventArgs e)
+    {
+        var generation = Interlocked.Increment(ref _networkAdaptGeneration);
+        if (_disposed
+            || _state is not (DnsEngineState.Running or DnsEngineState.Degraded)
+            || !_settings.Current.Dns.AutoAdaptNetworkChanges)
+        {
+            return;
+        }
+
+        _ = DebounceEvaluateNetworkAdaptationAsync(generation);
+    }
+
+    private async Task DebounceEvaluateNetworkAdaptationAsync(int generation)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(1500)).ConfigureAwait(false);
+            if (_disposed || Volatile.Read(ref _networkAdaptGeneration) != generation)
+            {
+                return;
+            }
+
+            var snapshot = _networkInfo?.GetSnapshot();
+            if (snapshot is null)
+            {
+                return;
+            }
+
+            await EvaluateNetworkAdaptationAsync(snapshot, generation).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            _logger.LogDebug(ex, "Network adaptation debounce evaluation aborted.");
+        }
+    }
+
+    private async Task EvaluateNetworkAdaptationAsync(NetworkSnapshot snapshot, int generation)
+    {
+        var dns = _settings.Current.Dns;
+        if (!dns.AutoAdaptNetworkChanges || !dns.ConfigureWindowsAdapter)
+        {
+            return;
+        }
+
+        var vpnAdapter = dns.AutoDeferToVpn
+            ? NetworkAdaptationEvaluator.DetectActiveVpnAdapter(snapshot)
+            : null;
+
+        bool captivePortalDetected = false;
+        if (vpnAdapter is null && snapshot.PrimaryAdapter is { IsUp: true })
+        {
+            captivePortalDetected = await NetworkAdaptationEvaluator.CheckCaptivePortalAsync().ConfigureAwait(false);
+        }
+
+        await _lifecycleGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_disposed
+                || Volatile.Read(ref _networkAdaptGeneration) != generation
+                || _state is not (DnsEngineState.Running or DnsEngineState.Degraded)
+                || _proxy is not { BoundPort: > 0 } proxy)
+            {
+                return;
+            }
+
+            if (vpnAdapter is not null)
+            {
+                _activeVpnAdapterName = vpnAdapter.Name;
+                _isCaptivePortalDetected = false;
+                if (_windowsDns.HasActiveBackup())
+                {
+                    await _windowsDns.RestoreOriginalDnsAsync(dns.TargetAdapterId).ConfigureAwait(false);
+                }
+
+                _lastAppliedAdapterId = null;
+                RaiseStateChanged();
+                _logger.LogInformation("Deferred local adapter DNS because active VPN tunnel was detected ({Vpn}).", vpnAdapter.Name);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_activeVpnAdapterName))
+            {
+                _activeVpnAdapterName = null;
+            }
+
+            _isCaptivePortalDetected = captivePortalDetected;
+            if (captivePortalDetected || _isCaptivePortalPaused)
+            {
+                RaiseStateChanged();
+                return;
+            }
+
+            var primary = snapshot.PrimaryAdapter;
+            if (primary is not { IsUp: true })
+            {
+                RaiseStateChanged();
+                return;
+            }
+
+            var listenIp = IPAddress.TryParse(dns.ListenAddress, out var parsed) ? parsed : IPAddress.Loopback;
+            var (status, _) = EvaluateAdapterTrafficStatus(
+                primary.DnsServers,
+                listenIp,
+                dns.EnableIpv6 || proxy.IsIpv6Bound);
+
+            if (!string.Equals(_lastAppliedAdapterId, primary.Id, StringComparison.OrdinalIgnoreCase)
+                || status == SystemTrafficStatus.AdapterNotConfigured)
+            {
+                var applyResult = await _windowsDns.ApplyLocalProxyDnsAsync(
+                    dns.TargetAdapterId,
+                    listenIp.ToString(),
+                    proxy.IsIpv6Bound ? "::1" : null,
+                    async ct =>
+                    {
+                        var probe = await ProbeActiveResolverAsync(ct).ConfigureAwait(false);
+                        return probe.Success;
+                    }).ConfigureAwait(false);
+
+                if (applyResult.Success)
+                {
+                    _lastAppliedAdapterId = primary.Id;
+                }
+            }
+
+            RaiseStateChanged();
+        }
+        finally
+        {
+            _lifecycleGate.Release();
+        }
+    }
+
+    private async Task AutoResumeAfterCaptivePauseAsync(TimeSpan delay, int generation)
+    {
+        try
+        {
+            await Task.Delay(delay).ConfigureAwait(false);
+            if (_disposed
+                || Volatile.Read(ref _captiveResumeGeneration) != generation
+                || _state is not (DnsEngineState.Running or DnsEngineState.Degraded))
+            {
+                return;
+            }
+
+            await ResumeFromCaptivePortalAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            _logger.LogDebug(ex, "Captive portal auto-resume aborted.");
+        }
     }
 
     private void SetState(DnsEngineState state, string? error, PortConflictInfo? conflict)

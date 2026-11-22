@@ -57,6 +57,20 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     private ConnectionRowViewModel? _selectedConnection;
 
     [ObservableProperty]
+    private bool _isInspectorOpen;
+
+    partial void OnSelectedConnectionChanged(ConnectionRowViewModel? value)
+    {
+        if (value is not null)
+        {
+            IsInspectorOpen = true;
+        }
+    }
+
+    [RelayCommand]
+    private void CloseInspector() => IsInspectorOpen = false;
+
+    [ObservableProperty]
     private bool _enableOnlineLookup;
 
     [ObservableProperty]

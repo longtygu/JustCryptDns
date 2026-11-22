@@ -290,6 +290,19 @@ internal sealed class MigrationV16ToV17 : ISettingsMigration
     }
 }
 
+/// <summary>
+/// v18 adds adaptive network/VPN/captive-portal toggles, Serve-Stale/Prefetch cache options, and Local DNS Rewrite rules.
+/// </summary>
+internal sealed class MigrationV17ToV18 : ISettingsMigration
+{
+    public int FromVersion => 17;
+
+    public void Apply(JsonObject document)
+    {
+        // Additive change only; safe defaults are supplied by DnsSettings, CacheSettings, and RoutingSettings.
+    }
+}
+
 public sealed class SettingsMigrator
 {
     private readonly Dictionary<int, ISettingsMigration> _migrations;
@@ -303,7 +316,7 @@ public sealed class SettingsMigrator
     public int TargetVersion { get; }
 
     public static IEnumerable<ISettingsMigration> DefaultMigrations() =>
-        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12(), new MigrationV12ToV13(), new MigrationV13ToV14(), new MigrationV14ToV15(), new MigrationV15ToV16(), new MigrationV16ToV17()];
+        [new MigrationV0ToV1(), new MigrationV1ToV2(), new MigrationV2ToV3(), new MigrationV3ToV4(), new MigrationV4ToV5(), new MigrationV5ToV6(), new MigrationV6ToV7(), new MigrationV7ToV8(), new MigrationV8ToV9(), new MigrationV9ToV10(), new MigrationV10ToV11(), new MigrationV11ToV12(), new MigrationV12ToV13(), new MigrationV13ToV14(), new MigrationV14ToV15(), new MigrationV15ToV16(), new MigrationV16ToV17(), new MigrationV17ToV18()];
 
     public static int ReadVersion(JsonObject document)
     {

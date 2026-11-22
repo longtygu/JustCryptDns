@@ -39,8 +39,8 @@ public abstract class PageViewModel : ObservableObject, IDisposable
     }
 }
 
-/// <summary>Sidebar entry. Label is a localization key so the ViewModel holds no UI text.</summary>
-public sealed record NavItem(string Key, string Glyph, string LabelKey);
+/// <summary>Sidebar entry. Label and group are localization keys so the ViewModel holds no UI text.</summary>
+public sealed record NavItem(string Key, string Glyph, string LabelKey, string GroupKey = "");
 
 public static class PageKeys
 {

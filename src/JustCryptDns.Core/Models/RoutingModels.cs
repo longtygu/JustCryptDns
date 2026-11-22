@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
@@ -366,4 +368,108 @@ public static class BuiltInRoutingProfiles
             Priority = 10,
         },
     ];
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<LocalDnsRewriteRecordType>))]
+public enum LocalDnsRewriteRecordType
+{
+    A,
+    AAAA,
+    CNAME,
+}
+
+public sealed record LocalDnsRewriteRule
+{
+    public required string Id { get; init; }
+
+    public required string Pattern { get; init; }
+
+    public RoutingMatchKind MatchKind { get; init; } = RoutingMatchKind.Exact;
+
+    public LocalDnsRewriteRecordType RecordType { get; init; } = LocalDnsRewriteRecordType.A;
+
+    public required string TargetValue { get; init; }
+
+    public int TtlSeconds { get; init; } = 60;
+
+    public bool IsEnabled { get; init; } = true;
+
+    public string Note { get; init; } = string.Empty;
+}
+
+public static class LocalDnsRewriteValidator
+{
+    public static (bool IsValid, string? ErrorMessage) Validate(LocalDnsRewriteRule rule)
+    {
+        ArgumentNullException.ThrowIfNull(rule);
+        if (!RoutingMatcher.IsValidPattern(rule.Pattern, rule.MatchKind, out var patternError))
+        {
+            return (false, patternError ?? "Invalid domain pattern.");
+        }
+
+        if (rule.TtlSeconds is < 1 or > 86400)
+        {
+            return (false, "TTL must be between 1 and 86400 seconds.");
+        }
+
+        var target = rule.TargetValue?.Trim() ?? string.Empty;
+        switch (rule.RecordType)
+        {
+            case LocalDnsRewriteRecordType.A:
+                if (!IPAddress.TryParse(target, out var ipv4) || ipv4.AddressFamily != AddressFamily.InterNetwork)
+                {
+                    return (false, "Target value for A record must be a valid IPv4 address.");
+                }
+
+                break;
+
+            case LocalDnsRewriteRecordType.AAAA:
+                if (!IPAddress.TryParse(target, out var ipv6) || ipv6.AddressFamily != AddressFamily.InterNetworkV6)
+                {
+                    return (false, "Target value for AAAA record must be a valid IPv6 address.");
+                }
+
+                break;
+
+            case LocalDnsRewriteRecordType.CNAME:
+                var cname = RoutingMatcher.NormalizeDomain(target);
+                if (!IsValidHostName(cname))
+                {
+                    return (false, "Target value for CNAME record must be a valid domain name.");
+                }
+
+                break;
+
+            default:
+                return (false, "Unsupported local rewrite record type.");
+        }
+
+        return (true, null);
+    }
+
+    private static bool IsValidHostName(string domain)
+    {
+        if (string.IsNullOrWhiteSpace(domain) || domain.Length > 253 || domain.Contains('*', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        foreach (var label in domain.Split('.'))
+        {
+            if (label.Length is 0 or > 63 || label.StartsWith('-') || label.EndsWith('-'))
+            {
+                return false;
+            }
+
+            foreach (var ch in label)
+            {
+                if (!(char.IsAsciiLetterOrDigit(ch) || ch == '-' || ch == '_'))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
 }

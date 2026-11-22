@@ -959,7 +959,7 @@ public sealed class BypassEngineService : IBypassEngineService
 
     private static async Task<int> SendHeadRequestAsync(SslStream ssl, string host, CancellationToken ct)
     {
-        var req = Encoding.ASCII.GetBytes($"HEAD / HTTP/1.1\r\nHost: {host}\r\nUser-Agent: JustCryptDns/1.6.0\r\nConnection: close\r\n\r\n");
+        var req = Encoding.ASCII.GetBytes($"HEAD / HTTP/1.1\r\nHost: {host}\r\nUser-Agent: JustCryptDns/1.7.0\r\nConnection: close\r\n\r\n");
         await ssl.WriteAsync(req, ct).ConfigureAwait(false);
         await ssl.FlushAsync(ct).ConfigureAwait(false);
 
