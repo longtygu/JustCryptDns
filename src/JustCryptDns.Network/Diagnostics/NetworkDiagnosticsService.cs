@@ -14,7 +14,8 @@ namespace JustCryptDns.Network.Diagnostics;
 
 public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDisposable
 {
-    public const int MaxMonitorEntries = 300;
+    public const int MaxMonitorEntries = 3000;
+    public const int MaxTrackedDomains = 4096;
 
     private readonly ISettingsService _settings;
     private readonly IResolverLibraryService _resolverLibrary;
@@ -24,8 +25,36 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
     private readonly DohDnsUpstream _defaultDoh;
     private readonly DotDnsUpstream _defaultDot;
     private readonly LinkedList<LiveQueryMonitorEntry> _monitorEntries = new();
+    private readonly Dictionary<string, DomainAggregateState> _domainStats = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Queue<DateTimeOffset> _globalQueryWindow = new();
+    private readonly Queue<DateTimeOffset> _globalBlockedWindow = new();
     private readonly object _monitorLock = new();
+    private DateTimeOffset _sessionStartedUtc = DateTimeOffset.UtcNow;
+    private long _nextSequenceId;
+    private long _totalObservedQueries;
+    private long _totalBlockedQueries;
+    private long _totalCachedQueries;
+    private long _totalFailedQueries;
     private bool _disposed;
+
+    private sealed class DomainAggregateState
+    {
+        public string Domain { get; init; } = string.Empty;
+        public long TotalCount;
+        public long BlockedCount;
+        public long CachedCount;
+        public long FailedCount;
+        public long RoutedCount;
+        public long RewrittenCount;
+        public double LatencySumMs;
+        public long LatencySamples;
+        public string LastOutcome = string.Empty;
+        public string LastResolverName = string.Empty;
+        public string? LastAnswerSummary;
+        public DateTimeOffset LastSeenUtc;
+        public readonly Queue<DateTimeOffset> RecentWindow = new();
+        public readonly Queue<DateTimeOffset> RecentBlockedWindow = new();
+    }
 
     public NetworkDiagnosticsService(
         ISettingsService settings,
@@ -65,6 +94,103 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         }
     }
 
+    public IReadOnlyList<LiveQueryMonitorEntry> GetMonitorEntriesSince(long afterSequenceId, int maxCount = 1000)
+    {
+        var limit = Math.Clamp(maxCount, 1, 5000);
+        lock (_monitorLock)
+        {
+            var result = new List<LiveQueryMonitorEntry>(Math.Min(limit, _monitorEntries.Count));
+            foreach (var item in _monitorEntries)
+            {
+                if (item.SequenceId <= afterSequenceId)
+                {
+                    break;
+                }
+
+                result.Add(item);
+                if (result.Count >= limit)
+                {
+                    break;
+                }
+            }
+
+            return result;
+        }
+    }
+
+    public QueryAnalyticsSnapshot GetQueryAnalyticsSnapshot(int topN = 50)
+    {
+        var limit = Math.Clamp(topN, 1, 200);
+        var nowUtc = DateTimeOffset.UtcNow;
+        var cutoff = nowUtc.AddSeconds(-60);
+
+        lock (_monitorLock)
+        {
+            PruneWindow(_globalQueryWindow, cutoff);
+            PruneWindow(_globalBlockedWindow, cutoff);
+
+            var all = new List<DomainQueryAggregate>(_domainStats.Count);
+            foreach (var state in _domainStats.Values)
+            {
+                PruneWindow(state.RecentWindow, cutoff);
+                PruneWindow(state.RecentBlockedWindow, cutoff);
+
+                var qpm = (double)state.RecentWindow.Count;
+                var blockedPerMin = state.RecentBlockedWindow.Count;
+                var isHighFreq = qpm >= 20 || blockedPerMin >= 10;
+
+                all.Add(new DomainQueryAggregate
+                {
+                    Domain = state.Domain,
+                    TotalCount = state.TotalCount,
+                    BlockedCount = state.BlockedCount,
+                    CachedCount = state.CachedCount,
+                    FailedCount = state.FailedCount,
+                    RoutedCount = state.RoutedCount,
+                    RewrittenCount = state.RewrittenCount,
+                    AverageLatencyMs = state.LatencySamples > 0
+                        ? Math.Round(state.LatencySumMs / state.LatencySamples, 1)
+                        : 0.0,
+                    QueriesPerMinute = qpm,
+                    IsHighFrequency = isHighFreq,
+                    LastOutcome = state.LastOutcome,
+                    LastResolverName = state.LastResolverName,
+                    LastAnswerSummary = state.LastAnswerSummary,
+                    LastSeenUtc = state.LastSeenUtc,
+                });
+            }
+
+            return new QueryAnalyticsSnapshot
+            {
+                SessionStartedUtc = _sessionStartedUtc,
+                TotalObservedQueries = _totalObservedQueries,
+                TotalBlockedQueries = _totalBlockedQueries,
+                TotalCachedQueries = _totalCachedQueries,
+                TotalFailedQueries = _totalFailedQueries,
+                UniqueDomainCount = _domainStats.Count,
+                CurrentQueriesPerMinute = _globalQueryWindow.Count,
+                BlockedQueriesPerMinute = _globalBlockedWindow.Count,
+                TopQueried = all
+                    .OrderByDescending(a => a.TotalCount)
+                    .ThenByDescending(a => a.LastSeenUtc)
+                    .Take(limit)
+                    .ToList(),
+                TopBlocked = all
+                    .Where(a => a.BlockedCount > 0)
+                    .OrderByDescending(a => a.BlockedCount)
+                    .ThenByDescending(a => a.QueriesPerMinute)
+                    .Take(limit)
+                    .ToList(),
+                TopFailed = all
+                    .Where(a => a.FailedCount > 0)
+                    .OrderByDescending(a => a.FailedCount)
+                    .ThenByDescending(a => a.LastSeenUtc)
+                    .Take(limit)
+                    .ToList(),
+            };
+        }
+    }
+
     public void RecordMonitorEntry(LiveQueryMonitorEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
@@ -73,17 +199,84 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
             return;
         }
 
+        var seq = Interlocked.Increment(ref _nextSequenceId);
+        var stamped = entry.SequenceId > 0 ? entry : entry with { SequenceId = seq };
         var maxEntries = _settings.Current.Performance.GetMonitorBufferLimit();
+        var nowUtc = stamped.Timestamp.ToUniversalTime();
+        var cutoff = nowUtc.AddSeconds(-60);
+
         lock (_monitorLock)
         {
-            _monitorEntries.AddFirst(entry);
+            _monitorEntries.AddFirst(stamped);
             while (_monitorEntries.Count > maxEntries)
             {
                 _monitorEntries.RemoveLast();
             }
+
+            _totalObservedQueries++;
+            _globalQueryWindow.Enqueue(nowUtc);
+            PruneWindow(_globalQueryWindow, cutoff);
+
+            var isBlocked = string.Equals(stamped.Outcome, "Blocked", StringComparison.OrdinalIgnoreCase);
+            var isCached = string.Equals(stamped.Outcome, "Cached", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(stamped.Outcome, "Stale", StringComparison.OrdinalIgnoreCase);
+            var isFailed = string.Equals(stamped.Outcome, "Failed", StringComparison.OrdinalIgnoreCase);
+            var isRouted = string.Equals(stamped.Outcome, "Routed", StringComparison.OrdinalIgnoreCase);
+            var isRewritten = string.Equals(stamped.Outcome, "Rewritten", StringComparison.OrdinalIgnoreCase);
+
+            if (isBlocked)
+            {
+                _totalBlockedQueries++;
+                _globalBlockedWindow.Enqueue(nowUtc);
+                PruneWindow(_globalBlockedWindow, cutoff);
+            }
+            else if (isCached)
+            {
+                _totalCachedQueries++;
+            }
+            else if (isFailed)
+            {
+                _totalFailedQueries++;
+            }
+
+            var normDomain = string.IsNullOrWhiteSpace(stamped.Domain) ? "unknown" : stamped.Domain.Trim().TrimEnd('.').ToLowerInvariant();
+            if (!_domainStats.TryGetValue(normDomain, out var state))
+            {
+                if (_domainStats.Count >= MaxTrackedDomains)
+                {
+                    EvictColdestDomainLocked();
+                }
+
+                state = new DomainAggregateState { Domain = normDomain };
+                _domainStats[normDomain] = state;
+            }
+
+            state.TotalCount++;
+            if (isBlocked) state.BlockedCount++;
+            if (isCached) state.CachedCount++;
+            if (isFailed) state.FailedCount++;
+            if (isRouted) state.RoutedCount++;
+            if (isRewritten) state.RewrittenCount++;
+            if (stamped.LatencyMs.HasValue)
+            {
+                state.LatencySumMs += stamped.LatencyMs.Value;
+                state.LatencySamples++;
+            }
+
+            state.LastOutcome = stamped.Outcome;
+            state.LastResolverName = stamped.ResolverName;
+            state.LastAnswerSummary = stamped.AnswerSummary;
+            state.LastSeenUtc = nowUtc;
+            state.RecentWindow.Enqueue(nowUtc);
+            PruneWindow(state.RecentWindow, cutoff);
+            if (isBlocked)
+            {
+                state.RecentBlockedWindow.Enqueue(nowUtc);
+                PruneWindow(state.RecentBlockedWindow, cutoff);
+            }
         }
 
-        QueryObserved?.Invoke(this, entry);
+        QueryObserved?.Invoke(this, stamped);
     }
 
     public void ClearMonitorEntries()
@@ -91,6 +284,45 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         lock (_monitorLock)
         {
             _monitorEntries.Clear();
+            _domainStats.Clear();
+            _globalQueryWindow.Clear();
+            _globalBlockedWindow.Clear();
+            _totalObservedQueries = 0;
+            _totalBlockedQueries = 0;
+            _totalCachedQueries = 0;
+            _totalFailedQueries = 0;
+            _sessionStartedUtc = DateTimeOffset.UtcNow;
+        }
+    }
+
+    private void EvictColdestDomainLocked()
+    {
+        string? victimKey = null;
+        long lowestCount = long.MaxValue;
+        var oldestSeen = DateTimeOffset.MaxValue;
+
+        foreach (var (key, state) in _domainStats)
+        {
+            if (state.TotalCount < lowestCount
+                || (state.TotalCount == lowestCount && state.LastSeenUtc < oldestSeen))
+            {
+                lowestCount = state.TotalCount;
+                oldestSeen = state.LastSeenUtc;
+                victimKey = key;
+            }
+        }
+
+        if (victimKey is not null)
+        {
+            _domainStats.Remove(victimKey);
+        }
+    }
+
+    private static void PruneWindow(Queue<DateTimeOffset> queue, DateTimeOffset cutoff)
+    {
+        while (queue.Count > 0 && queue.Peek() < cutoff)
+        {
+            queue.Dequeue();
         }
     }
 

@@ -3501,4 +3501,271 @@
   <data name="Routing_RewriteEmpty" xml:space="preserve">
     <value>No local DNS rewrites configured.</value>
   </data>
+  <data name="Mode_HighSpeed" xml:space="preserve">
+    <value>High Speed</value>
+  </data>
+  <data name="Mode_HighSpeed_Desc" xml:space="preserve">
+    <value>Pure maximum DNS speed (1.1.1.1 UDP, max cache &amp; prefetch, filtering and security checks off).</value>
+  </data>
+  <data name="Mode_Gaming" xml:space="preserve">
+    <value>Gaming Mode</value>
+  </data>
+  <data name="Mode_Gaming_Desc" xml:space="preserve">
+    <value>Fastest low-jitter DNS with Gaming Engine pin, while minimizing visual effects and background load to protect PC FPS.</value>
+  </data>
+  <data name="Mode_Balanced" xml:space="preserve">
+    <value>Balanced</value>
+  </data>
+  <data name="Mode_Balanced_Desc" xml:space="preserve">
+    <value>High-speed encrypted DoH foundation tuned with DNS filtering, threat checks, and smooth responsiveness.</value>
+  </data>
+  <data name="Mode_Auto" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="Mode_Auto_Desc" xml:space="preserve">
+    <value>Dynamically switches between Gaming, Balanced, and Security based on live games, threats, and blocked query spikes.</value>
+  </data>
+  <data name="Mode_Security" xml:space="preserve">
+    <value>Security</value>
+  </data>
+  <data name="Mode_Security_Desc" xml:space="preserve">
+    <value>Maximum privacy &amp; defense: strict Encrypted-Only DoH (Quad9), all built-in blocklists, DNS Leak Guard, and auto-blocking threats.</value>
+  </data>
+  <data name="Mode_Customize" xml:space="preserve">
+    <value>Customize</value>
+  </data>
+  <data name="Mode_Custom_Header" xml:space="preserve">
+    <value>Customize Active Mode</value>
+  </data>
+  <data name="Mode_Custom_Save" xml:space="preserve">
+    <value>Save &amp; Apply</value>
+  </data>
+  <data name="Mode_Custom_Reset" xml:space="preserve">
+    <value>Reset Mode Default</value>
+  </data>
+  <data name="Mode_Custom_Saved" xml:space="preserve">
+    <value>Saved and applied custom settings for this mode.</value>
+  </data>
+  <data name="Mode_Custom_ResetDone" xml:space="preserve">
+    <value>Restored this mode to its built-in default configuration.</value>
+  </data>
+  <data name="Mode_Custom_PrimaryResolver" xml:space="preserve">
+    <value>Primary Resolver</value>
+  </data>
+  <data name="Mode_Custom_SecondaryResolver" xml:space="preserve">
+    <value>Secondary Resolver</value>
+  </data>
+  <data name="Mode_Custom_Monitoring" xml:space="preserve">
+    <value>Monitoring Mode</value>
+  </data>
+  <data name="Mode_Custom_TimeoutMs" xml:space="preserve">
+    <value>Query Timeout (ms)</value>
+  </data>
+  <data name="Mode_Custom_CacheSize" xml:space="preserve">
+    <value>DNS Cache Max Entries</value>
+  </data>
+  <data name="Mode_Custom_EnableFiltering" xml:space="preserve">
+    <value>Enable DNS Filtering</value>
+  </data>
+  <data name="Mode_Custom_AllBlocklists" xml:space="preserve">
+    <value>Enable All Built-in Blocklists</value>
+  </data>
+  <data name="Mode_Custom_GamingEngine" xml:space="preserve">
+    <value>Pin Gaming Engine Resolver</value>
+  </data>
+  <data name="Mode_Custom_ForceEncrypted" xml:space="preserve">
+    <value>Strict Encrypted-Only (No UDP Fallback)</value>
+  </data>
+  <data name="Mode_Custom_Prefetch" xml:space="preserve">
+    <value>Cache Prefetch</value>
+  </data>
+  <data name="Mode_Custom_ServeStale" xml:space="preserve">
+    <value>Serve-Stale Cache</value>
+  </data>
+  <data name="Mode_Custom_DnsLeakGuard" xml:space="preserve">
+    <value>DNS Leak Guard (Firewall)</value>
+  </data>
+  <data name="Mode_Custom_ThreatIntel" xml:space="preserve">
+    <value>Threat Intelligence</value>
+  </data>
+  <data name="Mode_Custom_AutoBlockThreat" xml:space="preserve">
+    <value>Auto-Block Threats</value>
+  </data>
+  <data name="Mode_Custom_VerifySig" xml:space="preserve">
+    <value>Verify Process Signatures</value>
+  </data>
+  <data name="Mode_Custom_FirefoxCanary" xml:space="preserve">
+    <value>Block Firefox DoH Canary</value>
+  </data>
+  <data name="Mode_Custom_MinimizeFx" xml:space="preserve">
+    <value>Minimize Visual Effects (Boost FPS)</value>
+  </data>
+  <data name="Mode_Auto_Opt_FullscreenGame" xml:space="preserve">
+    <value>Auto-switch to Gaming Mode on fullscreen / game process</value>
+  </data>
+  <data name="Mode_Auto_Opt_ThreatSpike" xml:space="preserve">
+    <value>Auto-switch to Security Mode on threat or blocked-query spike</value>
+  </data>
+  <data name="Mode_Auto_Opt_BlockThreshold" xml:space="preserve">
+    <value>Blocked-query spike threshold (queries/min)</value>
+  </data>
+  <data name="Mode_Auto_Opt_Cooldown" xml:space="preserve">
+    <value>Anti-flap cooldown before reverting (seconds)</value>
+  </data>
+  <data name="Mode_Auto_Opt_CustomGames" xml:space="preserve">
+    <value>Additional game process names (comma-separated, e.g. mygame, launcher)</value>
+  </data>
+  <data name="Mode_Auto_Reason_Normal" xml:space="preserve">
+    <value>Normal desktop activity</value>
+  </data>
+  <data name="Mode_Auto_Reason_Fullscreen" xml:space="preserve">
+    <value>Fullscreen 3D application detected</value>
+  </data>
+  <data name="Mode_Auto_Reason_GameProcess" xml:space="preserve">
+    <value>Active game detected</value>
+  </data>
+  <data name="Mode_Auto_Reason_Threat" xml:space="preserve">
+    <value>Active threat indicator detected</value>
+  </data>
+  <data name="Mode_Auto_Reason_BlockSpike" xml:space="preserve">
+    <value>High blocked-query spike</value>
+  </data>
+  <data name="Mode_Auto_Reason_UntrustedNet" xml:space="preserve">
+    <value>Untrusted network profile</value>
+  </data>
+  <data name="Monitor_ExportCsv" xml:space="preserve">
+    <value>Export CSV</value>
+  </data>
+  <data name="Monitor_Metric_UniqueDomains" xml:space="preserve">
+    <value>Unique domains</value>
+  </data>
+  <data name="Monitor_Metric_Qpm" xml:space="preserve">
+    <value>Rate / min</value>
+  </data>
+  <data name="Monitor_Metric_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Monitor_Tab_QueryLog" xml:space="preserve">
+    <value>Detailed Query Log</value>
+  </data>
+  <data name="Monitor_Tab_TopDomains" xml:space="preserve">
+    <value>Top Domains &amp; Spam Detector</value>
+  </data>
+  <data name="Monitor_SearchPlaceholder" xml:space="preserve">
+    <value>Filter by domain, answer IP, resolver, rule, or RCODE...</value>
+  </data>
+  <data name="Monitor_Filter_Slow" xml:space="preserve">
+    <value>Slow (&gt;100ms)</value>
+  </data>
+  <data name="Monitor_Filter_Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Monitor_Outcome_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Monitor_Col_Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Monitor_Col_Domain" xml:space="preserve">
+    <value>Domain</value>
+  </data>
+  <data name="Monitor_Col_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Monitor_Col_Outcome" xml:space="preserve">
+    <value>Outcome</value>
+  </data>
+  <data name="Monitor_Col_Rcode" xml:space="preserve">
+    <value>RCODE</value>
+  </data>
+  <data name="Monitor_Col_Answer" xml:space="preserve">
+    <value>Answer / IP</value>
+  </data>
+  <data name="Monitor_Col_RuleResolver" xml:space="preserve">
+    <value>Resolver / Rule</value>
+  </data>
+  <data name="Monitor_Col_Latency" xml:space="preserve">
+    <value>Latency</value>
+  </data>
+  <data name="Monitor_Col_Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="Monitor_Col_SpamStatus" xml:space="preserve">
+    <value>Frequency</value>
+  </data>
+  <data name="Monitor_Col_Actions" xml:space="preserve">
+    <value>Quick Actions</value>
+  </data>
+  <data name="Monitor_Act_Block" xml:space="preserve">
+    <value>Block Domain</value>
+  </data>
+  <data name="Monitor_Act_Allow" xml:space="preserve">
+    <value>Allowlist</value>
+  </data>
+  <data name="Monitor_Act_Allow30m" xml:space="preserve">
+    <value>Allow 30 min</value>
+  </data>
+  <data name="Monitor_Act_DpiBypass" xml:space="preserve">
+    <value>Add to DPI Bypass</value>
+  </data>
+  <data name="Monitor_Act_Copy" xml:space="preserve">
+    <value>Copy Domain</value>
+  </data>
+  <data name="Monitor_Act_Rewrite" xml:space="preserve">
+    <value>Create Rewrite</value>
+  </data>
+  <data name="Monitor_Act_Route" xml:space="preserve">
+    <value>Route to Resolver</value>
+  </data>
+  <data name="Monitor_Act_FilterLog" xml:space="preserve">
+    <value>Inspect</value>
+  </data>
+  <data name="Monitor_Act_BlockShort" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="Monitor_Act_AllowShort" xml:space="preserve">
+    <value>Allow</value>
+  </data>
+  <data name="Monitor_Top_Queried" xml:space="preserve">
+    <value>Top Queried Domains</value>
+  </data>
+  <data name="Monitor_Top_Blocked" xml:space="preserve">
+    <value>Top Blocked (Retry Loops)</value>
+  </data>
+  <data name="Monitor_Top_Failed" xml:space="preserve">
+    <value>Top Failed Domains</value>
+  </data>
+  <data name="Monitor_Rate_Normal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="Monitor_Rate_HighSpam" xml:space="preserve">
+    <value>High / Spam</value>
+  </data>
+  <data name="Monitor_Action_Cleared" xml:space="preserve">
+    <value>Cleared query monitor buffer and session analytics.</value>
+  </data>
+  <data name="Monitor_Action_Blocked" xml:space="preserve">
+    <value>Added '{0}' to Custom Blocked Domains.</value>
+  </data>
+  <data name="Monitor_Action_Allowed" xml:space="preserve">
+    <value>Added '{0}' to permanent Allowlist.</value>
+  </data>
+  <data name="Monitor_Action_Allowed30m" xml:space="preserve">
+    <value>Temporarily allowed '{0}' for 30 minutes.</value>
+  </data>
+  <data name="Monitor_Action_Rewritten" xml:space="preserve">
+    <value>Created local DNS rewrite: '{0}' → '{1}'.</value>
+  </data>
+  <data name="Monitor_Action_Routed" xml:space="preserve">
+    <value>Routed '{0}' to '{1}'.</value>
+  </data>
+  <data name="Monitor_Action_BypassAdded" xml:space="preserve">
+    <value>Added '{0}' to DPI Bypass rules.</value>
+  </data>
+  <data name="Monitor_Action_Copied" xml:space="preserve">
+    <value>Copied '{0}' to clipboard.</value>
+  </data>
+  <data name="Monitor_Action_Exported" xml:space="preserve">
+    <value>Exported {0} rows to {1}.</value>
+  </data>
 </root>

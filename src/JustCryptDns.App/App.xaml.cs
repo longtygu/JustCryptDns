@@ -143,6 +143,7 @@ public partial class App : Application
 
         // Probe background service, recover orphaned backups, and auto-start local engines in standalone mode.
         _ = InitializeStandaloneEnginesAsync(_services, _logger, migratedLegacySettings);
+        _services.GetRequiredService<IOperationModeService>().Start();
         _ = CheckForUpdatesInBackgroundAsync(_services, _logger);
 
         var window = _services.GetRequiredService<MainWindow>();

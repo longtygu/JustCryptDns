@@ -383,7 +383,7 @@ public sealed class Phase17CoreAndUiUpgradeTests : IDisposable
 
         Assert.Equal(SettingsLoadOutcome.Migrated, loaded.Outcome);
         Assert.Equal(AppSettings.CurrentSchemaVersion, loaded.Settings.SchemaVersion);
-        Assert.Equal(18, loaded.Settings.SchemaVersion);
+        Assert.True(loaded.Settings.SchemaVersion >= 18);
         Assert.True(loaded.Settings.Dns.AutoAdaptNetworkChanges);
         Assert.True(loaded.Settings.Dns.AutoDeferToVpn);
         Assert.True(loaded.Settings.Dns.BlockFirefoxDohCanary);
@@ -395,7 +395,7 @@ public sealed class Phase17CoreAndUiUpgradeTests : IDisposable
         var doc = JsonNode.Parse(v17Json)!.AsObject();
         var migrator = new SettingsMigrator();
         Assert.True(migrator.Migrate(doc));
-        Assert.Equal(18, SettingsMigrator.ReadVersion(doc));
+        Assert.Equal(AppSettings.CurrentSchemaVersion, SettingsMigrator.ReadVersion(doc));
     }
 
     [Fact]

@@ -78,6 +78,7 @@ public static class ServiceRegistration
         // UI services
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IAppearanceService, AppearanceService>();
+        services.AddSingleton<IOperationModeService, OperationModeService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<ITrayIconService, TrayIconService>();
         services.AddSingleton<IAboutWindowService, AboutWindowService>();

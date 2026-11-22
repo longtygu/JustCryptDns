@@ -436,6 +436,7 @@ public sealed class DnsEngineService : IDnsEngine
 
         var result = await upstream.QueryAsync(query, resolver, timeout, cancellationToken).ConfigureAwait(false);
         RecordQueryOutcome(result);
+        var (probeRcode, probeAnswer) = ExtractResponseMetadata(result.ResponseBytes);
         _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
         {
             Timestamp = DateTimeOffset.Now,
@@ -445,6 +446,9 @@ public sealed class DnsEngineService : IDnsEngine
             ResolverName = resolver.Name,
             Protocol = resolver.Protocol,
             LatencyMs = result.Success ? Math.Round(result.LatencyMs, 1) : null,
+            ResponseCode = result.Success ? probeRcode : "Error",
+            AnswerSummary = result.Success ? probeAnswer : result.Error,
+            MatchedRule = "Active Resolver Probe",
         });
         _logger.LogInformation(
             "Resolver probe to {Resolver} ({Protocol}): success={Success}, latency={Latency:0.0} ms, error={Error}",
@@ -823,6 +827,9 @@ public sealed class DnsEngineService : IDnsEngine
                 ResolverName = "Firefox DoH Guard",
                 Protocol = _activeResolver.Protocol,
                 LatencyMs = 0.0,
+                ResponseCode = DnsResponseCode.NxDomain.ToString(),
+                AnswerSummary = "NXDOMAIN (DoH Canary blocked)",
+                MatchedRule = "BlockFirefoxDohCanary",
             });
             RaiseStateChanged();
             return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.NxDomain);
@@ -861,6 +868,9 @@ public sealed class DnsEngineService : IDnsEngine
                     ResolverName = $"Local Rewrite ({effectiveRule.TargetValue})",
                     Protocol = _activeResolver.Protocol,
                     LatencyMs = 0.0,
+                    ResponseCode = DnsResponseCode.NoError.ToString(),
+                    AnswerSummary = $"{effectiveRule.RecordType} → {effectiveRule.TargetValue}",
+                    MatchedRule = $"Rewrite: {effectiveRule.Pattern}",
                 });
                 RaiseStateChanged();
                 return rewriteWire;
@@ -883,6 +893,9 @@ public sealed class DnsEngineService : IDnsEngine
                     ResolverName = filterDecision.MatchedRuleOrListName ?? "Filter",
                     Protocol = _activeResolver.Protocol,
                     LatencyMs = 0.0,
+                    ResponseCode = DnsResponseCode.NxDomain.ToString(),
+                    AnswerSummary = "NXDOMAIN (Blocked)",
+                    MatchedRule = filterDecision.MatchedRuleOrListName ?? "Filter",
                 });
                 RaiseStateChanged();
                 return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.NxDomain);
@@ -905,6 +918,7 @@ public sealed class DnsEngineService : IDnsEngine
 
             Interlocked.Increment(ref _totalQueries);
             Interlocked.Increment(ref _successfulQueries);
+            var (cachedRcode, cachedAnswer) = ExtractResponseMetadata(cachedBytes);
             _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
             {
                 Timestamp = DateTimeOffset.Now,
@@ -914,6 +928,9 @@ public sealed class DnsEngineService : IDnsEngine
                 ResolverName = "TTL Cache",
                 Protocol = _activeResolver.Protocol,
                 LatencyMs = 0.1,
+                ResponseCode = cachedRcode,
+                AnswerSummary = cachedAnswer,
+                MatchedRule = shouldPrefetch ? "TTL Cache (Prefetch)" : "TTL Cache",
             });
             RaiseStateChanged();
             return cachedBytes;
@@ -939,6 +956,7 @@ public sealed class DnsEngineService : IDnsEngine
                     RecordReverseDnsFromResponse(qDomain, staleBytes);
                 }
 
+                var (staleRcode, staleAnswer) = ExtractResponseMetadata(staleBytes);
                 _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
                 {
                     Timestamp = DateTimeOffset.Now,
@@ -948,6 +966,9 @@ public sealed class DnsEngineService : IDnsEngine
                     ResolverName = "Serve-Stale Cache",
                     Protocol = _activeResolver.Protocol,
                     LatencyMs = 0.1,
+                    ResponseCode = staleRcode,
+                    AnswerSummary = staleAnswer,
+                    MatchedRule = "Serve-Stale Fallback",
                 });
                 RaiseStateChanged();
                 return staleBytes;
@@ -990,6 +1011,7 @@ public sealed class DnsEngineService : IDnsEngine
 
             Interlocked.Increment(ref _totalQueries);
             Interlocked.Increment(ref _successfulQueries);
+            var (staleRcode, staleAnswer) = ExtractResponseMetadata(staleFallback);
             _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
             {
                 Timestamp = DateTimeOffset.Now,
@@ -999,6 +1021,9 @@ public sealed class DnsEngineService : IDnsEngine
                 ResolverName = $"Serve-Stale ({resolver.Name})",
                 Protocol = resolver.Protocol,
                 LatencyMs = 0.1,
+                ResponseCode = staleRcode,
+                AnswerSummary = staleAnswer,
+                MatchedRule = "Serve-Stale Fallback",
             });
             RaiseStateChanged();
             return staleFallback;
@@ -1011,6 +1036,13 @@ public sealed class DnsEngineService : IDnsEngine
             _routingService.RecordRoutingLog(decision, queryType, result.Success ? result.LatencyMs : null);
         }
 
+        var (respCode, respAnswer) = result.Success
+            ? ExtractResponseMetadata(result.ResponseBytes)
+            : ("Error", string.IsNullOrWhiteSpace(result.Error) ? "Upstream query failed" : result.Error);
+        var matchedRule = decision is { IsFallback: false }
+            ? (!string.IsNullOrWhiteSpace(decision.MatchedRuleName) ? decision.MatchedRuleName : (decision.MatchedPattern ?? decision.ProfileId))
+            : null;
+
         _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
         {
             Timestamp = DateTimeOffset.Now,
@@ -1020,6 +1052,9 @@ public sealed class DnsEngineService : IDnsEngine
             ResolverName = resolver.Name,
             Protocol = resolver.Protocol,
             LatencyMs = result.Success ? Math.Round(result.LatencyMs, 1) : null,
+            ResponseCode = respCode,
+            AnswerSummary = respAnswer,
+            MatchedRule = matchedRule,
         });
 
         if (result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize)
@@ -1428,6 +1463,32 @@ public sealed class DnsEngineService : IDnsEngine
         return extV6.Count > 0
             ? (SystemTrafficStatus.Ipv6DnsLeakDetected, extV6)
             : (SystemTrafficStatus.InterceptingSystemTraffic, null);
+    }
+
+    public static (string? ResponseCode, string? AnswerSummary) ExtractResponseMetadata(ReadOnlySpan<byte> responseWire)
+    {
+        if (responseWire.Length < DnsPacket.HeaderSize || !DnsPacket.TryParse(responseWire, out var parsed) || parsed is null)
+        {
+            return (null, null);
+        }
+
+        var rcode = parsed.Header.ResponseCode.ToString();
+        if (parsed.Answers.Count == 0)
+        {
+            return (rcode, parsed.Header.ResponseCode == DnsResponseCode.NoError ? "No answers" : rcode);
+        }
+
+        var shown = parsed.Answers
+            .Take(2)
+            .Select(a => string.IsNullOrWhiteSpace(a.DataSummary) ? a.Type.ToString() : a.DataSummary)
+            .ToArray();
+        var summary = string.Join(", ", shown);
+        if (parsed.Answers.Count > 2)
+        {
+            summary = $"{summary} (+{parsed.Answers.Count - 2})";
+        }
+
+        return (rcode, summary);
     }
 
     private static (string? OwnerDescription, string? ServiceName) ReadPort53ConflictOwner()

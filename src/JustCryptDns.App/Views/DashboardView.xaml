@@ -565,6 +565,156 @@
                 </Border>
             </UniformGrid>
 
+            <!-- Seamless 5-Mode Operation Switcher Bar + Inline Per-Mode Customizer -->
+            <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="14,12">
+                <StackPanel>
+                    <controls:OperationModeSwitcherControl x:Name="ModeSwitcher"
+                                                           SelectedMode="{Binding SelectedOperationMode, Mode=TwoWay}"
+                                                           EffectiveMode="{Binding EffectiveOperationMode}"
+                                                           MinimizeVisualEffects="{Binding MinimizeVisualEffects}"
+                                                           ModeSelectedCommand="{Binding SelectOperationModeCommand}" />
+
+                    <!-- Live Mode Description + Customize Toggle -->
+                    <Grid Margin="2,10,2,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE946;" FontSize="13" Foreground="{DynamicResource Brush.Accent}" Margin="0,0,7,0" VerticalAlignment="Center" />
+                            <TextBlock Style="{StaticResource Text.Caption}"
+                                       Text="{Binding OperationModeSummaryText}"
+                                       Foreground="{DynamicResource Brush.TextSecondary}"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Style="{StaticResource Button.Subtle}"
+                                Padding="10,5"
+                                Margin="12,0,0,0"
+                                Command="{Binding ToggleModeCustomizerCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE713;" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{l:Loc Mode_Customize}" FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <!-- Collapsible Per-Mode Customizer Drawer -->
+                    <Border Margin="0,12,0,0"
+                            Padding="14,12"
+                            CornerRadius="10"
+                            Background="{DynamicResource Brush.ControlFill}"
+                            BorderBrush="{DynamicResource Brush.CardBorder}"
+                            BorderThickness="1"
+                            Visibility="{Binding IsModeCustomizerOpen, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Mode_Custom_Header}" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Style="{StaticResource Button.Subtle}"
+                                            Padding="10,5"
+                                            Margin="0,0,8,0"
+                                            Command="{Binding ResetCurrentModeToDefaultCommand}">
+                                        <TextBlock Text="{l:Loc Mode_Custom_Reset}" FontSize="{DynamicResource Font.Size.Small}" />
+                                    </Button>
+                                    <Button Style="{StaticResource Button.Primary}"
+                                            Padding="12,5"
+                                            Command="{Binding SaveModeCustomizationCommand}">
+                                        <TextBlock Text="{l:Loc Mode_Custom_Save}" FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold" />
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Concrete Mode Customization (HighSpeed / Gaming / Balanced / Security) -->
+                            <StackPanel Visibility="{Binding IsEditingConcreteMode, Converter={StaticResource BoolToVisibility}}">
+                                <UniformGrid Columns="3" Margin="0,0,0,10">
+                                    <StackPanel Margin="0,0,10,0">
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Mode_Custom_PrimaryResolver}" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding AvailableModeResolvers}"
+                                                  SelectedValuePath="Id"
+                                                  SelectedValue="{Binding EditModeResolverId, Mode=TwoWay}"
+                                                  DisplayMemberPath="Name" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,10,0">
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Mode_Custom_SecondaryResolver}" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding AvailableModeResolvers}"
+                                                  SelectedValuePath="Id"
+                                                  SelectedValue="{Binding EditModeSecondaryResolverId, Mode=TwoWay}"
+                                                  DisplayMemberPath="Name" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Mode_Custom_Monitoring}" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding AvailableMonitoringModes}"
+                                                  SelectedItem="{Binding EditModeMonitoringMode, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </UniformGrid>
+
+                                <UniformGrid Columns="2" Margin="0,0,0,10">
+                                    <StackPanel Margin="0,0,10,0">
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Mode_Custom_TimeoutMs}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding EditModeQueryTimeoutMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Mode_Custom_CacheSize}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding EditModeCacheMaxEntries, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </UniformGrid>
+
+                                <UniformGrid Columns="3">
+                                    <CheckBox Content="{l:Loc Mode_Custom_EnableFiltering}" IsChecked="{Binding EditModeEnableFiltering, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_AllBlocklists}" IsChecked="{Binding EditModeEnableAllBuiltInBlocklists, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_GamingEngine}" IsChecked="{Binding EditModeEnableGamingEngine, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_ForceEncrypted}" IsChecked="{Binding EditModeForceEncryptedOnly, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_Prefetch}" IsChecked="{Binding EditModeEnableCachePrefetch, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_ServeStale}" IsChecked="{Binding EditModeEnableServeStale, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_DnsLeakGuard}" IsChecked="{Binding EditModeEnableDnsLeakGuard, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_ThreatIntel}" IsChecked="{Binding EditModeEnableThreatIntelligence, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_AutoBlockThreat}" IsChecked="{Binding EditModeAutoBlockDetectedThreats, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_VerifySig}" IsChecked="{Binding EditModeVerifyProcessSignatures, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_FirefoxCanary}" IsChecked="{Binding EditModeBlockFirefoxDohCanary, Mode=TwoWay}" Margin="0,3,8,3" />
+                                    <CheckBox Content="{l:Loc Mode_Custom_MinimizeFx}" IsChecked="{Binding EditModeMinimizeVisualEffects, Mode=TwoWay}" Margin="0,3,8,3" />
+                                </UniformGrid>
+                            </StackPanel>
+
+                            <!-- Auto Mode Rules Customization -->
+                            <StackPanel Visibility="{Binding IsEditingAutoMode, Converter={StaticResource BoolToVisibility}}">
+                                <UniformGrid Columns="2" Margin="0,0,0,8">
+                                    <CheckBox Content="{l:Loc Mode_Auto_Opt_FullscreenGame}" IsChecked="{Binding EditAutoSwitchGaming, Mode=TwoWay}" Margin="0,3,10,3" />
+                                    <CheckBox Content="{l:Loc Mode_Auto_Opt_ThreatSpike}" IsChecked="{Binding EditAutoSwitchSecurity, Mode=TwoWay}" Margin="0,3,0,3" />
+                                </UniformGrid>
+                                <UniformGrid Columns="2" Margin="0,0,0,8">
+                                    <StackPanel Margin="0,0,10,0">
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Mode_Auto_Opt_BlockThreshold}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding EditAutoHighBlockThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Mode_Auto_Opt_Cooldown}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding EditAutoCooldownSeconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </UniformGrid>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Mode_Auto_Opt_CustomGames}" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding EditAutoCustomGamesCsv, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <TextBlock Margin="0,8,0,0"
+                                       Style="{StaticResource Text.Caption}"
+                                       Foreground="{DynamicResource Brush.Success}"
+                                       Text="{Binding ModeCustomizerFeedback}"
+                                       Visibility="{Binding ModeCustomizerFeedback, Converter={StaticResource NullToVisibility}}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
             <!-- Live Ping & Network Speed Waveform Gauge -->
             <Border Style="{StaticResource WaveCard}"
                     controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Wave_Title}"

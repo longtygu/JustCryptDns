@@ -15,6 +15,20 @@ public interface INetworkDiagnosticsService
 
     IReadOnlyList<LiveQueryMonitorEntry> GetMonitorEntries();
 
+    IReadOnlyList<LiveQueryMonitorEntry> GetMonitorEntriesSince(long afterSequenceId, int maxCount = 1000) =>
+        GetMonitorEntries()
+            .Where(e => e.SequenceId > afterSequenceId)
+            .Take(Math.Clamp(maxCount, 1, 5000))
+            .ToList();
+
+    QueryAnalyticsSnapshot GetQueryAnalyticsSnapshot(int topN = 50) => new()
+    {
+        SessionStartedUtc = DateTimeOffset.UtcNow,
+        TopQueried = [],
+        TopBlocked = [],
+        TopFailed = [],
+    };
+
     void RecordMonitorEntry(LiveQueryMonitorEntry entry);
 
     void ClearMonitorEntries();

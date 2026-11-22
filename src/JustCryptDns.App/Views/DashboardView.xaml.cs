@@ -17,6 +17,7 @@ public partial class DashboardView : UserControl
     private readonly DispatcherTimer _frameTimer;
     private long _lastFrameTimestamp;
     private double _pulseTime;
+    private double _lowPowerGaugeAccum;
     private bool _wasEngineRunning;
     private Window? _hostWindow;
     private DashboardViewModel? _attachedVm;
@@ -157,15 +158,19 @@ public partial class DashboardView : UserControl
         if (string.IsNullOrEmpty(e.PropertyName)
             || e.PropertyName is nameof(DashboardViewModel.IsEngineRunning)
                 or nameof(DashboardViewModel.EngineState)
-                or nameof(DashboardViewModel.StatusPulseStyle))
+                or nameof(DashboardViewModel.StatusPulseStyle)
+                or nameof(DashboardViewModel.MinimizeVisualEffects))
         {
             var nowRunning = _attachedVm.IsEngineRunning;
-            if (nowRunning && !_wasEngineRunning && IsLoaded)
+            if (nowRunning && !_wasEngineRunning && IsLoaded && !_attachedVm.MinimizeVisualEffects)
             {
                 TriggerAllGaugesIgnitionSweep();
             }
 
             _wasEngineRunning = nowRunning;
+            _frameTimer.Interval = _attachedVm.MinimizeVisualEffects
+                ? TimeSpan.FromMilliseconds(66)
+                : TimeSpan.FromMilliseconds(33);
             ApplyStatusPulseFrame(reset: !_frameTimer.IsEnabled);
         }
     }
@@ -262,9 +267,33 @@ public partial class DashboardView : UserControl
     private void OnFrameTick(object? sender, EventArgs e)
     {
         var now = Stopwatch.GetTimestamp();
-        var dt = Math.Clamp((now - _lastFrameTimestamp) / (double)Stopwatch.Frequency, 0.005, 0.1);
+        var dt = Math.Clamp((now - _lastFrameTimestamp) / (double)Stopwatch.Frequency, 0.005, 0.15);
         _lastFrameTimestamp = now;
         _pulseTime += dt;
+
+        // Always keep the active 5-mode switch blinking smoothly (shader-free in Gaming mode).
+        ModeSwitcher.StepPulse(_pulseTime);
+
+        var lowOverhead = _attachedVm?.MinimizeVisualEffects == true;
+        if (lowOverhead)
+        {
+            _lowPowerGaugeAccum += dt;
+            if (_lowPowerGaugeAccum < 0.25)
+            {
+                return;
+            }
+
+            var steppedDt = _lowPowerGaugeAccum;
+            _lowPowerGaugeAccum = 0;
+            LatencyGauge.StepFrame(steppedDt);
+            QueriesGauge.StepFrame(steppedDt);
+            BlockedGauge.StepFrame(steppedDt);
+            CacheHitGauge.StepFrame(steppedDt);
+            StabilityGauge.StepFrame(steppedDt);
+            TelemetryWave.StepFrame(steppedDt);
+            ApplyStatusPulseFrame(reset: true);
+            return;
+        }
 
         LatencyGauge.StepFrame(dt);
         QueriesGauge.StepFrame(dt);

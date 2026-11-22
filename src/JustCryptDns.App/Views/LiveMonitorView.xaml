@@ -7,11 +7,23 @@
              xmlns:models="clr-namespace:JustCryptDns.Core.Models;assembly=JustCryptDns.Core"
              xmlns:l="clr-namespace:JustCryptDns.App.Localization"
              xmlns:controls="clr-namespace:JustCryptDns.App.Controls"
-             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="950"
+             mc:Ignorable="d" d:DesignWidth="1040" d:DesignHeight="950"
              d:DataContext="{d:DesignInstance Type=vm:LiveMonitorViewModel}">
     <UserControl.Resources>
         <Style x:Key="SectionCard" TargetType="Border" BasedOn="{StaticResource Card}">
             <Setter Property="Margin" Value="{DynamicResource Card.Gap}" />
+        </Style>
+
+        <Style x:Key="FilterChipButton" TargetType="Button" BasedOn="{StaticResource Button.Subtle}">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="FontSize" Value="{DynamicResource Font.Size.Small}" />
+        </Style>
+
+        <Style x:Key="SubTabButton" TargetType="Button" BasedOn="{StaticResource Button.Subtle}">
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
     </UserControl.Resources>
 
@@ -19,12 +31,12 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- Header & Stream Controls -->
-        <Grid Margin="0,0,0,16">
+        <Grid Margin="0,0,0,14">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -34,18 +46,24 @@
                 <TextBlock Style="{StaticResource Text.Subtitle}" Text="{l:Loc Page_Monitor_Subtitle}" Margin="0,4,0,0" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsPaused}" Content="{l:Loc Monitor_PauseStream}" Margin="0,0,14,0" />
-                <Button Command="{Binding ClearMonitorCommand}" Content="{l:Loc Routing_Log_Clear}" />
+                <CheckBox Style="{StaticResource Toggle.Switch}" IsChecked="{Binding IsPaused}" Content="{l:Loc Monitor_PauseStream}" Margin="0,0,12,0" />
+                <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource Button.Subtle}" Margin="0,0,8,0" Padding="12,6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEDE1;" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{l:Loc Monitor_ExportCsv}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding ClearMonitorCommand}" Content="{l:Loc Routing_Log_Clear}" Padding="12,6" />
             </StackPanel>
         </Grid>
 
-        <!-- Live Metrics Summary -->
-        <Border Grid.Row="1" Style="{StaticResource SectionCard}"
+        <!-- Session KPI Summary Strip -->
+        <Border Grid.Row="1" Style="{StaticResource SectionCard}" Margin="0,0,0,12" Padding="16,12"
                 controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Monitor_Summary_Title}"
                 controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Monitor_Summary_Desc}"
                 controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Monitor_Summary_Meaning}"
                 controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-            <UniformGrid Rows="1" Columns="5">
+            <UniformGrid Rows="1" Columns="7">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc DnsMgr_EngineTitle}" />
                     <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Margin="0,4,0,0">
@@ -59,74 +77,357 @@
                 </StackPanel>
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Queries}" />
-                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding TotalQueries}" Margin="0,4,0,0" />
+                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding TotalQueries, StringFormat={}{0:N0}}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Monitor_Metric_UniqueDomains}" />
+                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding UniqueDomainsCount, StringFormat={}{0:N0}}" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Monitor_Metric_Qpm}" />
+                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Accent}" Text="{Binding QueriesPerMinuteText}" Margin="0,4,0,0" />
                 </StackPanel>
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Blocked}" />
-                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding BlockedQueries}" Margin="0,4,0,0" />
+                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Danger}" Text="{Binding BlockedQueries, StringFormat={}{0:N0}}" Margin="0,4,0,0" />
                 </StackPanel>
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_CacheHit}" />
-                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding CacheHitRatioText}" Margin="0,4,0,0" />
+                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Success}" Text="{Binding CacheHitRatioText}" Margin="0,4,0,0" />
                 </StackPanel>
                 <StackPanel>
-                    <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Dash_Metric_Latency}" />
-                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Text="{Binding LastLatencyText}" Margin="0,4,0,0" />
+                    <TextBlock Style="{StaticResource Text.Label}" Text="{l:Loc Monitor_Metric_Failed}" />
+                    <TextBlock Style="{StaticResource Text.Body}" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Warning}" Text="{Binding FailedQueriesCount, StringFormat={}{0:N0}}" Margin="0,4,0,0" />
                 </StackPanel>
             </UniformGrid>
         </Border>
 
-        <!-- Virtualized Live Query Stream -->
-        <Border Grid.Row="2" Style="{StaticResource SectionCard}" Padding="16,12"
-                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Monitor_Stream_Title}"
-                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Monitor_Stream_Desc}"
-                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Monitor_Stream_Meaning}"
+        <!-- Sub-Tab Navigation Bar + Action Feedback -->
+        <Grid Grid.Row="2" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal">
+                <Button Command="{Binding SelectTabCommand}" CommandParameter="0" Padding="14,7" Margin="0,0,8,0" FontWeight="SemiBold">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Subtle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsLogTabActive}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <TextBlock Text="{l:Loc Monitor_Tab_QueryLog}" />
+                </Button>
+
+                <Button Command="{Binding SelectTabCommand}" CommandParameter="1" Padding="14,7" Margin="0,0,8,0" FontWeight="SemiBold">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Subtle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsAnalyticsTabActive}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <TextBlock Text="{l:Loc Monitor_Tab_TopDomains}" />
+                </Button>
+
+                <Button Command="{Binding SelectTabCommand}" CommandParameter="2" Padding="14,7" FontWeight="SemiBold">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Subtle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsFailoverTabActive}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.AccentSubtle}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <TextBlock Text="{l:Loc Monitor_FailoverHistoryTitle}" />
+                </Button>
+            </StackPanel>
+
+            <TextBlock Grid.Column="1"
+                       Style="{StaticResource Text.Caption}"
+                       Foreground="{DynamicResource Brush.Success}"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{Binding ActionFeedback}"
+                       Visibility="{Binding ActionFeedback, Converter={StaticResource NullToVisibility}}" />
+        </Grid>
+
+        <!-- TAB 0: Detailed Query Log + Query Inspector -->
+        <Grid Grid.Row="3" Visibility="{Binding IsLogTabActive, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Style="{StaticResource Card}" Padding="14,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Search + Type + Slow Query Bar -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="{l:Loc Monitor_SearchPlaceholder}"
+                                 Margin="0,0,10,0" />
+
+                        <ComboBox Grid.Column="1"
+                                  Width="105"
+                                  Margin="0,0,10,0"
+                                  ItemsSource="{Binding RecordTypeFilters}"
+                                  SelectedItem="{Binding SelectedRecordTypeFilter, Mode=TwoWay}" />
+
+                        <CheckBox Grid.Column="2"
+                                  Content="{l:Loc Monitor_Filter_Slow}"
+                                  IsChecked="{Binding OnlySlowQueries, Mode=TwoWay}"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,12,0" />
+
+                        <Button Grid.Column="3"
+                                Style="{StaticResource Button.Subtle}"
+                                Command="{Binding ResetFiltersCommand}"
+                                Content="{l:Loc Monitor_Filter_Reset}"
+                                Padding="10,5"
+                                Margin="0,0,10,0" />
+
+                        <TextBlock Grid.Column="4"
+                                   Style="{StaticResource Text.Mono}"
+                                   FontSize="{DynamicResource Font.Size.Small}"
+                                   Foreground="{DynamicResource Brush.TextSecondary}"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding FilteredCountSummary}" />
+                    </Grid>
+
+                    <!-- Quick Outcome Filter Chips -->
+                    <WrapPanel Grid.Row="1" Margin="0,0,0,6">
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="All" Content="{l:Loc Monitor_Outcome_All}" />
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="Blocked" Content="Blocked" Foreground="{DynamicResource Brush.Danger}" />
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="Allowed" Content="Allowed" Foreground="{DynamicResource Brush.Success}" />
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="Cached" Content="Cached" Foreground="{DynamicResource Brush.Accent}" />
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="Routed" Content="Routed" />
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="Rewritten" Content="Rewritten" />
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="Failed" Content="Failed" Foreground="{DynamicResource Brush.Warning}" />
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="Stale" Content="Stale" />
+                        <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectOutcomeFilterCommand}" CommandParameter="Canary" Content="Canary" />
+                    </WrapPanel>
+
+                    <!-- Virtualized Detailed Query Table -->
+                    <DataGrid Grid.Row="2"
+                              ItemsSource="{Binding QueryEntries}"
+                              SelectedItem="{Binding SelectedQuery, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              SelectionMode="Single"
+                              EnableRowVirtualization="True"
+                              EnableColumnVirtualization="True"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              RowBackground="Transparent"
+                              AlternatingRowBackground="#08FFFFFF">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{l:Loc Monitor_Col_Time}" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="74" />
+                            <DataGridTextColumn Header="{l:Loc Monitor_Col_Domain}" Binding="{Binding Domain}" Width="2*" />
+                            <DataGridTextColumn Header="{l:Loc Monitor_Col_Type}" Binding="{Binding RecordType}" Width="58" />
+                            <DataGridTextColumn Header="{l:Loc Monitor_Col_Outcome}" Binding="{Binding Outcome}" Width="82" />
+                            <DataGridTextColumn Header="{l:Loc Monitor_Col_Rcode}" Binding="{Binding ResponseCode, TargetNullValue=—}" Width="76" />
+                            <DataGridTextColumn Header="{l:Loc Monitor_Col_Answer}" Binding="{Binding AnswerSummary, TargetNullValue=—}" Width="1.6*" />
+                            <DataGridTextColumn Header="{l:Loc Monitor_Col_RuleResolver}" Binding="{Binding ResolverName}" Width="1.3*" />
+                            <DataGridTextColumn Header="{l:Loc Monitor_Col_Latency}" Binding="{Binding LatencyMs, StringFormat={}{0:0.0} ms, TargetNullValue=—}" Width="76" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- Selected Query Inspector & 1-Click Action Drawer -->
+            <Border Grid.Row="1"
+                    Style="{StaticResource Card}"
+                    Margin="0,10,0,0"
+                    Padding="14,12"
+                    Visibility="{Binding HasSelectedQuery, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding SelectedQuery.Domain}" Margin="0,0,10,0" />
+                            <TextBlock Style="{StaticResource Text.Mono}" Foreground="{DynamicResource Brush.Accent}" Text="{Binding SelectedQuery.RecordType}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding SelectedQuery.AnswerSummary, TargetNullValue=—}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextSecondary}" VerticalAlignment="Center">
+                            <Run Text="{Binding SelectedQuery.MatchedRule, Mode=OneWay, TargetNullValue=—}" />
+                            <Run Text=" • " />
+                            <Run Text="{Binding SelectedQuery.Protocol, Mode=OneWay}" />
+                        </TextBlock>
+                    </Grid>
+
+                    <!-- Row 1: Primary 1-Click Actions -->
+                    <WrapPanel Margin="0,0,0,8">
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding BlockDomainCommand}" CommandParameter="{Binding SelectedQuery.Domain}"
+                                Foreground="{DynamicResource Brush.Danger}" Padding="10,5" Margin="0,0,8,6" Content="{l:Loc Monitor_Act_Block}" />
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding AllowDomainCommand}" CommandParameter="{Binding SelectedQuery.Domain}"
+                                Foreground="{DynamicResource Brush.Success}" Padding="10,5" Margin="0,0,8,6" Content="{l:Loc Monitor_Act_Allow}" />
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding AllowDomainTemp30MinCommand}" CommandParameter="{Binding SelectedQuery.Domain}"
+                                Padding="10,5" Margin="0,0,8,6" Content="{l:Loc Monitor_Act_Allow30m}" />
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding AddDomainToDpiBypassCommand}" CommandParameter="{Binding SelectedQuery.Domain}"
+                                Padding="10,5" Margin="0,0,8,6" Content="{l:Loc Monitor_Act_DpiBypass}" />
+                        <Button Style="{StaticResource Button.Subtle}" Command="{Binding CopyDomainCommand}" CommandParameter="{Binding SelectedQuery.Domain}"
+                                Padding="10,5" Margin="0,0,8,6" Content="{l:Loc Monitor_Act_Copy}" />
+                    </WrapPanel>
+
+                    <!-- Row 2: Inline Local Rewrite & Resolver Routing Actions -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Primary}" Command="{Binding CreateLocalRewriteCommand}"
+                                    Padding="10,5" Margin="8,0,0,0" Content="{l:Loc Monitor_Act_Rewrite}" />
+                            <TextBox Text="{Binding InspectorRewriteTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="127.0.0.1 / IP / CNAME" />
+                        </DockPanel>
+
+                        <DockPanel Grid.Column="2">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Primary}" Command="{Binding RouteDomainToResolverCommand}"
+                                    Padding="10,5" Margin="8,0,0,0" Content="{l:Loc Monitor_Act_Route}" />
+                            <ComboBox ItemsSource="{Binding AvailableResolvers}"
+                                      SelectedValuePath="Id"
+                                      SelectedValue="{Binding InspectorTargetResolverId, Mode=TwoWay}"
+                                      DisplayMemberPath="Name" />
+                        </DockPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- TAB 1: Top Domains & Spam Detector -->
+        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="14,12"
+                Visibility="{Binding IsAnalyticsTabActive, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectAnalyticsCategoryCommand}" CommandParameter="TopQueried" Content="{l:Loc Monitor_Top_Queried}" />
+                    <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectAnalyticsCategoryCommand}" CommandParameter="TopBlocked" Content="{l:Loc Monitor_Top_Blocked}" Foreground="{DynamicResource Brush.Danger}" />
+                    <Button Style="{StaticResource FilterChipButton}" Command="{Binding SelectAnalyticsCategoryCommand}" CommandParameter="TopFailed" Content="{l:Loc Monitor_Top_Failed}" Foreground="{DynamicResource Brush.Warning}" />
+                </StackPanel>
+
+                <DataGrid Grid.Row="1"
+                          ItemsSource="{Binding DisplayedDomainAggregates}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          EnableRowVirtualization="True"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          RowBackground="Transparent"
+                          AlternatingRowBackground="#08FFFFFF">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{l:Loc Monitor_Col_Domain}" Binding="{Binding Domain}" Width="2*" />
+                        <DataGridTextColumn Header="{l:Loc Monitor_Col_Total}" Binding="{Binding TotalCount, StringFormat={}{0:N0}}" Width="76" />
+                        <DataGridTextColumn Header="{l:Loc Monitor_Metric_Qpm}" Binding="{Binding QueriesPerMinute, StringFormat={}{0:0}/m}" Width="74" />
+                        <DataGridTemplateColumn Header="{l:Loc Monitor_Col_SpamStatus}" Width="96">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock FontSize="{DynamicResource Font.Size.Small}" FontWeight="SemiBold" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{l:Loc Monitor_Rate_Normal}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsHighFrequency}" Value="True">
+                                                        <Setter Property="Text" Value="{l:Loc Monitor_Rate_HighSpam}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="{l:Loc Dash_Metric_Blocked}" Binding="{Binding BlockedCount, StringFormat={}{0:N0}}" Width="74" />
+                        <DataGridTextColumn Header="Cached" Binding="{Binding CachedCount, StringFormat={}{0:N0}}" Width="70" />
+                        <DataGridTextColumn Header="{l:Loc Monitor_Metric_Failed}" Binding="{Binding FailedCount, StringFormat={}{0:N0}}" Width="64" />
+                        <DataGridTextColumn Header="{l:Loc Monitor_Col_Latency}" Binding="{Binding AverageLatencyMs, StringFormat={}{0:0.0} ms}" Width="78" />
+                        <DataGridTemplateColumn Header="{l:Loc Monitor_Col_Actions}" Width="210">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Style="{StaticResource Button.Subtle}" Padding="7,2" Margin="0,0,4,0" FontSize="11"
+                                                Content="{l:Loc Monitor_Act_FilterLog}"
+                                                Command="{Binding DataContext.FilterByDomainCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding Domain}" />
+                                        <Button Style="{StaticResource Button.Subtle}" Padding="7,2" Margin="0,0,4,0" FontSize="11"
+                                                Foreground="{DynamicResource Brush.Danger}"
+                                                Content="{l:Loc Monitor_Act_BlockShort}"
+                                                Command="{Binding DataContext.BlockDomainCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding Domain}" />
+                                        <Button Style="{StaticResource Button.Subtle}" Padding="7,2" FontSize="11"
+                                                Foreground="{DynamicResource Brush.Success}"
+                                                Content="{l:Loc Monitor_Act_AllowShort}"
+                                                Command="{Binding DataContext.AllowDomainCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding Domain}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <!-- TAB 2: Failover Events Log -->
+        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="16,12"
+                Visibility="{Binding IsFailoverTabActive, Converter={StaticResource BoolToVisibility}}"
+                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Monitor_Failover_Title}"
+                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Monitor_Failover_Desc}"
+                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Monitor_Failover_Meaning}"
                 controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Monitor_LiveStreamTitle}" Margin="0,0,0,10" />
-                <ListBox Grid.Row="1" ItemsSource="{Binding QueryEntries}"
-                         Background="Transparent" BorderThickness="0"
-                         VirtualizingPanel.IsVirtualizing="True"
-                         VirtualizingPanel.VirtualizationMode="Recycling"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate DataType="{x:Type models:LiveQueryMonitorEntry}">
-                            <Grid Margin="0,3,0,3" Width="850">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="85" />
-                                    <ColumnDefinition Width="85" />
-                                    <ColumnDefinition Width="55" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="190" />
-                                    <ColumnDefinition Width="75" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
-                                           Foreground="{DynamicResource Brush.TextSecondary}" Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
-                                <TextBlock Grid.Column="1" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" Text="{Binding Outcome}" />
-                                <TextBlock Grid.Column="2" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding RecordType}" />
-                                <TextBlock Grid.Column="3" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}" Text="{Binding Domain}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
-                                <TextBlock Grid.Column="4" Style="{StaticResource Text.Caption}" Text="{Binding ResolverName}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
-                                <TextBlock Grid.Column="5" Style="{StaticResource Text.Mono}" FontSize="{DynamicResource Font.Size.Caption}"
-                                           Text="{Binding LatencyMs, StringFormat={}{0:0.0} ms, TargetNullValue=—}" HorizontalAlignment="Right" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-        </Border>
-
-        <!-- Failover Events Log -->
-        <Border Grid.Row="3" Style="{StaticResource SectionCard}" Margin="0"
-                controls:ChartHoverInfoBehavior.Title="{l:Loc Info_Monitor_Failover_Title}"
-                controls:ChartHoverInfoBehavior.Description="{l:Loc Info_Monitor_Failover_Desc}"
-                controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Info_Monitor_Failover_Meaning}"
-                controls:ChartHoverInfoBehavior.DelaySeconds="1.5">
-            <StackPanel>
-                <Grid Margin="0,0,0,8">
+                <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -134,10 +435,10 @@
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc Monitor_FailoverHistoryTitle}" VerticalAlignment="Center" />
                     <Button Grid.Column="1" Command="{Binding ClearFailoverHistoryCommand}" Content="{l:Loc Routing_Log_Clear}" Padding="10,4" />
                 </Grid>
-                <ItemsControl ItemsSource="{Binding FailoverEvents}" MaxHeight="130">
-                    <ItemsControl.ItemTemplate>
+                <ListBox Grid.Row="1" ItemsSource="{Binding FailoverEvents}" Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type models:FailoverEventEntry}">
-                            <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,2">
+                            <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,3">
                                 <Run Text="{Binding Timestamp, Mode=OneWay, StringFormat={}{0:HH:mm:ss} }" />
                                 <Run Text="{Binding FailedResolverName, Mode=OneWay}" FontWeight="SemiBold" />
                                 <Run Text=" → " />
@@ -147,9 +448,9 @@
                                 <Run Text=")" />
                             </TextBlock>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

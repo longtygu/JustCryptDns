@@ -15,8 +15,8 @@ namespace JustCryptDns.Core.Configuration;
 /// </remarks>
 public sealed class AppSettings
 {
-    /// <summary>v1–v16: Previous schemas. v17: PUBG/Krafton bypass defaults. v18: Network adaptation, Serve-Stale cache, Prefetch, Local DNS Rewrite.</summary>
-    public const int CurrentSchemaVersion = 18;
+    /// <summary>v1–v17: Previous schemas. v18: Network adaptation, Serve-Stale, Prefetch, Local Rewrites. v19: 5-Mode Operation Switcher &amp; Per-Mode Profiles.</summary>
+    public const int CurrentSchemaVersion = 19;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -44,6 +44,8 @@ public sealed class AppSettings
 
     public ConnectionMonitorSettings Connections { get; set; } = new();
 
+    public OperationModeSettings OperationMode { get; set; } = new();
+
     /// <summary>Normalizes out-of-range or missing values after deserialization.</summary>
     public AppSettings Normalize()
     {
@@ -59,6 +61,7 @@ public sealed class AppSettings
         Bypass ??= new BypassSettings();
         Updates ??= new UpdateSettings();
         Connections ??= new ConnectionMonitorSettings();
+        OperationMode ??= new OperationModeSettings();
         General.Normalize();
         Appearance.Normalize();
         Dns.Normalize();
@@ -71,6 +74,7 @@ public sealed class AppSettings
         Bypass.Normalize();
         Updates.Normalize();
         Connections.Normalize();
+        OperationMode.Normalize();
         return this;
     }
 
@@ -544,9 +548,9 @@ public sealed class PerformanceSettings
 
     public int GetMonitorBufferLimit() => MonitoringMode switch
     {
-        MonitoringMode.PowerSaving => 100,
-        MonitoringMode.Performance => 500,
-        _ => 300,
+        MonitoringMode.PowerSaving => 1000,
+        MonitoringMode.Performance => 5000,
+        _ => 3000,
     };
 
     internal void Normalize()

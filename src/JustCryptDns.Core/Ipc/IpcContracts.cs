@@ -10,7 +10,7 @@ public static class IpcConstants
 {
     public const string DefaultPipeName = "JustCryptDns.Ipc.v1";
     public const int ProtocolVersion = 1;
-    public const int MaxMessageBytes = 256 * 1024;
+    public const int MaxMessageBytes = 2 * 1024 * 1024;
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<DnsEngineState>))]
@@ -56,6 +56,7 @@ public enum IpcRequestKind
     ClearBypassEvents,
     ClearDiagnosticMonitors,
     InstallOrUpdateDnsCrypt,
+    GetQueryAnalyticsSnapshot,
 }
 
 public sealed record IpcRequest(

@@ -3501,4 +3501,271 @@
   <data name="Routing_RewriteEmpty" xml:space="preserve">
     <value>Chưa cấu hình quy tắc ghi đè DNS cục bộ nào.</value>
   </data>
+  <data name="Mode_HighSpeed" xml:space="preserve">
+    <value>Tốc độ cao</value>
+  </data>
+  <data name="Mode_HighSpeed_Desc" xml:space="preserve">
+    <value>Tối đa tốc độ phân giải DNS thuần túy (1.1.1.1 UDP, cache tối đa &amp; prefetch, tắt lọc và kiểm tra bảo mật).</value>
+  </data>
+  <data name="Mode_Gaming" xml:space="preserve">
+    <value>Chế độ Game</value>
+  </data>
+  <data name="Mode_Gaming_Desc" xml:space="preserve">
+    <value>Phản hồi nhanh &amp; ghim resolver ổn định nhất cho game, đồng thời giảm tối đa hiệu ứng và tải nền để bảo vệ FPS máy.</value>
+  </data>
+  <data name="Mode_Balanced" xml:space="preserve">
+    <value>Cân bằng</value>
+  </data>
+  <data name="Mode_Balanced_Desc" xml:space="preserve">
+    <value>Nền tảng DoH tốc độ cao kết hợp bộ lọc DNS, cảnh báo mối đe dọa và độ mượt cân bằng cho cả công việc lẫn chơi game.</value>
+  </data>
+  <data name="Mode_Auto" xml:space="preserve">
+    <value>Tự động</value>
+  </data>
+  <data name="Mode_Auto_Desc" xml:space="preserve">
+    <value>Tự động chuyển giữa Chế độ Game, Cân bằng và Bảo mật theo tình trạng game, mối đe dọa và lưu lượng thực tế.</value>
+  </data>
+  <data name="Mode_Security" xml:space="preserve">
+    <value>Bảo mật</value>
+  </data>
+  <data name="Mode_Security_Desc" xml:space="preserve">
+    <value>Ưu tiên bảo mật tối đa: ép mã hóa tuyệt đối (Quad9 DoH), bật toàn bộ blocklist, DNS Leak Guard và tự động chặn mối đe dọa.</value>
+  </data>
+  <data name="Mode_Customize" xml:space="preserve">
+    <value>Tùy chỉnh</value>
+  </data>
+  <data name="Mode_Custom_Header" xml:space="preserve">
+    <value>Tùy chỉnh riêng cho chế độ đang chọn</value>
+  </data>
+  <data name="Mode_Custom_Save" xml:space="preserve">
+    <value>Lưu &amp; Áp dụng</value>
+  </data>
+  <data name="Mode_Custom_Reset" xml:space="preserve">
+    <value>Khôi phục mặc định</value>
+  </data>
+  <data name="Mode_Custom_Saved" xml:space="preserve">
+    <value>Đã lưu và áp dụng tùy chỉnh riêng cho chế độ này.</value>
+  </data>
+  <data name="Mode_Custom_ResetDone" xml:space="preserve">
+    <value>Đã khôi phục chế độ này về cấu hình mặc định ban đầu.</value>
+  </data>
+  <data name="Mode_Custom_PrimaryResolver" xml:space="preserve">
+    <value>Resolver chính</value>
+  </data>
+  <data name="Mode_Custom_SecondaryResolver" xml:space="preserve">
+    <value>Resolver dự phòng</value>
+  </data>
+  <data name="Mode_Custom_Monitoring" xml:space="preserve">
+    <value>Mức giám sát nền</value>
+  </data>
+  <data name="Mode_Custom_TimeoutMs" xml:space="preserve">
+    <value>Timeout truy vấn (ms)</value>
+  </data>
+  <data name="Mode_Custom_CacheSize" xml:space="preserve">
+    <value>Dung lượng DNS Cache tối đa</value>
+  </data>
+  <data name="Mode_Custom_EnableFiltering" xml:space="preserve">
+    <value>Bật bộ lọc quảng cáo &amp; độc hại</value>
+  </data>
+  <data name="Mode_Custom_AllBlocklists" xml:space="preserve">
+    <value>Bật toàn bộ Blocklist mặc định</value>
+  </data>
+  <data name="Mode_Custom_GamingEngine" xml:space="preserve">
+    <value>Ghim Resolver bằng Gaming Engine</value>
+  </data>
+  <data name="Mode_Custom_ForceEncrypted" xml:space="preserve">
+    <value>Ép chỉ mã hóa (Không rơi về UDP)</value>
+  </data>
+  <data name="Mode_Custom_Prefetch" xml:space="preserve">
+    <value>Làm mới sớm Cache (Prefetch)</value>
+  </data>
+  <data name="Mode_Custom_ServeStale" xml:space="preserve">
+    <value>Dùng Cache dự phòng (Serve-Stale)</value>
+  </data>
+  <data name="Mode_Custom_DnsLeakGuard" xml:space="preserve">
+    <value>Chống rò rỉ DNS (Firewall)</value>
+  </data>
+  <data name="Mode_Custom_ThreatIntel" xml:space="preserve">
+    <value>Quét mối đe dọa (Threat Intel)</value>
+  </data>
+  <data name="Mode_Custom_AutoBlockThreat" xml:space="preserve">
+    <value>Tự động chặn IP mối đe dọa</value>
+  </data>
+  <data name="Mode_Custom_VerifySig" xml:space="preserve">
+    <value>Xác thực chữ ký tiến trình</value>
+  </data>
+  <data name="Mode_Custom_FirefoxCanary" xml:space="preserve">
+    <value>Chặn Firefox DoH Canary</value>
+  </data>
+  <data name="Mode_Custom_MinimizeFx" xml:space="preserve">
+    <value>Giảm tối đa hiệu ứng (Tối ưu FPS)</value>
+  </data>
+  <data name="Mode_Auto_Opt_FullscreenGame" xml:space="preserve">
+    <value>Tự chuyển Chế độ Game khi có game / ứng dụng toàn màn hình</value>
+  </data>
+  <data name="Mode_Auto_Opt_ThreatSpike" xml:space="preserve">
+    <value>Tự chuyển Bảo mật khi có mối đe dọa hoặc truy vấn bị chặn tăng vọt</value>
+  </data>
+  <data name="Mode_Auto_Opt_BlockThreshold" xml:space="preserve">
+    <value>Ngưỡng cảnh báo bị chặn đột biến (truy vấn/phút)</value>
+  </data>
+  <data name="Mode_Auto_Opt_Cooldown" xml:space="preserve">
+    <value>Độ trễ chống nhảy chế độ liên tục (giây)</value>
+  </data>
+  <data name="Mode_Auto_Opt_CustomGames" xml:space="preserve">
+    <value>Danh sách tên tiến trình game bổ sung (cách nhau bằng dấu phẩy, vd: mygame, launcher)</value>
+  </data>
+  <data name="Mode_Auto_Reason_Normal" xml:space="preserve">
+    <value>Hoạt động bình thường</value>
+  </data>
+  <data name="Mode_Auto_Reason_Fullscreen" xml:space="preserve">
+    <value>Phát hiện ứng dụng 3D toàn màn hình</value>
+  </data>
+  <data name="Mode_Auto_Reason_GameProcess" xml:space="preserve">
+    <value>Phát hiện đang chạy game</value>
+  </data>
+  <data name="Mode_Auto_Reason_Threat" xml:space="preserve">
+    <value>Phát hiện chỉ báo mối đe dọa</value>
+  </data>
+  <data name="Mode_Auto_Reason_BlockSpike" xml:space="preserve">
+    <value>Tỉ lệ truy vấn bị chặn tăng đột biến</value>
+  </data>
+  <data name="Mode_Auto_Reason_UntrustedNet" xml:space="preserve">
+    <value>Mạng không tin cậy</value>
+  </data>
+  <data name="Monitor_ExportCsv" xml:space="preserve">
+    <value>Xuất CSV</value>
+  </data>
+  <data name="Monitor_Metric_UniqueDomains" xml:space="preserve">
+    <value>Tên miền duy nhất</value>
+  </data>
+  <data name="Monitor_Metric_Qpm" xml:space="preserve">
+    <value>Tốc độ / phút</value>
+  </data>
+  <data name="Monitor_Metric_Failed" xml:space="preserve">
+    <value>Lỗi</value>
+  </data>
+  <data name="Monitor_Tab_QueryLog" xml:space="preserve">
+    <value>Nhật ký truy vấn chi tiết</value>
+  </data>
+  <data name="Monitor_Tab_TopDomains" xml:space="preserve">
+    <value>Top tên miền &amp; Phát hiện Spam</value>
+  </data>
+  <data name="Monitor_SearchPlaceholder" xml:space="preserve">
+    <value>Tìm theo tên miền, IP trả về, resolver, quy tắc hoặc RCODE...</value>
+  </data>
+  <data name="Monitor_Filter_Slow" xml:space="preserve">
+    <value>Chậm (&gt;100ms)</value>
+  </data>
+  <data name="Monitor_Filter_Reset" xml:space="preserve">
+    <value>Đặt lại</value>
+  </data>
+  <data name="Monitor_Outcome_All" xml:space="preserve">
+    <value>Tất cả</value>
+  </data>
+  <data name="Monitor_Col_Time" xml:space="preserve">
+    <value>Thời gian</value>
+  </data>
+  <data name="Monitor_Col_Domain" xml:space="preserve">
+    <value>Tên miền</value>
+  </data>
+  <data name="Monitor_Col_Type" xml:space="preserve">
+    <value>Loại</value>
+  </data>
+  <data name="Monitor_Col_Outcome" xml:space="preserve">
+    <value>Trạng thái</value>
+  </data>
+  <data name="Monitor_Col_Rcode" xml:space="preserve">
+    <value>RCODE</value>
+  </data>
+  <data name="Monitor_Col_Answer" xml:space="preserve">
+    <value>Kết quả / IP</value>
+  </data>
+  <data name="Monitor_Col_RuleResolver" xml:space="preserve">
+    <value>Resolver / Quy tắc</value>
+  </data>
+  <data name="Monitor_Col_Latency" xml:space="preserve">
+    <value>Độ trễ</value>
+  </data>
+  <data name="Monitor_Col_Total" xml:space="preserve">
+    <value>Tổng</value>
+  </data>
+  <data name="Monitor_Col_SpamStatus" xml:space="preserve">
+    <value>Tần suất</value>
+  </data>
+  <data name="Monitor_Col_Actions" xml:space="preserve">
+    <value>Thao tác nhanh</value>
+  </data>
+  <data name="Monitor_Act_Block" xml:space="preserve">
+    <value>Chặn tên miền</value>
+  </data>
+  <data name="Monitor_Act_Allow" xml:space="preserve">
+    <value>Cho phép (Allowlist)</value>
+  </data>
+  <data name="Monitor_Act_Allow30m" xml:space="preserve">
+    <value>Tạm cho phép 30 phút</value>
+  </data>
+  <data name="Monitor_Act_DpiBypass" xml:space="preserve">
+    <value>Thêm vào Vượt DPI</value>
+  </data>
+  <data name="Monitor_Act_Copy" xml:space="preserve">
+    <value>Sao chép tên miền</value>
+  </data>
+  <data name="Monitor_Act_Rewrite" xml:space="preserve">
+    <value>Tạo Rewrite</value>
+  </data>
+  <data name="Monitor_Act_Route" xml:space="preserve">
+    <value>Định tuyến Resolver</value>
+  </data>
+  <data name="Monitor_Act_FilterLog" xml:space="preserve">
+    <value>Xem log</value>
+  </data>
+  <data name="Monitor_Act_BlockShort" xml:space="preserve">
+    <value>Chặn</value>
+  </data>
+  <data name="Monitor_Act_AllowShort" xml:space="preserve">
+    <value>Cho phép</value>
+  </data>
+  <data name="Monitor_Top_Queried" xml:space="preserve">
+    <value>Truy vấn nhiều nhất</value>
+  </data>
+  <data name="Monitor_Top_Blocked" xml:space="preserve">
+    <value>Bị chặn nhiều nhất (Lặp lại)</value>
+  </data>
+  <data name="Monitor_Top_Failed" xml:space="preserve">
+    <value>Truy vấn lỗi nhiều nhất</value>
+  </data>
+  <data name="Monitor_Rate_Normal" xml:space="preserve">
+    <value>Bình thường</value>
+  </data>
+  <data name="Monitor_Rate_HighSpam" xml:space="preserve">
+    <value>Cao / Spam</value>
+  </data>
+  <data name="Monitor_Action_Cleared" xml:space="preserve">
+    <value>Đã xóa bộ đệm truy vấn và thống kê phiên.</value>
+  </data>
+  <data name="Monitor_Action_Blocked" xml:space="preserve">
+    <value>Đã thêm '{0}' vào danh sách chặn tùy chỉnh.</value>
+  </data>
+  <data name="Monitor_Action_Allowed" xml:space="preserve">
+    <value>Đã thêm '{0}' vào Allowlist vĩnh viễn.</value>
+  </data>
+  <data name="Monitor_Action_Allowed30m" xml:space="preserve">
+    <value>Đã tạm cho phép '{0}' trong 30 phút.</value>
+  </data>
+  <data name="Monitor_Action_Rewritten" xml:space="preserve">
+    <value>Đã tạo ghi đè DNS cục bộ: '{0}' → '{1}'.</value>
+  </data>
+  <data name="Monitor_Action_Routed" xml:space="preserve">
+    <value>Đã định tuyến '{0}' sang '{1}'.</value>
+  </data>
+  <data name="Monitor_Action_BypassAdded" xml:space="preserve">
+    <value>Đã thêm '{0}' vào quy tắc Vượt DPI.</value>
+  </data>
+  <data name="Monitor_Action_Copied" xml:space="preserve">
+    <value>Đã sao chép '{0}' vào clipboard.</value>
+  </data>
+  <data name="Monitor_Action_Exported" xml:space="preserve">
+    <value>Đã xuất {0} dòng ra tệp {1}.</value>
+  </data>
 </root>

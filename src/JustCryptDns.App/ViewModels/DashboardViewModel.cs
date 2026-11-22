@@ -11,6 +11,7 @@ using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
+using JustCryptDns.Core.Services;
 using JustCryptDns.DNS.Proxy;
 using JustCryptDns.Network.Monitoring;
 using Microsoft.Extensions.Logging;
@@ -43,6 +44,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     private readonly IResolverLibraryService? _resolverLibrary;
     private readonly INetworkDiagnosticsService? _diagnostics;
     private readonly IServiceClient? _serviceClient;
+    private readonly IOperationModeService? _operationMode;
     private readonly SynchronizationContext? _ui;
     private CancellationTokenSource? _cts;
     private DispatcherTimer? _servicePollTimer;
@@ -121,6 +123,45 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _bypassTunnelCountDisplay = "—";
     [ObservableProperty] private string _bypassLearnedCountDisplay = "0";
 
+    // 5-Mode Operation Switcher & Per-Mode Customization
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEditingAutoMode))]
+    [NotifyPropertyChangedFor(nameof(IsEditingConcreteMode))]
+    private AppOperationMode _selectedOperationMode = AppOperationMode.Balanced;
+
+    [ObservableProperty] private AppOperationMode _effectiveOperationMode = AppOperationMode.Balanced;
+    [ObservableProperty] private bool _minimizeVisualEffects;
+    [ObservableProperty] private bool _isApplyingOperationMode;
+    [ObservableProperty] private string _operationModeSummaryText = string.Empty;
+    [ObservableProperty] private bool _isModeCustomizerOpen;
+    [ObservableProperty] private string? _modeCustomizerFeedback;
+
+    // Editable fields for the currently selected concrete mode profile
+    [ObservableProperty] private string _editModeResolverId = BuiltInResolvers.DefaultResolverId;
+    [ObservableProperty] private string _editModeSecondaryResolverId = BuiltInResolvers.DefaultSecondaryResolverId;
+    [ObservableProperty] private bool _editModeEnableFiltering = true;
+    [ObservableProperty] private bool _editModeEnableAllBuiltInBlocklists;
+    [ObservableProperty] private bool _editModeEnableGamingEngine;
+    [ObservableProperty] private bool _editModeForceEncryptedOnly;
+    [ObservableProperty] private int _editModeQueryTimeoutMs = 2500;
+    [ObservableProperty] private int _editModeCacheMaxEntries = 6144;
+    [ObservableProperty] private bool _editModeEnableCachePrefetch = true;
+    [ObservableProperty] private bool _editModeEnableServeStale = true;
+    [ObservableProperty] private bool _editModeEnableDnsLeakGuard;
+    [ObservableProperty] private bool _editModeEnableThreatIntelligence = true;
+    [ObservableProperty] private bool _editModeAutoBlockDetectedThreats;
+    [ObservableProperty] private bool _editModeVerifyProcessSignatures = true;
+    [ObservableProperty] private bool _editModeBlockFirefoxDohCanary = true;
+    [ObservableProperty] private MonitoringMode _editModeMonitoringMode = MonitoringMode.Balanced;
+    [ObservableProperty] private bool _editModeMinimizeVisualEffects;
+
+    // Editable fields for Auto mode rules
+    [ObservableProperty] private bool _editAutoSwitchGaming = true;
+    [ObservableProperty] private bool _editAutoSwitchSecurity = true;
+    [ObservableProperty] private int _editAutoHighBlockThreshold = 40;
+    [ObservableProperty] private int _editAutoCooldownSeconds = 20;
+    [ObservableProperty] private string _editAutoCustomGamesCsv = string.Empty;
+
     public DashboardViewModel(
         INetworkInfoService network,
         IDnsEngine dnsEngine,
@@ -132,7 +173,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         INetworkTelemetryService? telemetry = null,
         IResolverLibraryService? resolverLibrary = null,
         INetworkDiagnosticsService? diagnostics = null,
-        IServiceClient? serviceClient = null)
+        IServiceClient? serviceClient = null,
+        IOperationModeService? operationMode = null)
         : base("Nav_Dashboard", "Page_Dashboard_Subtitle")
     {
         _network = network;
@@ -146,10 +188,13 @@ public sealed partial class DashboardViewModel : PageViewModel
         _resolverLibrary = resolverLibrary;
         _diagnostics = diagnostics;
         _serviceClient = serviceClient;
+        _operationMode = operationMode;
         _ui = SynchronizationContext.Current;
         StatusPulseStyle = _settings?.Current.Appearance.StatusPulseStyle ?? StatusPulseStyle.Breathing;
         IsFilteringActive = _filtering?.IsFilteringEnabled ?? false;
         PacketLossSummaryDisplay = LocalizationManager.Instance["Dash_Stability_Measuring"];
+        RefreshModeResolvers();
+        SyncOperationModeState(_operationMode?.CurrentState);
         ApplyEngineStats(dnsEngine.GetStats());
         if (_bypassEngine is not null)
         {
@@ -162,6 +207,19 @@ public sealed partial class DashboardViewModel : PageViewModel
     public event EventHandler<NetworkTelemetrySample>? TelemetrySampleArrived;
 
     public ObservableCollection<LiveQueryMonitorEntry> RecentQueries { get; } = [];
+
+    public ObservableCollection<DnsResolverEndpoint> AvailableModeResolvers { get; } = [];
+
+    public IReadOnlyList<MonitoringMode> AvailableMonitoringModes { get; } =
+    [
+        MonitoringMode.PowerSaving,
+        MonitoringMode.Balanced,
+        MonitoringMode.Performance,
+    ];
+
+    public bool IsEditingAutoMode => SelectedOperationMode == AppOperationMode.Auto;
+
+    public bool IsEditingConcreteMode => SelectedOperationMode != AppOperationMode.Auto;
 
     public bool HasRecentQueries => RecentQueries.Count > 0;
 
@@ -258,6 +316,14 @@ public sealed partial class DashboardViewModel : PageViewModel
             _serviceClient.StateChanged += OnServiceClientStateChanged;
         }
 
+        if (_operationMode is not null)
+        {
+            _operationMode.StateChanged -= OnOperationModeStateChanged;
+            _operationMode.StateChanged += OnOperationModeStateChanged;
+            SyncOperationModeState(_operationMode.CurrentState);
+        }
+
+        RefreshModeResolvers();
         ApplyEngineStats(_dnsEngine.GetStats());
         StartServicePolling();
         _ = RefreshCommand.ExecuteAsync(null);
@@ -269,6 +335,11 @@ public sealed partial class DashboardViewModel : PageViewModel
         if (_serviceClient is not null)
         {
             _serviceClient.StateChanged -= OnServiceClientStateChanged;
+        }
+
+        if (_operationMode is not null)
+        {
+            _operationMode.StateChanged -= OnOperationModeStateChanged;
         }
 
         _network.NetworkChanged -= OnNetworkChanged;
@@ -305,6 +376,11 @@ public sealed partial class DashboardViewModel : PageViewModel
             if (_serviceClient is not null)
             {
                 _serviceClient.StateChanged -= OnServiceClientStateChanged;
+            }
+
+            if (_operationMode is not null)
+            {
+                _operationMode.StateChanged -= OnOperationModeStateChanged;
             }
 
             _network.NetworkChanged -= OnNetworkChanged;
@@ -955,7 +1031,7 @@ public sealed partial class DashboardViewModel : PageViewModel
             if (!IsQueryLogPaused && !IsTelemetryPaused)
             {
                 var queriesRes = await _serviceClient
-                    .SendAsync(new IpcRequest(IpcRequestKind.GetLiveQueriesSnapshot), token)
+                    .SendAsync(new IpcRequest(IpcRequestKind.GetLiveQueriesSnapshot, StringValue: "after=0&limit=60"), token)
                     .ConfigureAwait(false);
                 if (queriesRes is { Success: true, Message: not null })
                 {
@@ -1000,5 +1076,234 @@ public sealed partial class DashboardViewModel : PageViewModel
         {
             _isServicePollInFlight = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task SelectOperationModeAsync(AppOperationMode mode)
+    {
+        if (_operationMode is null)
+        {
+            SelectedOperationMode = mode;
+            EffectiveOperationMode = mode == AppOperationMode.Auto ? AppOperationMode.Balanced : mode;
+            LoadModeEditorFields(mode);
+            return;
+        }
+
+        ModeCustomizerFeedback = null;
+        await _operationMode.SetModeAsync(mode);
+        SyncOperationModeState(_operationMode.CurrentState);
+        if (IsModeCustomizerOpen)
+        {
+            LoadModeEditorFields(mode);
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleModeCustomizer()
+    {
+        IsModeCustomizerOpen = !IsModeCustomizerOpen;
+        ModeCustomizerFeedback = null;
+        if (IsModeCustomizerOpen)
+        {
+            RefreshModeResolvers();
+            LoadModeEditorFields(SelectedOperationMode);
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveModeCustomizationAsync()
+    {
+        if (_operationMode is null)
+        {
+            return;
+        }
+
+        if (SelectedOperationMode == AppOperationMode.Auto)
+        {
+            var rules = new AutoModeRulesSettings
+            {
+                SwitchToGamingOnFullscreenGame = EditAutoSwitchGaming,
+                SwitchToSecurityOnThreatOrSpike = EditAutoSwitchSecurity,
+                HighBlockRateThresholdPerMinute = Math.Clamp(EditAutoHighBlockThreshold, 10, 500),
+                CooldownSeconds = Math.Clamp(EditAutoCooldownSeconds, 5, 120),
+                CustomGameProcessNames = (EditAutoCustomGamesCsv ?? string.Empty)
+                    .Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList(),
+            };
+            await _operationMode.UpdateAutoRulesAsync(rules);
+        }
+        else
+        {
+            var profile = new OperationModeProfile
+            {
+                ResolverId = EditModeResolverId,
+                SecondaryResolverId = EditModeSecondaryResolverId,
+                EnableFiltering = EditModeEnableFiltering,
+                EnableAllBuiltInBlocklists = EditModeEnableAllBuiltInBlocklists,
+                EnableGamingEngine = EditModeEnableGamingEngine,
+                ForceEncryptedOnly = EditModeForceEncryptedOnly,
+                QueryTimeoutMs = Math.Clamp(EditModeQueryTimeoutMs, 500, 15000),
+                CacheMaxEntries = Math.Clamp(EditModeCacheMaxEntries, 256, 65536),
+                EnableCachePrefetch = EditModeEnableCachePrefetch,
+                EnableServeStale = EditModeEnableServeStale,
+                EnableDnsLeakGuard = EditModeEnableDnsLeakGuard,
+                EnableThreatIntelligence = EditModeEnableThreatIntelligence,
+                AutoBlockDetectedThreats = EditModeAutoBlockDetectedThreats,
+                VerifyProcessSignatures = EditModeVerifyProcessSignatures,
+                BlockFirefoxDohCanary = EditModeBlockFirefoxDohCanary,
+                MonitoringMode = EditModeMonitoringMode,
+                MinimizeVisualEffects = EditModeMinimizeVisualEffects,
+            };
+            await _operationMode.UpdateModeProfileAsync(SelectedOperationMode, profile);
+        }
+
+        SyncOperationModeState(_operationMode.CurrentState);
+        ModeCustomizerFeedback = LocalizationManager.Instance["Mode_Custom_Saved"];
+    }
+
+    [RelayCommand]
+    private async Task ResetCurrentModeToDefaultAsync()
+    {
+        if (_operationMode is null)
+        {
+            return;
+        }
+
+        await _operationMode.ResetModeToDefaultAsync(SelectedOperationMode);
+        LoadModeEditorFields(SelectedOperationMode);
+        SyncOperationModeState(_operationMode.CurrentState);
+        ModeCustomizerFeedback = LocalizationManager.Instance["Mode_Custom_ResetDone"];
+    }
+
+    private void RefreshModeResolvers()
+    {
+        if (_resolverLibrary is null)
+        {
+            return;
+        }
+
+        var all = _resolverLibrary.GetAll();
+        AvailableModeResolvers.Clear();
+        foreach (var r in all)
+        {
+            AvailableModeResolvers.Add(r);
+        }
+    }
+
+    private void LoadModeEditorFields(AppOperationMode mode)
+    {
+        if (mode == AppOperationMode.Auto)
+        {
+            var rules = _operationMode?.GetAutoRulesCopy()
+                ?? _settings?.Current.OperationMode.AutoRules.Clone()
+                ?? new AutoModeRulesSettings();
+            EditAutoSwitchGaming = rules.SwitchToGamingOnFullscreenGame;
+            EditAutoSwitchSecurity = rules.SwitchToSecurityOnThreatOrSpike;
+            EditAutoHighBlockThreshold = rules.HighBlockRateThresholdPerMinute;
+            EditAutoCooldownSeconds = rules.CooldownSeconds;
+            EditAutoCustomGamesCsv = string.Join(", ", rules.CustomGameProcessNames);
+            return;
+        }
+
+        var profile = _operationMode?.GetProfileCopy(mode)
+            ?? _settings?.Current.OperationMode.GetProfile(mode).Clone()
+            ?? OperationModeSettings.CreateDefaultProfile(mode);
+
+        EditModeResolverId = profile.ResolverId;
+        EditModeSecondaryResolverId = profile.SecondaryResolverId;
+        EditModeEnableFiltering = profile.EnableFiltering;
+        EditModeEnableAllBuiltInBlocklists = profile.EnableAllBuiltInBlocklists;
+        EditModeEnableGamingEngine = profile.EnableGamingEngine;
+        EditModeForceEncryptedOnly = profile.ForceEncryptedOnly;
+        EditModeQueryTimeoutMs = profile.QueryTimeoutMs;
+        EditModeCacheMaxEntries = profile.CacheMaxEntries;
+        EditModeEnableCachePrefetch = profile.EnableCachePrefetch;
+        EditModeEnableServeStale = profile.EnableServeStale;
+        EditModeEnableDnsLeakGuard = profile.EnableDnsLeakGuard;
+        EditModeEnableThreatIntelligence = profile.EnableThreatIntelligence;
+        EditModeAutoBlockDetectedThreats = profile.AutoBlockDetectedThreats;
+        EditModeVerifyProcessSignatures = profile.VerifyProcessSignatures;
+        EditModeBlockFirefoxDohCanary = profile.BlockFirefoxDohCanary;
+        EditModeMonitoringMode = profile.MonitoringMode;
+        EditModeMinimizeVisualEffects = profile.MinimizeVisualEffects;
+    }
+
+    private void OnOperationModeStateChanged(object? sender, OperationModeState state)
+    {
+        void Apply()
+        {
+            SyncOperationModeState(state);
+            if (_settings is not null)
+            {
+                StatusPulseStyle = _settings.Current.Appearance.StatusPulseStyle;
+                IsFilteringActive = _settings.Current.Filtering.IsFilteringEnabled;
+            }
+        }
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Apply);
+        }
+        else
+        {
+            Apply();
+        }
+    }
+
+    private void SyncOperationModeState(OperationModeState? state)
+    {
+        var selected = state?.SelectedMode ?? _settings?.Current.OperationMode.ActiveMode ?? AppOperationMode.Balanced;
+        var effective = state?.EffectiveMode ?? (selected == AppOperationMode.Auto ? AppOperationMode.Balanced : selected);
+        var minimize = state?.MinimizeVisualEffects ?? _settings?.Current.OperationMode.GetProfile(effective).MinimizeVisualEffects ?? false;
+
+        SelectedOperationMode = selected;
+        EffectiveOperationMode = effective;
+        MinimizeVisualEffects = minimize;
+        IsApplyingOperationMode = state?.IsApplying ?? false;
+        OperationModeSummaryText = BuildModeSummaryText(selected, effective, state?.AutoReason ?? AutoModeReason.Normal, state?.AutoDetail);
+        LoadModeEditorFields(selected);
+    }
+
+    private static string BuildModeSummaryText(
+        AppOperationMode selected,
+        AppOperationMode effective,
+        AutoModeReason reason,
+        string? detail)
+    {
+        var loc = LocalizationManager.Instance;
+        if (selected != AppOperationMode.Auto)
+        {
+            return selected switch
+            {
+                AppOperationMode.HighSpeed => loc["Mode_HighSpeed_Desc"],
+                AppOperationMode.Gaming => loc["Mode_Gaming_Desc"],
+                AppOperationMode.Security => loc["Mode_Security_Desc"],
+                _ => loc["Mode_Balanced_Desc"],
+            };
+        }
+
+        var targetName = effective switch
+        {
+            AppOperationMode.Gaming => loc["Mode_Gaming"],
+            AppOperationMode.Security => loc["Mode_Security"],
+            AppOperationMode.HighSpeed => loc["Mode_HighSpeed"],
+            _ => loc["Mode_Balanced"],
+        };
+
+        var reasonText = reason switch
+        {
+            AutoModeReason.FullscreenGameDetected => loc["Mode_Auto_Reason_Fullscreen"],
+            AutoModeReason.KnownGameProcessDetected => string.IsNullOrWhiteSpace(detail)
+                ? loc["Mode_Auto_Reason_GameProcess"]
+                : $"{loc["Mode_Auto_Reason_GameProcess"]}: {detail}",
+            AutoModeReason.ActiveThreatDetected => loc["Mode_Auto_Reason_Threat"],
+            AutoModeReason.HighBlockedQuerySpike => string.IsNullOrWhiteSpace(detail)
+                ? loc["Mode_Auto_Reason_BlockSpike"]
+                : $"{loc["Mode_Auto_Reason_BlockSpike"]} ({detail})",
+            AutoModeReason.UntrustedNetworkDetected => loc["Mode_Auto_Reason_UntrustedNet"],
+            _ => loc["Mode_Auto_Reason_Normal"],
+        };
+
+        return $"{loc["Mode_Auto"]} → {targetName} ({reasonText})";
     }
 }

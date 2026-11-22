@@ -25,13 +25,13 @@ public sealed class PerformanceOptimizationPhase11Tests
     {
         var perf = new PerformanceSettings();
         perf.MonitoringMode = MonitoringMode.PowerSaving;
-        Assert.Equal(100, perf.GetMonitorBufferLimit());
+        Assert.Equal(1000, perf.GetMonitorBufferLimit());
 
         perf.MonitoringMode = MonitoringMode.Balanced;
-        Assert.Equal(300, perf.GetMonitorBufferLimit());
+        Assert.Equal(3000, perf.GetMonitorBufferLimit());
 
         perf.MonitoringMode = MonitoringMode.Performance;
-        Assert.Equal(500, perf.GetMonitorBufferLimit());
+        Assert.Equal(5000, perf.GetMonitorBufferLimit());
     }
 
     [Fact]

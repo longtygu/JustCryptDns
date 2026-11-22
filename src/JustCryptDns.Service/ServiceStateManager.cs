@@ -71,7 +71,7 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         _cache = cache;
         _dnsCryptManager = dnsCryptManager;
         _version = typeof(ServiceStateManager).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.7.1";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.8.0";
     }
 
     public async Task InitializeFromSettingsAsync(CancellationToken cancellationToken = default)
@@ -451,8 +451,48 @@ public sealed class ServiceStateManager : IServiceIpcHandler
 
             case IpcRequestKind.GetLiveQueriesSnapshot:
             {
-                var entries = _diagnostics?.GetMonitorEntries().Take(200).ToList() ?? [];
+                long afterSeq = 0;
+                int limit = 1000;
+                if (!string.IsNullOrWhiteSpace(request.StringValue))
+                {
+                    foreach (var part in request.StringValue.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        var eq = part.IndexOf('=');
+                        if (eq <= 0) continue;
+                        var key = part[..eq];
+                        var val = part[(eq + 1)..];
+                        if (string.Equals(key, "after", StringComparison.OrdinalIgnoreCase) && long.TryParse(val, out var parsedAfter) && parsedAfter >= 0)
+                        {
+                            afterSeq = parsedAfter;
+                        }
+                        else if (string.Equals(key, "limit", StringComparison.OrdinalIgnoreCase) && int.TryParse(val, out var parsedLimit))
+                        {
+                            limit = Math.Clamp(parsedLimit, 1, 5000);
+                        }
+                    }
+                }
+
+                var entries = _diagnostics?.GetMonitorEntriesSince(afterSeq, limit) ?? [];
                 var json = JsonSerializer.Serialize(entries, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.GetQueryAnalyticsSnapshot:
+            {
+                var topN = 50;
+                if (!string.IsNullOrWhiteSpace(request.StringValue) && int.TryParse(request.StringValue, out var parsedTop))
+                {
+                    topN = Math.Clamp(parsedTop, 1, 200);
+                }
+
+                var analytics = _diagnostics?.GetQueryAnalyticsSnapshot(topN) ?? new QueryAnalyticsSnapshot
+                {
+                    SessionStartedUtc = _startedAt,
+                    TopQueried = [],
+                    TopBlocked = [],
+                    TopFailed = [],
+                };
+                var json = JsonSerializer.Serialize(analytics, SettingsJson.Options);
                 return new IpcResponse(true, GetSnapshot(), Message: json);
             }
 
