@@ -289,6 +289,10 @@ public sealed class HybridBypassEngineProxy : IBypassEngineService
     {
         Volatile.Write(ref _cachedServiceEvents, []);
         _local.ClearRecentEvents();
+        if (IsDelegatingToService)
+        {
+            _ = _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ClearBypassEvents));
+        }
     }
 
     public Task<BypassTestResult> TestDomainBypassAsync(string host, CancellationToken cancellationToken = default) =>
@@ -374,7 +378,14 @@ public sealed class HybridBypassEngineProxy : IBypassEngineService
 
     public IReadOnlyList<LearnedHostEntry> GetLearnedHosts() => _local.GetLearnedHosts();
 
-    public void ClearLearnedHosts() => _local.ClearLearnedHosts();
+    public void ClearLearnedHosts()
+    {
+        _local.ClearLearnedHosts();
+        if (IsDelegatingToService)
+        {
+            _ = _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ClearLearnedHosts));
+        }
+    }
 
     public async Task<(bool Success, string? Error)> PromoteLearnedHostAsync(
         string host,
@@ -481,6 +492,9 @@ public sealed class HybridBypassEngineProxy : IBypassEngineService
         {
             State = snap.IsBypassRunning ? BypassEngineState.Running : BypassEngineState.Stopped,
             ProxyEndpoint = endpoint,
+            PacUrl = string.IsNullOrWhiteSpace(snap.BypassPacUrl) ? localFallback.PacUrl : snap.BypassPacUrl,
+            BoundProxyPort = snap.BoundProxyPort > 0 ? snap.BoundProxyPort : localFallback.BoundProxyPort,
+            BoundPacPort = snap.BoundPacPort > 0 ? snap.BoundPacPort : localFallback.BoundPacPort,
             DpiBypassedConnections = snap.DpiBypassedConnections,
         };
     }

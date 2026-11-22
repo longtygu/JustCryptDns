@@ -61,10 +61,7 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
 
     partial void OnSelectedConnectionChanged(ConnectionRowViewModel? value)
     {
-        if (value is not null)
-        {
-            IsInspectorOpen = true;
-        }
+        IsInspectorOpen = value is not null;
     }
 
     [RelayCommand]
@@ -507,9 +504,15 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
 
     private void OpenExternalUrl(string url)
     {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed)
+            || !string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         try
         {
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(parsed.AbsoluteUri) { UseShellExecute = true })?.Dispose();
         }
         catch (Exception ex)
         {

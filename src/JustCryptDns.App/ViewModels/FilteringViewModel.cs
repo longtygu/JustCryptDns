@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Localization;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
+using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
 using Microsoft.Win32;
 
@@ -42,6 +44,7 @@ public sealed partial class FilteringViewModel : PageViewModel
     private readonly IDnsFilteringService _filtering;
     private readonly IDnsCacheService _cache;
     private readonly ISettingsService? _settings;
+    private readonly IServiceClient? _serviceClient;
     private bool _loading;
 
     [ObservableProperty] private bool _isFilteringEnabled = true;
@@ -73,12 +76,14 @@ public sealed partial class FilteringViewModel : PageViewModel
     public FilteringViewModel(
         IDnsFilteringService filtering,
         IDnsCacheService cache,
-        ISettingsService? settings = null)
+        ISettingsService? settings = null,
+        IServiceClient? serviceClient = null)
         : base("Nav_Filtering", "Page_Filtering_Subtitle")
     {
         _filtering = filtering;
         _cache = cache;
         _settings = settings;
+        _serviceClient = serviceClient;
 
         RefreshAll();
     }
@@ -97,6 +102,7 @@ public sealed partial class FilteringViewModel : PageViewModel
         _filtering.DecisionLogged += OnDecisionLogged;
         _cache.StatsChanged += OnCacheStatsChanged;
         RefreshAll();
+        _ = SyncServiceStatsAsync();
     }
 
     public override void OnNavigatedFrom()
@@ -159,6 +165,7 @@ public sealed partial class FilteringViewModel : PageViewModel
         }
 
         await _filtering.SetBlocklistEnabledAsync(item.Id, !item.IsEnabled);
+        await NotifyServiceFilteringChangedAsync();
         RefreshAll();
     }
 
@@ -176,6 +183,7 @@ public sealed partial class FilteringViewModel : PageViewModel
             var (ok, count, err) = await _filtering.UpdateBlocklistAsync(item.Id);
             if (ok)
             {
+                await NotifyServiceFilteringChangedAsync();
                 ErrorMessage = null;
                 StatusMessage = LocalizationManager.Instance.Format("Filtering_Msg_ListUpdated", item.Name, count);
                 RefreshAll();
@@ -198,6 +206,7 @@ public sealed partial class FilteringViewModel : PageViewModel
         try
         {
             var (updated, total) = await _filtering.UpdateAllEnabledBlocklistsAsync();
+            await NotifyServiceFilteringChangedAsync();
             ErrorMessage = null;
             StatusMessage = LocalizationManager.Instance.Format("Filtering_Msg_AllUpdated", updated, total);
             RefreshAll();
@@ -222,6 +231,7 @@ public sealed partial class FilteringViewModel : PageViewModel
             var (ok, count, err) = await _filtering.ImportHostsTextAsync(content, Path.GetFileNameWithoutExtension(dialog.FileName));
             if (ok)
             {
+                await NotifyServiceFilteringChangedAsync();
                 ErrorMessage = null;
                 StatusMessage = LocalizationManager.Instance.Format("Filtering_Msg_HostsImported", count);
                 RefreshAll();
@@ -314,6 +324,11 @@ public sealed partial class FilteringViewModel : PageViewModel
     {
         _cache.Clear();
         ApplyCacheStats(_cache.GetStats());
+        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        {
+            _ = ClearServiceCacheAsync();
+        }
+
         StatusMessage = LocalizationManager.Instance["Filtering_Msg_CacheCleared"];
     }
 
@@ -322,6 +337,93 @@ public sealed partial class FilteringViewModel : PageViewModel
     {
         _filtering.ClearLogs();
         RefreshLogs();
+        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        {
+            _ = _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ClearDiagnosticMonitors));
+        }
+    }
+
+    private async Task ClearServiceCacheAsync()
+    {
+        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        {
+            await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ClearDnsCache)).ConfigureAwait(false);
+            await SyncServiceStatsAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task NotifyServiceFilteringChangedAsync()
+    {
+        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        {
+            if (_settings is not null)
+            {
+                await _settings.FlushAsync().ConfigureAwait(false);
+            }
+
+            await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ReloadFilteringBlocklists)).ConfigureAwait(false);
+            await SyncServiceStatsAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task SyncServiceStatsAsync()
+    {
+        if (_serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        {
+            return;
+        }
+
+        try
+        {
+            var res = await _serviceClient
+                .SendAsync(new IpcRequest(IpcRequestKind.GetFilterAndCacheStats))
+                .ConfigureAwait(false);
+            if (res is not { Success: true, Message: not null })
+            {
+                return;
+            }
+
+            var snap = JsonSerializer.Deserialize<ServiceFilterAndCacheSnapshot>(res.Message, SettingsJson.Options);
+            if (snap is null)
+            {
+                return;
+            }
+
+            void Apply()
+            {
+                if (snap.CacheStats is not null)
+                {
+                    ApplyCacheStats(snap.CacheStats);
+                }
+
+                BlockedQueryCount = snap.BlockedQueryCount;
+                if (snap.TotalBlockedDomains > 0)
+                {
+                    TotalBlockedDomains = snap.TotalBlockedDomains;
+                }
+
+                if (snap.RecentFilterLogs is { Count: > 0 })
+                {
+                    RecentLogs.Clear();
+                    foreach (var entry in snap.RecentFilterLogs)
+                    {
+                        RecentLogs.Add(entry);
+                    }
+                }
+            }
+
+            if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+            {
+                await dispatcher.InvokeAsync(Apply);
+            }
+            else
+            {
+                Apply();
+            }
+        }
+        catch
+        {
+        }
     }
 
     public void RefreshAll()

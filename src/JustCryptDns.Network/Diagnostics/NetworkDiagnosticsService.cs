@@ -132,12 +132,12 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
             };
         }
 
-        var query = DnsPacket.CreateQuery(normDomain, qType, dnssecOk: true);
         var timeoutMs = Math.Clamp(_settings.Current.Dns.QueryTimeoutMs, 800, 5000);
         var timeout = TimeSpan.FromMilliseconds(timeoutMs);
         DnsQueryResult result;
         try
         {
+            var query = DnsPacket.CreateQuery(normDomain, qType, dnssecOk: true);
             result = await upstream
                 .QueryAsync(query, resolver, timeout, cancellationToken)
                 .WaitAsync(timeout + TimeSpan.FromMilliseconds(400), cancellationToken)
@@ -407,9 +407,11 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
             findings.Add("No Chrome, Edge, or Firefox Group Policy DoH overrides found in registry.");
         }
 
-        var summary = canaryBlocked && adapterLoopback
-            ? $"Browser DoH audit OK: Firefox canary blocked, adapter on local proxy{(policyDetected ? $" (browser policies: {policies.Count})" : ", no forced browser DoH policy")}."
-            : "Browser DoH bypass risk detected: ensure local adapter routes to loopback proxy and Firefox Canary Guard is enabled.";
+        var summary = canaryBlocked && adapterLoopback && !policyDetected
+            ? "Browser DoH audit OK: Firefox canary blocked, adapter on local proxy, no forced browser DoH policy."
+            : policyDetected
+                ? $"Browser DoH policy detected ({policies.Count}): enterprise/registry browser DoH settings may bypass local DNS filtering."
+                : "Browser DoH bypass risk detected: ensure local adapter routes to loopback proxy and Firefox Canary Guard is enabled.";
 
         return Task.FromResult(new BrowserDohCheckReport
         {

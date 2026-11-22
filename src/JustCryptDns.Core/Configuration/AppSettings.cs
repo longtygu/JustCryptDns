@@ -339,6 +339,12 @@ public sealed class DnsSettings
         }
 
         CustomResolvers ??= [];
+        CustomResolvers.RemoveAll(r =>
+            r is null
+            || string.IsNullOrWhiteSpace(r.Id)
+            || string.IsNullOrWhiteSpace(r.Endpoint)
+            || r.Endpoint.Any(char.IsControl)
+            || (r.PrimaryIp is not null && r.PrimaryIp.Any(char.IsControl)));
         DisabledResolverIds ??= [];
         ResolverGroupOverrides ??= new(StringComparer.OrdinalIgnoreCase);
         CustomGroups ??= [];
@@ -388,6 +394,7 @@ public sealed class RoutingSettings
         }
 
         LocalRewrites ??= [];
+        LocalRewrites.RemoveAll(r => r is null || !LocalDnsRewriteValidator.Validate(r).IsValid);
     }
 }
 
@@ -408,6 +415,17 @@ public sealed class FilteringSettings
         if (Blocklists is null || Blocklists.Count == 0)
         {
             Blocklists = BuiltInBlocklists.All.ToList();
+        }
+        else
+        {
+            Blocklists.RemoveAll(b =>
+                b is null
+                || string.IsNullOrWhiteSpace(b.Id)
+                || !b.Id.All(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_'));
+            if (Blocklists.Count == 0)
+            {
+                Blocklists = BuiltInBlocklists.All.ToList();
+            }
         }
 
         CustomBlockedDomains ??= [];

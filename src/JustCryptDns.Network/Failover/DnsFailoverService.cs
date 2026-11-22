@@ -162,11 +162,12 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
         var candidates = IsAutoFailoverEnabled
             ? GetFailoverChain(preferredResolver)
             : [preferredResolver];
+        var maxCandidates = Math.Min(candidates.Count, 4);
 
         DnsQueryResult? lastFailure = null;
         DnsFailureCategory firstFailureCat = DnsFailureCategory.None;
 
-        for (var cIdx = 0; cIdx < candidates.Count; cIdx++)
+        for (var cIdx = 0; cIdx < maxCandidates; cIdx++)
         {
             var candidate = candidates[cIdx];
             for (var attempt = 1; attempt <= maxAttemptsPerResolver; attempt++)
@@ -192,13 +193,14 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
                 }
 
                 var failCount = _consecutiveFailures.AddOrUpdate(candidate.Id, 1, (_, prev) => prev + 1);
+                if (failCount >= resilience.FailureThresholdBeforeSwitch)
+                {
+                    break;
+                }
+
                 if (attempt < maxAttemptsPerResolver && retryDelay > TimeSpan.Zero)
                 {
                     await Task.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
-                }
-                else if (failCount >= resilience.FailureThresholdBeforeSwitch)
-                {
-                    break;
                 }
             }
         }

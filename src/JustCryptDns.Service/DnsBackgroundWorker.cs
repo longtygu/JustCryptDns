@@ -56,18 +56,48 @@ public sealed class DnsBackgroundWorker : BackgroundService
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("JustCryptDns background service stopping.");
-        await _ipcServer.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            await _ipcServer.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error while stopping IPC server.");
+        }
+
         if (_bypassEngine is not null)
         {
-            await _bypassEngine.StopAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await _bypassEngine.StopAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error while stopping Bypass engine.");
+            }
         }
 
         if (_firewallManager is not null)
         {
-            await _firewallManager.ClearLockdownAndLeakGuardAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await _firewallManager.ClearLockdownAndLeakGuardAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error while clearing transient firewall rules.");
+            }
         }
 
-        await _dnsEngine.StopAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _dnsEngine.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error while stopping DNS engine.");
+        }
+
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 }

@@ -2,7 +2,7 @@
 ; Builds a signed-ready installer with Windows Service registration (LocalSystem) and clean uninstall.
 
 #define MyAppName "JustCryptDns"
-#define MyAppVersion "1.7.0"
+#define MyAppVersion "1.7.1"
 #define MyAppPublisher "Longtygu (JustCryptDns)"
 #define MyAppURL "https://github.com/longtygu/JustCryptDns"
 #define MyAppExeName "JustCryptDns.exe"
@@ -46,7 +46,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "installservice"; Description: "Install and start JustCryptDns background Windows Service (recommended)"; GroupDescription: "Background Protection:"
 
 [Dirs]
-Name: "{commonappdata}\{#MyAppName}"; Permissions: users-modify
+Name: "{commonappdata}\{#MyAppName}"
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -76,3 +76,13 @@ Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#MyAppExeName}"; Flags: run
 Filename: "{sys}\sc.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden; RunOnceId: "StopSvc"
 Filename: "{sys}\sc.exe"; Parameters: "delete {#MyServiceName}"; Flags: runhidden; RunOnceId: "DelSvc"
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--recover-and-exit --clear-firewall"; Flags: runhidden; RunOnceId: "RecoverNetwork"
+
+[Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  Result := '';
+  Exec(ExpandConstant('{sys}\sc.exe'), 'stop {#MyServiceName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(800);
+end;

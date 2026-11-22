@@ -59,7 +59,12 @@ public sealed class DnsEngineService : IDnsEngine
     private int _networkAdaptGeneration;
     private int _captiveResumeGeneration;
     private bool _networkSubscribed;
-    private bool _disposed;
+    private int _disposed;
+    private long _lastPort53ProbeTick;
+    private string? _cachedPort53Owner;
+    private string? _cachedPort53Service;
+    private string? _cachedSuggestedLoopback;
+    private long _lastQueryStatsBroadcastTick;
 
     public DnsEngineService(
         ISettingsService settings,
@@ -127,8 +132,7 @@ public sealed class DnsEngineService : IDnsEngine
             if (boundPort != 53)
             {
                 trafficStatus = SystemTrafficStatus.NonStandardPort;
-                (port53Owner, port53Service) = ReadPort53ConflictOwner();
-                suggestedLoopback = PortConflictDetector.FindAvailableLoopbackForPort53(IPAddress.Loopback);
+                (port53Owner, port53Service, suggestedLoopback) = GetCachedPort53Diagnostics(includeSuggestedLoopback: true);
             }
             else if (!string.IsNullOrWhiteSpace(_activeVpnAdapterName))
             {
@@ -151,7 +155,7 @@ public sealed class DnsEngineService : IDnsEngine
 
                 if (trafficStatus == SystemTrafficStatus.Ipv6DnsLeakDetected)
                 {
-                    (port53Owner, port53Service) = ReadPort53ConflictOwner();
+                    (port53Owner, port53Service, _) = GetCachedPort53Diagnostics(includeSuggestedLoopback: false);
                 }
             }
             else
@@ -367,36 +371,56 @@ public sealed class DnsEngineService : IDnsEngine
             return (false, validation.ErrorMessage);
         }
 
-        await _settings.UpdateAsync(s => s.Dns.ActiveResolverId = resolver.Id, cancellationToken).ConfigureAwait(false);
-        _activeResolver = resolver;
-
-        if (_state is DnsEngineState.Running or DnsEngineState.Degraded)
+        await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            if (resolver.Protocol == DnsProtocol.DnsCrypt)
+            var dns = _settings.Current.Dns;
+            if (!IPAddress.TryParse(dns.ListenAddress, out var listenIp))
             {
-                var (ok, err) = await _dnsCryptManager.EnsureRunningAsync(
-                    resolver,
-                    _settings.Current.Dns.DnsCryptInternalPort,
-                    cancellationToken).ConfigureAwait(false);
-                if (!ok)
+                listenIp = IPAddress.Loopback;
+            }
+
+            var activePort = _proxy is { BoundPort: > 0 } ? _proxy.BoundPort : dns.ListenPort;
+            if (DnsLoopGuard.WouldLoop(resolver, listenIp, activePort))
+            {
+                return (false, $"DNS loop prevented: resolver '{resolver.Name}' points back to local listener {listenIp}:{activePort}.");
+            }
+
+            await _settings.UpdateAsync(s => s.Dns.ActiveResolverId = resolver.Id, cancellationToken).ConfigureAwait(false);
+            _activeResolver = resolver;
+
+            if (_state is DnsEngineState.Running or DnsEngineState.Degraded)
+            {
+                if (resolver.Protocol == DnsProtocol.DnsCrypt)
                 {
-                    SetState(DnsEngineState.Degraded, err, null);
-                    return (false, err);
+                    var (ok, err) = await _dnsCryptManager.EnsureRunningAsync(
+                        resolver,
+                        _settings.Current.Dns.DnsCryptInternalPort,
+                        cancellationToken).ConfigureAwait(false);
+                    if (!ok)
+                    {
+                        SetState(DnsEngineState.Degraded, err, null);
+                        return (false, err);
+                    }
                 }
+                else
+                {
+                    await _dnsCryptManager.StopAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                SetState(DnsEngineState.Running, error: null, conflict: null);
             }
             else
             {
-                await _dnsCryptManager.StopAsync(cancellationToken).ConfigureAwait(false);
+                RaiseStateChanged(force: true);
             }
 
-            SetState(DnsEngineState.Running, error: null, conflict: null);
+            return (true, null);
         }
-        else
+        finally
         {
-            RaiseStateChanged();
+            _lifecycleGate.Release();
         }
-
-        return (true, null);
     }
 
     public async Task<DnsQueryResult> ProbeActiveResolverAsync(CancellationToken cancellationToken = default)
@@ -759,16 +783,21 @@ public sealed class DnsEngineService : IDnsEngine
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
-        await StopAsync().ConfigureAwait(false);
-        _disposed = true;
-        _defaultDoh.Dispose();
-        _defaultDot.Dispose();
-        _lifecycleGate.Dispose();
+        try
+        {
+            await StopAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _defaultDoh.Dispose();
+            _defaultDot.Dispose();
+            _lifecycleGate.Dispose();
+        }
     }
 
     private async Task<byte[]> HandleClientQueryAsync(ReadOnlyMemory<byte> queryWire, CancellationToken cancellationToken)
@@ -803,11 +832,20 @@ public sealed class DnsEngineService : IDnsEngine
         if (hasParsed
             && _routingService?.FindMatchingRewrite(qDomain, queryType) is { } rewriteRule)
         {
+            var effectiveRule = rewriteRule;
+            if (rewriteRule.RecordType == LocalDnsRewriteRecordType.CNAME
+                && parsed!.PrimaryQuestionType is DnsRecordType.A or DnsRecordType.AAAA
+                && _routingService.FindMatchingRewrite(rewriteRule.TargetValue, queryType) is { } targetRule
+                && targetRule.RecordType.ToString().Equals(queryType, StringComparison.OrdinalIgnoreCase))
+            {
+                effectiveRule = targetRule;
+            }
+
             var rewriteWire = DnsPacket.CreateLocalRewriteResponse(
                 queryWire.Span,
-                rewriteRule.RecordType,
-                rewriteRule.TargetValue,
-                (uint)Math.Max(1, rewriteRule.TtlSeconds));
+                effectiveRule.RecordType,
+                effectiveRule.TargetValue,
+                (uint)Math.Max(1, effectiveRule.TtlSeconds));
             if (rewriteWire.Length >= DnsPacket.HeaderSize)
             {
                 RecordReverseDnsFromResponse(qDomain, rewriteWire);
@@ -820,7 +858,7 @@ public sealed class DnsEngineService : IDnsEngine
                     Domain = qDomain,
                     RecordType = queryType,
                     Outcome = "Rewritten",
-                    ResolverName = $"Local Rewrite ({rewriteRule.TargetValue})",
+                    ResolverName = $"Local Rewrite ({effectiveRule.TargetValue})",
                     Protocol = _activeResolver.Protocol,
                     LatencyMs = 0.0,
                 });
@@ -1081,7 +1119,7 @@ public sealed class DnsEngineService : IDnsEngine
 
     private void SchedulePrefetch(string domain, string queryType, byte[] queryWire)
     {
-        if (_disposed
+        if (Volatile.Read(ref _disposed) != 0
             || _cacheService is not { IsEnabled: true }
             || _state is not (DnsEngineState.Running or DnsEngineState.Degraded))
         {
@@ -1098,7 +1136,7 @@ public sealed class DnsEngineService : IDnsEngine
         {
             try
             {
-                if (_disposed || _state is not (DnsEngineState.Running or DnsEngineState.Degraded))
+                if (Volatile.Read(ref _disposed) != 0 || _state is not (DnsEngineState.Running or DnsEngineState.Degraded))
                 {
                     return;
                 }
@@ -1138,7 +1176,7 @@ public sealed class DnsEngineService : IDnsEngine
     private void OnNetworkChanged(object? sender, EventArgs e)
     {
         var generation = Interlocked.Increment(ref _networkAdaptGeneration);
-        if (_disposed
+        if (Volatile.Read(ref _disposed) != 0
             || _state is not (DnsEngineState.Running or DnsEngineState.Degraded)
             || !_settings.Current.Dns.AutoAdaptNetworkChanges)
         {
@@ -1153,7 +1191,7 @@ public sealed class DnsEngineService : IDnsEngine
         try
         {
             await Task.Delay(TimeSpan.FromMilliseconds(1500)).ConfigureAwait(false);
-            if (_disposed || Volatile.Read(ref _networkAdaptGeneration) != generation)
+            if (Volatile.Read(ref _disposed) != 0 || Volatile.Read(ref _networkAdaptGeneration) != generation)
             {
                 return;
             }
@@ -1185,7 +1223,7 @@ public sealed class DnsEngineService : IDnsEngine
             : null;
 
         bool captivePortalDetected = false;
-        if (vpnAdapter is null && snapshot.PrimaryAdapter is { IsUp: true })
+        if (vpnAdapter is null && dns.AutoDetectCaptivePortal && snapshot.PrimaryAdapter is { IsUp: true })
         {
             captivePortalDetected = await NetworkAdaptationEvaluator.CheckCaptivePortalAsync().ConfigureAwait(false);
         }
@@ -1193,7 +1231,7 @@ public sealed class DnsEngineService : IDnsEngine
         await _lifecycleGate.WaitAsync().ConfigureAwait(false);
         try
         {
-            if (_disposed
+            if (Volatile.Read(ref _disposed) != 0
                 || Volatile.Read(ref _networkAdaptGeneration) != generation
                 || _state is not (DnsEngineState.Running or DnsEngineState.Degraded)
                 || _proxy is not { BoundPort: > 0 } proxy)
@@ -1273,7 +1311,7 @@ public sealed class DnsEngineService : IDnsEngine
         try
         {
             await Task.Delay(delay).ConfigureAwait(false);
-            if (_disposed
+            if (Volatile.Read(ref _disposed) != 0
                 || Volatile.Read(ref _captiveResumeGeneration) != generation
                 || _state is not (DnsEngineState.Running or DnsEngineState.Degraded))
             {
@@ -1293,7 +1331,8 @@ public sealed class DnsEngineService : IDnsEngine
         _state = state;
         _lastError = error;
         _portConflict = conflict;
-        RaiseStateChanged();
+        Volatile.Write(ref _lastPort53ProbeTick, 0);
+        RaiseStateChanged(force: true);
     }
 
     private DnsResolverEndpoint ResolveEndpoint(string? resolverId) =>
@@ -1301,7 +1340,48 @@ public sealed class DnsEngineService : IDnsEngine
             ? _resolverLibrary.GetByIdOrDefault(resolverId)
             : BuiltInResolvers.GetByIdOrDefault(resolverId);
 
-    private void RaiseStateChanged() => StateChanged?.Invoke(this, GetStats());
+    private void RaiseStateChanged(bool force = false)
+    {
+        var handler = StateChanged;
+        if (handler is null)
+        {
+            return;
+        }
+
+        var nowTick = Environment.TickCount64;
+        if (!force)
+        {
+            var prevTick = Volatile.Read(ref _lastQueryStatsBroadcastTick);
+            if (nowTick - prevTick < 150)
+            {
+                return;
+            }
+        }
+
+        Volatile.Write(ref _lastQueryStatsBroadcastTick, nowTick);
+        handler.Invoke(this, GetStats());
+    }
+
+    private (string? OwnerDescription, string? ServiceName, string? SuggestedLoopback) GetCachedPort53Diagnostics(bool includeSuggestedLoopback)
+    {
+        var nowTick = Environment.TickCount64;
+        var lastTick = Volatile.Read(ref _lastPort53ProbeTick);
+        if (lastTick != 0 && nowTick - lastTick < 2500 && (!includeSuggestedLoopback || _cachedSuggestedLoopback is not null))
+        {
+            return (_cachedPort53Owner, _cachedPort53Service, _cachedSuggestedLoopback);
+        }
+
+        var (owner, svc) = ReadPort53ConflictOwner();
+        var loopback = includeSuggestedLoopback
+            ? (_cachedSuggestedLoopback ?? PortConflictDetector.FindAvailableLoopbackForPort53(IPAddress.Loopback))
+            : _cachedSuggestedLoopback;
+
+        _cachedPort53Owner = owner;
+        _cachedPort53Service = svc;
+        _cachedSuggestedLoopback = loopback;
+        Volatile.Write(ref _lastPort53ProbeTick, nowTick);
+        return (owner, svc, loopback);
+    }
 
     public static bool IsExternalIpv6Dns(IPAddress ip)
     {

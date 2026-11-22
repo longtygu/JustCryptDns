@@ -54,6 +54,12 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
         _diagnostics.QueryObserved += OnQueryObserved;
         _failover.FailoverOccurred += OnFailoverOccurred;
         _dnsEngine.StateChanged += OnEngineStateChanged;
+        if (_serviceClient is not null)
+        {
+            _serviceClient.StateChanged -= OnServiceClientStateChanged;
+            _serviceClient.StateChanged += OnServiceClientStateChanged;
+        }
+
         RefreshAll();
         StartServicePolling();
     }
@@ -61,6 +67,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     public override void OnNavigatedFrom()
     {
         StopServicePolling();
+        if (_serviceClient is not null)
+        {
+            _serviceClient.StateChanged -= OnServiceClientStateChanged;
+        }
+
         _diagnostics.QueryObserved -= OnQueryObserved;
         _failover.FailoverOccurred -= OnFailoverOccurred;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
@@ -71,6 +82,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
         if (disposing)
         {
             StopServicePolling();
+            if (_serviceClient is not null)
+            {
+                _serviceClient.StateChanged -= OnServiceClientStateChanged;
+            }
+
             _diagnostics.QueryObserved -= OnQueryObserved;
             _failover.FailoverOccurred -= OnFailoverOccurred;
             _dnsEngine.StateChanged -= OnEngineStateChanged;
@@ -86,6 +102,10 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     {
         _diagnostics.ClearMonitorEntries();
         QueryEntries.Clear();
+        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        {
+            _ = _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ClearDiagnosticMonitors));
+        }
     }
 
     [RelayCommand]
@@ -175,6 +195,30 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
         else
         {
             ApplyEngineStats(stats);
+        }
+    }
+
+    private void OnServiceClientStateChanged(object? sender, EventArgs e)
+    {
+        void Sync()
+        {
+            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            {
+                StartServicePolling();
+            }
+            else
+            {
+                StopServicePolling();
+            }
+        }
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Sync);
+        }
+        else
+        {
+            Sync();
         }
     }
 

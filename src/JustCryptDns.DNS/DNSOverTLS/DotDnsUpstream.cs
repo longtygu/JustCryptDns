@@ -120,7 +120,7 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
         private readonly Action _onConnectionReused;
         private readonly SemaphoreSlim _connectGate = new(1, 1);
         private readonly SemaphoreSlim _writeGate = new(1, 1);
-        private readonly ConcurrentDictionary<ushort, TaskCompletionSource<byte[]>> _pending = new();
+        private ConcurrentDictionary<ushort, TaskCompletionSource<byte[]>> _pending = new();
 
         private TcpClient? _tcp;
         private SslStream? _ssl;
@@ -168,7 +168,7 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
             bool forceReconnect,
             CancellationToken ct)
         {
-            var (ssl, reused) = await EnsureConnectedAsync(timeout, forceReconnect, ct).ConfigureAwait(false);
+            var (ssl, pending, reused) = await EnsureConnectedAsync(timeout, forceReconnect, ct).ConfigureAwait(false);
             if (reused)
             {
                 _onConnectionReused();
@@ -185,7 +185,7 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                 }
 
                 var created = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-                if (_pending.TryAdd(candidate, created))
+                if (pending.TryAdd(candidate, created))
                 {
                     outboundId = candidate;
                     tcs = created;
@@ -220,7 +220,7 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                 }
                 finally
                 {
-                    _writeGate.Release();
+                    try { _writeGate.Release(); } catch (ObjectDisposedException) { }
                 }
 
                 var response = await tcs.Task.WaitAsync(ct).ConfigureAwait(false);
@@ -234,11 +234,11 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
             }
             finally
             {
-                _pending.TryRemove(outboundId, out _);
+                pending.TryRemove(outboundId, out _);
             }
         }
 
-        private async Task<(SslStream Stream, bool Reused)> EnsureConnectedAsync(
+        private async Task<(SslStream Stream, ConcurrentDictionary<ushort, TaskCompletionSource<byte[]>> Pending, bool Reused)> EnsureConnectedAsync(
             TimeSpan timeout,
             bool forceReconnect,
             CancellationToken ct)
@@ -251,13 +251,15 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                 ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
                 var idleElapsed = Environment.TickCount64 - Volatile.Read(ref _lastUsedTick);
+                var currentPending = _pending;
                 if (!forceReconnect
                     && _ssl is { CanRead: true, CanWrite: true } currentSsl
                     && _tcp is { Connected: true }
                     && _readLoopTask is { IsCompleted: false }
-                    && idleElapsed <= IdleTimeoutMs)
+                    && (idleElapsed <= IdleTimeoutMs || !currentPending.IsEmpty))
                 {
-                    return (currentSsl, true);
+                    Volatile.Write(ref _lastUsedTick, Environment.TickCount64);
+                    return (currentSsl, currentPending, true);
                 }
 
                 CloseCurrentLocked();
@@ -283,14 +285,16 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                     };
                     await ssl.AuthenticateAsClientAsync(sslOptions, connectCts.Token).ConfigureAwait(false);
 
+                    var generationPending = new ConcurrentDictionary<ushort, TaskCompletionSource<byte[]>>();
                     connCts = new CancellationTokenSource();
                     _tcp = tcp;
                     _ssl = ssl;
                     _connCts = connCts;
+                    _pending = generationPending;
                     Volatile.Write(ref _lastUsedTick, Environment.TickCount64);
-                    _readLoopTask = Task.Run(() => ReadLoopAsync(ssl, connCts.Token), CancellationToken.None);
+                    _readLoopTask = Task.Run(() => ReadLoopAsync(ssl, generationPending, connCts.Token), CancellationToken.None);
                     _onConnectionCreated();
-                    return (ssl, false);
+                    return (ssl, generationPending, false);
                 }
                 catch
                 {
@@ -306,11 +310,14 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
             }
             finally
             {
-                _connectGate.Release();
+                try { _connectGate.Release(); } catch (ObjectDisposedException) { }
             }
         }
 
-        private async Task ReadLoopAsync(SslStream ssl, CancellationToken ct)
+        private async Task ReadLoopAsync(
+            SslStream ssl,
+            ConcurrentDictionary<ushort, TaskCompletionSource<byte[]>> pending,
+            CancellationToken ct)
         {
             var lenBuf = new byte[2];
             try
@@ -329,7 +336,7 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                     Volatile.Write(ref _lastUsedTick, Environment.TickCount64);
 
                     if (DnsPacket.TryReadTransactionId(response, out var txId)
-                        && _pending.TryRemove(txId, out var tcs))
+                        && pending.TryRemove(txId, out var tcs))
                     {
                         tcs.TrySetResult(response);
                     }
@@ -340,16 +347,18 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                 var failure = ex is OperationCanceledException
                     ? new OperationCanceledException("DoT connection closed.", ex)
                     : (Exception)new IOException($"DoT connection terminated: {ex.Message}", ex);
-                FailAllPending(failure);
+                FailAllPending(pending, failure);
                 InvalidateIfCurrent(ssl);
             }
         }
 
-        private void FailAllPending(Exception error)
+        private static void FailAllPending(
+            ConcurrentDictionary<ushort, TaskCompletionSource<byte[]>> pending,
+            Exception error)
         {
-            foreach (var key in _pending.Keys.ToList())
+            foreach (var key in pending.Keys.ToList())
             {
-                if (_pending.TryRemove(key, out var tcs))
+                if (pending.TryRemove(key, out var tcs))
                 {
                     if (error is OperationCanceledException)
                     {
@@ -365,7 +374,14 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
 
         private void InvalidateIfCurrent(SslStream expected)
         {
-            if (!_connectGate.Wait(0))
+            try
+            {
+                if (!_connectGate.Wait(0))
+                {
+                    return;
+                }
+            }
+            catch (ObjectDisposedException)
             {
                 return;
             }
@@ -379,12 +395,13 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
             }
             finally
             {
-                _connectGate.Release();
+                try { _connectGate.Release(); } catch (ObjectDisposedException) { }
             }
         }
 
         private void CloseCurrentLocked()
         {
+            FailAllPending(_pending, new IOException("DoT socket rotated."));
             try { _connCts?.Cancel(); } catch { }
             try { _ssl?.Dispose(); } catch { }
             try { _tcp?.Dispose(); } catch { }
@@ -402,7 +419,7 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                 return;
             }
 
-            FailAllPending(new OperationCanceledException("DoT pool disposed."));
+            FailAllPending(_pending, new OperationCanceledException("DoT pool disposed."));
             try { _connCts?.Cancel(); } catch { }
             try { _ssl?.Dispose(); } catch { }
             try { _tcp?.Dispose(); } catch { }

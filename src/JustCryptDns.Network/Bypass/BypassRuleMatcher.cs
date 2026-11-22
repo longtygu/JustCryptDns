@@ -12,6 +12,7 @@ namespace JustCryptDns.Network.Bypass;
 /// </summary>
 public sealed class BypassRuleMatcher
 {
+    private const int MaxLearnedHosts = 2048;
     private static readonly TimeSpan AdaptiveHintTtl = TimeSpan.FromMinutes(30);
     private readonly ConcurrentDictionary<string, LearnedHostEntry> _learnedHosts = new(StringComparer.OrdinalIgnoreCase);
 
@@ -82,6 +83,22 @@ public sealed class BypassRuleMatcher
         }
 
         var now = DateTimeOffset.UtcNow;
+        if (_learnedHosts.Count >= MaxLearnedHosts)
+        {
+            foreach (var kvp in _learnedHosts)
+            {
+                if (kvp.Value.ExpiresAt <= now)
+                {
+                    _learnedHosts.TryRemove(kvp.Key, out _);
+                }
+            }
+
+            if (_learnedHosts.Count >= MaxLearnedHosts)
+            {
+                _learnedHosts.Clear();
+            }
+        }
+
         _learnedHosts[normalized] = new LearnedHostEntry(
             normalized,
             strategy,
@@ -110,7 +127,27 @@ public sealed class BypassRuleMatcher
         return active;
     }
 
-    public int ActiveLearnedHostCount => GetLearnedHosts().Count;
+    public int ActiveLearnedHostCount
+    {
+        get
+        {
+            var now = DateTimeOffset.UtcNow;
+            var count = 0;
+            foreach (var kvp in _learnedHosts)
+            {
+                if (kvp.Value.ExpiresAt <= now)
+                {
+                    _learnedHosts.TryRemove(kvp.Key, out _);
+                }
+                else
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+    }
 
     public void ClearHints() => _learnedHosts.Clear();
 
@@ -148,7 +185,8 @@ public sealed class BypassRuleMatcher
 
         if (IPAddress.TryParse(normalizedHost, out var ip))
         {
-            if (IPAddress.IsLoopback(ip) || IsPrivateOrLinkLocal(ip))
+            var unmapped = ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip;
+            if (IPAddress.IsLoopback(unmapped) || IsPrivateOrLinkLocal(unmapped))
             {
                 return true;
             }
@@ -268,6 +306,11 @@ public sealed class BypassRuleMatcher
 
     private static bool IsPrivateOrLinkLocal(IPAddress ip)
     {
+        if (ip.IsIPv4MappedToIPv6)
+        {
+            ip = ip.MapToIPv4();
+        }
+
         if (ip.AddressFamily == AddressFamily.InterNetworkV6)
         {
             return ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6UniqueLocal;

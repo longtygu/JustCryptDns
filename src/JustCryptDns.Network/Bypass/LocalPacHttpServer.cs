@@ -19,7 +19,7 @@ public sealed class LocalPacHttpServer : IAsyncDisposable
 
     private TcpListener? _listener;
     private Task? _acceptTask;
-    private bool _disposed;
+    private int _disposed;
 
     public LocalPacHttpServer(
         IPAddress listenAddress,
@@ -120,6 +120,8 @@ public sealed class LocalPacHttpServer : IAsyncDisposable
                     var header =
                         $"HTTP/1.1 200 OK\r\n" +
                         $"Content-Type: application/x-ns-proxy-autoconfig; charset=utf-8\r\n" +
+                        $"X-Content-Type-Options: nosniff\r\n" +
+                        $"Cross-Origin-Resource-Policy: same-origin\r\n" +
                         $"Cache-Control: no-cache, no-store, must-revalidate\r\n" +
                         $"Content-Length: {bodyBytes.Length}\r\n" +
                         $"Connection: close\r\n\r\n";
@@ -133,8 +135,10 @@ public sealed class LocalPacHttpServer : IAsyncDisposable
                     response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray();
                 }
 
-                await stream.WriteAsync(response, ct).ConfigureAwait(false);
-                await stream.FlushAsync(ct).ConfigureAwait(false);
+                using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                writeCts.CancelAfter(3000);
+                await stream.WriteAsync(response, writeCts.Token).ConfigureAwait(false);
+                await stream.FlushAsync(writeCts.Token).ConfigureAwait(false);
             }
             catch (Exception)
             {
@@ -145,12 +149,11 @@ public sealed class LocalPacHttpServer : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
-        _disposed = true;
         await _cts.CancelAsync().ConfigureAwait(false);
         try { _listener?.Stop(); } catch { }
         if (_acceptTask is not null)

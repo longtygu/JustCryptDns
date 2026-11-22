@@ -26,11 +26,7 @@ public sealed class IpEnrichmentService : IIpEnrichmentService
     private readonly ILogger<IpEnrichmentService> _logger;
     private readonly string? _cacheFilePath;
     private readonly HttpClient _http;
-    private readonly Channel<string> _queue = Channel.CreateBounded<string>(new BoundedChannelOptions(128)
-    {
-        FullMode = BoundedChannelFullMode.DropOldest,
-        SingleReader = true,
-    });
+    private readonly Channel<string> _queue;
 
     private readonly ConcurrentDictionary<string, IpEnrichmentInfo> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, byte> _inFlight = new(StringComparer.OrdinalIgnoreCase);
@@ -40,17 +36,24 @@ public sealed class IpEnrichmentService : IIpEnrichmentService
     private DateTimeOffset _lastSavedAt = DateTimeOffset.MinValue;
     private volatile bool _dirty;
     private volatile bool _isEnabled;
-    private bool _disposed;
+    private int _disposed;
 
     public IpEnrichmentService(ILogger<IpEnrichmentService> logger, IAppPaths? paths = null)
     {
         _logger = logger;
         _cacheFilePath = paths is not null ? Path.Combine(paths.DataDirectory, "ip-org-cache.json") : null;
+        _queue = Channel.CreateBounded<string>(
+            new BoundedChannelOptions(128)
+            {
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = true,
+            },
+            droppedIp => _inFlight.TryRemove(droppedIp, out _));
         _http = new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(3),
         };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("JustCryptDns/1.7.0");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("JustCryptDns/1.7.1");
         LoadDiskCache();
     }
 
@@ -76,7 +79,7 @@ public sealed class IpEnrichmentService : IIpEnrichmentService
 
     public void EnqueueLookup(string ip)
     {
-        if (!_isEnabled || _disposed || string.IsNullOrWhiteSpace(ip))
+        if (!_isEnabled || Volatile.Read(ref _disposed) != 0 || string.IsNullOrWhiteSpace(ip))
         {
             return;
         }
@@ -106,7 +109,7 @@ public sealed class IpEnrichmentService : IIpEnrichmentService
 
     public void Resume()
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed) != 0)
         {
             return;
         }
@@ -459,15 +462,14 @@ public sealed class IpEnrichmentService : IIpEnrichmentService
 
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
-        _disposed = true;
         _isEnabled = false;
         _queue.Writer.TryComplete();
-        _disposeCts.Cancel();
+        try { _disposeCts.Cancel(); } catch { }
         MaybeFlushDiskCache(force: true);
         _disposeCts.Dispose();
         _http.Dispose();

@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JustCryptDns.Core.Configuration;
+using JustCryptDns.Core.Models;
 
 namespace JustCryptDns.Core.Ipc;
 
@@ -47,6 +48,14 @@ public enum IpcRequestKind
     GetFailoverEventsSnapshot,
     PauseCaptivePortal,
     ResumeCaptivePortal,
+    ClearDnsCache,
+    GetFilterAndCacheStats,
+    ReloadFilteringBlocklists,
+    GetLearnedHosts,
+    ClearLearnedHosts,
+    ClearBypassEvents,
+    ClearDiagnosticMonitors,
+    InstallOrUpdateDnsCrypt,
 }
 
 public sealed record IpcRequest(
@@ -89,8 +98,37 @@ public sealed record ServiceStatusSnapshot
 
     public string? BypassEndpoint { get; init; }
 
+    public string? BypassPacUrl { get; init; }
+
+    public int BoundProxyPort { get; init; }
+
+    public int BoundPacPort { get; init; }
+
     public long DpiBypassedConnections { get; init; }
+
+    public long BlockedQueries { get; init; }
+
+    public long CacheHits { get; init; }
+
+    public double CacheHitRatioPercent { get; init; }
+
+    public long RewrittenQueries { get; init; }
+
+    public long StaleCacheHits { get; init; }
+
+    public long PrefetchCount { get; init; }
+
+    public string? ActiveVpnAdapterName { get; init; }
+
+    public bool IsCaptivePortalPaused { get; init; }
 }
+
+public sealed record ServiceFilterAndCacheSnapshot(
+    DnsCacheStats? CacheStats,
+    long BlockedQueryCount,
+    int TotalBlockedDomains,
+    IReadOnlyList<FilterLogEntry>? RecentFilterLogs = null,
+    IReadOnlyList<RoutingLogEntry>? RecentRoutingLogs = null);
 
 public sealed record IpcResponse(
     bool Success,
@@ -177,8 +215,15 @@ public static class IpcFraming
 
         var payload = new byte[length];
         await stream.ReadExactlyAsync(payload, cancellationToken).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<T>(payload, SettingsJson.Options)
-            ?? throw new InvalidDataException("IPC frame deserialized to null.");
+        try
+        {
+            return JsonSerializer.Deserialize<T>(payload, SettingsJson.Options)
+                ?? throw new InvalidDataException("IPC frame deserialized to null.");
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException("Malformed IPC frame JSON payload.", ex);
+        }
     }
 
     private static async Task<int> ReadExactlyOrEofAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)

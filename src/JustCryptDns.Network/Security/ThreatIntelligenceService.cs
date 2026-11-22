@@ -58,7 +58,7 @@ public sealed class ThreatIntelligenceService : IThreatIntelligenceService, IDis
         else
         {
             _http = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
-            _http.DefaultRequestHeaders.UserAgent.ParseAdd("JustCryptDns/1.7.0");
+            _http.DefaultRequestHeaders.UserAgent.ParseAdd("JustCryptDns/1.7.1");
             _ownsHttpClient = true;
         }
 

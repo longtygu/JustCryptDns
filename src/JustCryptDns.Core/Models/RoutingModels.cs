@@ -103,6 +103,13 @@ public static class RoutingMatcher
 
     public static bool IsValidPattern(string? pattern, RoutingMatchKind matchKind, out string? errorMessage)
     {
+        if (string.IsNullOrWhiteSpace(pattern)
+            || pattern.Any(ch => char.IsControl(ch) || ch is '\u2028' or '\u2029'))
+        {
+            errorMessage = "Domain pattern is required and must not contain control characters.";
+            return false;
+        }
+
         var norm = NormalizeDomain(pattern);
         if (string.IsNullOrEmpty(norm))
         {
@@ -110,9 +117,15 @@ public static class RoutingMatcher
             return false;
         }
 
-        if (norm.Contains(' ') || norm.Contains('/') || norm.Contains(':'))
+        if (norm.Contains(' ')
+            || norm.Contains('/')
+            || norm.Contains(':')
+            || norm.Contains(';')
+            || norm.Contains('\'')
+            || norm.Contains('"')
+            || norm.Contains('\\'))
         {
-            errorMessage = "Domain pattern must not contain spaces, slashes, or ports.";
+            errorMessage = "Domain pattern must not contain spaces, slashes, ports, quotes, or control characters.";
             return false;
         }
 
@@ -167,7 +180,18 @@ public static class RoutingMatcher
                 }
 
                 var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
-                return Regex.IsMatch(normalizedDomain, regexPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                try
+                {
+                    return Regex.IsMatch(
+                        normalizedDomain,
+                        regexPattern,
+                        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                        TimeSpan.FromMilliseconds(50));
+                }
+                catch (RegexMatchTimeoutException)
+                {
+                    return false;
+                }
 
             default:
                 return false;

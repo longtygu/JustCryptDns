@@ -93,7 +93,7 @@ public sealed partial class AboutViewModel : ObservableObject, IDisposable
         Version = Assembly.GetEntryAssembly()
             ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion
-            ?.Split('+')[0] ?? "1.7.0";
+            ?.Split('+')[0] ?? "1.7.1";
         OperatingSystemName = WindowsVersion.DisplayName;
 
         AttachedImages.CollectionChanged += (_, _) =>

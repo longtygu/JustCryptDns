@@ -204,6 +204,22 @@ public sealed class DnsCacheService : IDnsCacheService
             return;
         }
 
+        if (queryWire.Length > 0)
+        {
+            if (queryWire.Length < DnsPacket.HeaderSize
+                || !DnsPacket.TryParse(queryWire, out var query)
+                || query is null
+                || string.IsNullOrWhiteSpace(query.PrimaryQuestionName)
+                || query.PrimaryQuestionType != response.PrimaryQuestionType
+                || !string.Equals(
+                    RoutingMatcher.NormalizeDomain(query.PrimaryQuestionName),
+                    RoutingMatcher.NormalizeDomain(response.PrimaryQuestionName),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
         var rcode = response.Header.ResponseCode;
         var cacheCfg = _settings.Current.Cache;
         var now = _clock();
@@ -306,7 +322,7 @@ public sealed class DnsCacheService : IDnsCacheService
 
     private void EnforceCapacity(DateTimeOffset now, int maxEntries)
     {
-        if (_entries.Count < maxEntries)
+        if (_entries.Count < maxEntries && _staleEntries.Count <= maxEntries)
         {
             return;
         }
@@ -314,20 +330,18 @@ public sealed class DnsCacheService : IDnsCacheService
         lock (_evictLock)
         {
             EvictExpiredInternal(now);
-            if (_entries.Count < maxEntries)
+            if (_entries.Count >= maxEntries)
             {
-                return;
-            }
+                var toRemove = _entries.Values
+                    .OrderBy(e => e.ExpiresAt)
+                    .Take(Math.Max(1, _entries.Count - maxEntries + 1))
+                    .Select(e => e.Key)
+                    .ToList();
 
-            var toRemove = _entries.Values
-                .OrderBy(e => e.ExpiresAt)
-                .Take(Math.Max(1, _entries.Count - maxEntries + 1))
-                .Select(e => e.Key)
-                .ToList();
-
-            foreach (var key in toRemove)
-            {
-                _entries.TryRemove(key, out _);
+                foreach (var key in toRemove)
+                {
+                    _entries.TryRemove(key, out _);
+                }
             }
 
             if (_staleEntries.Count > maxEntries)
@@ -343,5 +357,12 @@ public sealed class DnsCacheService : IDnsCacheService
         }
     }
 
-    private void RaiseStatsChanged() => StatsChanged?.Invoke(this, GetStats());
+    private void RaiseStatsChanged()
+    {
+        var handler = StatsChanged;
+        if (handler is not null)
+        {
+            handler.Invoke(this, GetStats());
+        }
+    }
 }

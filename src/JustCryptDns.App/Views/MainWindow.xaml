@@ -72,7 +72,7 @@
                             <Style.Triggers>
                                 <MultiDataTrigger>
                                     <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding Key}" Value="settings" />
+                                        <Condition Binding="{Binding Key}" Value="Settings" />
                                         <Condition Binding="{Binding DataContext.HasAvailableUpdate, RelativeSource={RelativeSource AncestorType=Window}}" Value="True" />
                                     </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible" />

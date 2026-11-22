@@ -184,9 +184,27 @@ public sealed class NetworkInfoService : INetworkInfoService, IDisposable
         }
     }
 
-    private void OnOsNetworkChanged(object? sender, EventArgs e) => _debounce.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
+    private void OnOsNetworkChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            _debounce.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
 
-    private void OnOsAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e) => _debounce.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
+    private void OnOsAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
+    {
+        try
+        {
+            _debounce.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
 
     private void Unhook()
     {

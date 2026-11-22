@@ -182,7 +182,15 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
                 }
 
                 var safeKey = BuildSafeRuleKey(cidr.CanonicalText);
-                var noteSuffix = string.IsNullOrWhiteSpace(rule.Note) ? string.Empty : $" - {rule.Note.Trim()}";
+                var cleanNote = string.IsNullOrWhiteSpace(rule.Note)
+                    ? string.Empty
+                    : rule.Note.Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal).Trim();
+                if (cleanNote.Length > 200)
+                {
+                    cleanNote = cleanNote[..200];
+                }
+
+                var noteSuffix = string.IsNullOrWhiteSpace(cleanNote) ? string.Empty : $" - {cleanNote}";
                 var desc = $"Managed by JustCryptDns IP Blocker ({cidr.CanonicalText}){noteSuffix}";
 
                 desired[$"{IWindowsFirewallManager.RuleNamePrefix}Out_{safeKey}"] = new DesiredRuleSpec(
@@ -255,41 +263,47 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
                 var sig = ComputeShortHash(v4Ranges + "|" + v6Ranges);
                 var leakDesc = $"Managed by JustCryptDns DNS Leak Guard ({sig})";
 
-                desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Udp53_V4"] = new DesiredRuleSpec(
-                    IWindowsFirewallManager.DnsLeakRuleGroup,
-                    leakDesc,
-                    NetFwRuleDirOut,
-                    NetFwIpProtocolUdp,
-                    v4Ranges,
-                    "53,853",
-                    null);
+                if (!string.IsNullOrWhiteSpace(v4Ranges))
+                {
+                    desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Udp53_V4"] = new DesiredRuleSpec(
+                        IWindowsFirewallManager.DnsLeakRuleGroup,
+                        leakDesc,
+                        NetFwRuleDirOut,
+                        NetFwIpProtocolUdp,
+                        v4Ranges,
+                        "53,853",
+                        null);
 
-                desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Tcp53_853_V4"] = new DesiredRuleSpec(
-                    IWindowsFirewallManager.DnsLeakRuleGroup,
-                    leakDesc,
-                    NetFwRuleDirOut,
-                    NetFwIpProtocolTcp,
-                    v4Ranges,
-                    "53,853",
-                    null);
+                    desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Tcp53_853_V4"] = new DesiredRuleSpec(
+                        IWindowsFirewallManager.DnsLeakRuleGroup,
+                        leakDesc,
+                        NetFwRuleDirOut,
+                        NetFwIpProtocolTcp,
+                        v4Ranges,
+                        "53,853",
+                        null);
+                }
 
-                desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Udp53_V6"] = new DesiredRuleSpec(
-                    IWindowsFirewallManager.DnsLeakRuleGroup,
-                    leakDesc,
-                    NetFwRuleDirOut,
-                    NetFwIpProtocolUdp,
-                    v6Ranges,
-                    "53,853",
-                    null);
+                if (!string.IsNullOrWhiteSpace(v6Ranges))
+                {
+                    desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Udp53_V6"] = new DesiredRuleSpec(
+                        IWindowsFirewallManager.DnsLeakRuleGroup,
+                        leakDesc,
+                        NetFwRuleDirOut,
+                        NetFwIpProtocolUdp,
+                        v6Ranges,
+                        "53,853",
+                        null);
 
-                desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Tcp53_853_V6"] = new DesiredRuleSpec(
-                    IWindowsFirewallManager.DnsLeakRuleGroup,
-                    leakDesc,
-                    NetFwRuleDirOut,
-                    NetFwIpProtocolTcp,
-                    v6Ranges,
-                    "53,853",
-                    null);
+                    desired[$"{IWindowsFirewallManager.DnsLeakRuleNamePrefix}Out_Tcp53_853_V6"] = new DesiredRuleSpec(
+                        IWindowsFirewallManager.DnsLeakRuleGroup,
+                        leakDesc,
+                        NetFwRuleDirOut,
+                        NetFwIpProtocolTcp,
+                        v6Ranges,
+                        "53,853",
+                        null);
+                }
             }
 
             // 4. Emergency Lockdown (Kill Switch: blocks all public IPv4/IPv6 while sparing Loopback & LAN)
@@ -389,6 +403,10 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
 
                     InvokeMethod(fwRulesType, fwRulesObj, "Add", newRule);
                     added++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex, "Failed to add Windows Firewall rule {RuleName}; continuing remaining rules.", desiredName);
                 }
                 finally
                 {

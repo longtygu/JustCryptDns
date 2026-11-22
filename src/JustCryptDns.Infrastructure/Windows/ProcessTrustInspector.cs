@@ -41,8 +41,9 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
 
     public ProcessTrustInfo Inspect(string? executablePath, string? processName = null)
     {
-        if (string.Equals(processName, "System", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(processName, "System Idle", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(executablePath)
+            && (string.Equals(processName, "System", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(processName, "System Idle", StringComparison.OrdinalIgnoreCase)))
         {
             return new ProcessTrustInfo(processName ?? "System", ProcessTrustLevel.TrustedSystem, "Microsoft Windows", false, false, null);
         }
@@ -69,7 +70,7 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
             {
                 stampTicks = File.GetLastWriteTimeUtc(normalized).Ticks;
             }
-            catch (IOException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 stampTicks = 0;
             }
@@ -93,13 +94,14 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
     private static ProcessTrustInfo EvaluateCore(string fullPath)
     {
         var fileName = Path.GetFileName(fullPath);
-        var inWindowsRoot = IsUnderDirectory(fullPath, WindowsDirectory);
-        var inSystemFolder = IsUnderDirectory(fullPath, System32Directory)
-            || IsUnderDirectory(fullPath, SysWow64Directory)
-            || inWindowsRoot;
+        var isRiskyPath = IsRiskyExecutionPath(fullPath);
+        var inWindowsRoot = !isRiskyPath && IsUnderDirectory(fullPath, WindowsDirectory);
+        var inSystemFolder = !isRiskyPath
+            && (IsUnderDirectory(fullPath, System32Directory)
+                || IsUnderDirectory(fullPath, SysWow64Directory)
+                || inWindowsRoot);
 
         var isMasquerading = CoreWindowsBinaries.Contains(fileName) && !inSystemFolder;
-        var isRiskyPath = IsRiskyExecutionPath(fullPath);
 
         if (isMasquerading)
         {
@@ -119,17 +121,6 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
 
         if (isSigned)
         {
-            if (inWindowsRoot)
-            {
-                return new ProcessTrustInfo(
-                    fullPath,
-                    ProcessTrustLevel.TrustedSystem,
-                    publisher ?? "Microsoft Windows",
-                    isRiskyPath,
-                    false,
-                    null);
-            }
-
             if (isRiskyPath)
             {
                 return new ProcessTrustInfo(
@@ -139,6 +130,17 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
                     true,
                     false,
                     "Signed executable launched from user Temp/Downloads folder.");
+            }
+
+            if (inWindowsRoot)
+            {
+                return new ProcessTrustInfo(
+                    fullPath,
+                    ProcessTrustLevel.TrustedSystem,
+                    publisher ?? "Microsoft Windows",
+                    false,
+                    false,
+                    null);
             }
 
             return new ProcessTrustInfo(

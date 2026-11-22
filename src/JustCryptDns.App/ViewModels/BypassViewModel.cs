@@ -181,6 +181,12 @@ public sealed partial class BypassViewModel : PageViewModel
     {
         _bypassEngine.StateChanged += OnBypassStateChanged;
         _bypassEngine.ConnectionProcessed += OnConnectionProcessed;
+        if (_serviceClient is not null)
+        {
+            _serviceClient.StateChanged -= OnServiceClientStateChanged;
+            _serviceClient.StateChanged += OnServiceClientStateChanged;
+        }
+
         LoadFromSettingsAndEngine();
         StartServicePolling();
     }
@@ -188,6 +194,11 @@ public sealed partial class BypassViewModel : PageViewModel
     public override void OnNavigatedFrom()
     {
         StopServicePolling();
+        if (_serviceClient is not null)
+        {
+            _serviceClient.StateChanged -= OnServiceClientStateChanged;
+        }
+
         _bypassEngine.StateChanged -= OnBypassStateChanged;
         _bypassEngine.ConnectionProcessed -= OnConnectionProcessed;
     }
@@ -197,6 +208,11 @@ public sealed partial class BypassViewModel : PageViewModel
         if (disposing)
         {
             StopServicePolling();
+            if (_serviceClient is not null)
+            {
+                _serviceClient.StateChanged -= OnServiceClientStateChanged;
+            }
+
             _bypassEngine.StateChanged -= OnBypassStateChanged;
             _bypassEngine.ConnectionProcessed -= OnConnectionProcessed;
         }
@@ -778,6 +794,30 @@ public sealed partial class BypassViewModel : PageViewModel
         }
     }
 
+    private void OnServiceClientStateChanged(object? sender, EventArgs e)
+    {
+        void Sync()
+        {
+            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            {
+                StartServicePolling();
+            }
+            else
+            {
+                StopServicePolling();
+            }
+        }
+
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Sync);
+        }
+        else
+        {
+            Sync();
+        }
+    }
+
     private void StartServicePolling()
     {
         if (_serviceClient?.ConnectionState != ServiceConnectionState.Connected)
@@ -825,6 +865,21 @@ public sealed partial class BypassViewModel : PageViewModel
                 await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
             }
 
+            List<LearnedHostEntry>? serviceLearned = null;
+            var learnedRes = await _serviceClient
+                .SendAsync(new IpcRequest(IpcRequestKind.GetLearnedHosts))
+                .ConfigureAwait(false);
+            if (learnedRes is { Success: true, Message: not null })
+            {
+                try
+                {
+                    serviceLearned = System.Text.Json.JsonSerializer.Deserialize<List<LearnedHostEntry>>(learnedRes.Message, SettingsJson.Options);
+                }
+                catch
+                {
+                }
+            }
+
             void ApplyToUi()
             {
                 ApplyStats(_bypassEngine.GetStats());
@@ -832,6 +887,15 @@ public sealed partial class BypassViewModel : PageViewModel
                 foreach (var evt in _bypassEngine.GetRecentEvents().Reverse().Take(MaxUiEvents))
                 {
                     RecentEvents.Add(evt);
+                }
+
+                if (serviceLearned is not null)
+                {
+                    LearnedHosts.Clear();
+                    foreach (var h in serviceLearned)
+                    {
+                        LearnedHosts.Add(h);
+                    }
                 }
             }
 

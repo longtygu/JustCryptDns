@@ -31,7 +31,8 @@ public static class LoggingSetup
                 fileSizeLimitBytes: FileSizeLimitBytes,
                 rollOnFileSizeLimit: true,
                 retainedFileCountLimit: Math.Clamp(retainedFiles, 1, 90),
-                buffered: true,
+                shared: true,
+                buffered: false,
                 flushToDiskInterval: TimeSpan.FromSeconds(5),
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
             .CreateLogger();

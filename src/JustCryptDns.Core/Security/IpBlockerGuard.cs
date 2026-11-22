@@ -204,6 +204,21 @@ public static class IpBlockerGuard
                 Message: parseError);
         }
 
+        // Unconditionally reject loopback and unspecified networks even when context is null.
+        if ((CidrNetwork.TryParse("127.0.0.0/8", out var loopV4, out _) && network.Overlaps(loopV4))
+            || (CidrNetwork.TryParse("::1/128", out var loopV6, out _) && network.Overlaps(loopV6))
+            || (CidrNetwork.TryParse("0.0.0.0/8", out var unspecV4, out _) && network.Overlaps(unspecV4))
+            || (CidrNetwork.TryParse("::/128", out var unspecV6, out _) && network.Overlaps(unspecV6)))
+        {
+            return new IpBlockValidationResult(
+                IsValid: false,
+                IsProtectedViolation: true,
+                RequiresConfirmation: false,
+                NormalizedNetwork: network,
+                ErrorCode: "Loopback",
+                Message: "Protected target cannot be blocked: overlaps Loopback or Unspecified address space.");
+        }
+
         if (context is not null)
         {
             foreach (var protectedEntry in context.Entries)

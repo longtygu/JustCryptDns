@@ -17,13 +17,17 @@ public static class PacScriptGenerator
 
         var port = activeProxyPort > 0 ? activeProxyPort : settings.ProxyPort;
         var address = string.IsNullOrWhiteSpace(settings.ListenAddress) ? "127.0.0.1" : settings.ListenAddress.Trim();
+        if (address.Contains(':', StringComparison.Ordinal) && !address.StartsWith('['))
+        {
+            address = $"[{address}]";
+        }
 
         var sb = new StringBuilder(2048);
         sb.AppendLine("function FindProxyForURL(url, host) {");
         sb.AppendLine("  if (!host) return 'DIRECT';");
         sb.AppendLine("  var h = host.toLowerCase();");
         sb.AppendLine("  var colon = h.indexOf(':');");
-        sb.AppendLine("  if (colon > 0 && h.charAt(0) !== '[') h = h.substring(0, colon);");
+        sb.AppendLine("  if (colon > 0 && h.indexOf(':', colon + 1) < 0 && h.charAt(0) !== '[') h = h.substring(0, colon);");
         sb.AppendLine("  if (h.charAt(h.length - 1) === '.') h = h.substring(0, h.length - 1);");
         sb.AppendLine("  if (isPlainHostName(h) || h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]') return 'DIRECT';");
         sb.AppendLine("  if (shExpMatch(h, '127.*') || shExpMatch(h, '10.*') || shExpMatch(h, '192.168.*') || shExpMatch(h, '169.254.*')) return 'DIRECT';");
@@ -131,5 +135,12 @@ public static class PacScriptGenerator
     }
 
     private static string EscapeJs(string value) =>
-        value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal);
+        value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("'", "\\'", StringComparison.Ordinal)
+            .Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", string.Empty, StringComparison.Ordinal)
+            .Replace("\0", string.Empty, StringComparison.Ordinal)
+            .Replace("\u2028", string.Empty, StringComparison.Ordinal)
+            .Replace("\u2029", string.Empty, StringComparison.Ordinal);
 }

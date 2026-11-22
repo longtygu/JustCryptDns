@@ -496,7 +496,8 @@ public sealed class DnsRoutingService : IDnsRoutingService
             return null;
         }
 
-        foreach (var rule in GetLocalRewrites())
+        var rewrites = GetLocalRewrites();
+        foreach (var rule in rewrites)
         {
             if (!rule.IsEnabled || rule.RecordType != targetType)
             {
@@ -506,6 +507,23 @@ public sealed class DnsRoutingService : IDnsRoutingService
             if (RoutingMatcher.IsMatch(normalized, rule.Pattern, rule.MatchKind))
             {
                 return rule;
+            }
+        }
+
+        // RFC 1034 §3.6.2: A/AAAA queries for an alias should also match an enabled CNAME rewrite rule.
+        if (targetType is LocalDnsRewriteRecordType.A or LocalDnsRewriteRecordType.AAAA)
+        {
+            foreach (var rule in rewrites)
+            {
+                if (!rule.IsEnabled || rule.RecordType != LocalDnsRewriteRecordType.CNAME)
+                {
+                    continue;
+                }
+
+                if (RoutingMatcher.IsMatch(normalized, rule.Pattern, rule.MatchKind))
+                {
+                    return rule;
+                }
             }
         }
 

@@ -121,9 +121,9 @@ public sealed partial class SettingsViewModel : PageViewModel
 
         DataFolder = paths.DataDirectory;
         LogsFolder = paths.LogsDirectory;
-        Version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.3.0";
+        Version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.7.1";
         OperatingSystemName = WindowsVersion.DisplayName;
-        ShowLoadWarning = settings.LoadOutcome == SettingsLoadOutcome.ResetAfterCorruption;
+        ShowLoadWarning = settings.LoadOutcome is SettingsLoadOutcome.ResetAfterCorruption or SettingsLoadOutcome.NewerSchemaReadOnly;
         RefreshUpdateSummaryFromService();
     }
 
@@ -455,7 +455,12 @@ public sealed partial class SettingsViewModel : PageViewModel
     [RelayCommand]
     private void OpenReleaseOnGitHub()
     {
-        var url = LatestRelease?.HtmlUrl ?? (BugReportBuilder.GitHubRepoUrl + "/releases");
+        var rawUrl = LatestRelease?.HtmlUrl;
+        var url = !string.IsNullOrWhiteSpace(rawUrl)
+            && Uri.TryCreate(rawUrl.Trim(), UriKind.Absolute, out var parsed)
+            && string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            ? parsed.AbsoluteUri
+            : (BugReportBuilder.GitHubRepoUrl + "/releases");
         try
         {
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true })?.Dispose();
@@ -571,7 +576,21 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
     }
 
-    private void OnSaveFailed(object? sender, Exception ex) => SaveError = ex.Message;
+    private void OnSaveFailed(object? sender, Exception ex)
+    {
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(() => SaveError = ex.Message);
+        }
+        else if (_ui is not null)
+        {
+            _ui.Post(_ => SaveError = ex.Message, null);
+        }
+        else
+        {
+            SaveError = ex.Message;
+        }
+    }
 
     private async Task SaveAsync(Action<AppSettings> mutate)
     {

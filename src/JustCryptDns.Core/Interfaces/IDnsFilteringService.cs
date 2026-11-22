@@ -55,4 +55,8 @@ public interface IDnsFilteringService
     IReadOnlyList<FilterLogEntry> GetRecentLogs();
 
     void ClearLogs();
+
+    void ReloadBlocklistsFromDisk()
+    {
+    }
 }

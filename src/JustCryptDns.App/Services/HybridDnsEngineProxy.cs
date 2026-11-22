@@ -339,7 +339,7 @@ public sealed class HybridDnsEngineProxy : IDnsEngine
             ? parsed
             : localFallback.ActiveProtocol;
 
-        return new DnsEngineRuntimeStats
+        return localFallback with
         {
             State = snap.EngineState,
             ActiveResolverId = snap.ActiveResolverId ?? localFallback.ActiveResolverId,
@@ -347,8 +347,16 @@ public sealed class HybridDnsEngineProxy : IDnsEngine
             ActiveProtocol = proto,
             ListenEndpoint = snap.ListenEndpoint ?? localFallback.ListenEndpoint,
             TotalQueries = snap.TotalQueries,
+            BlockedQueries = snap.BlockedQueries,
+            CacheHits = snap.CacheHits,
+            CacheHitRatioPercent = snap.CacheHitRatioPercent,
+            RewrittenQueries = snap.RewrittenQueries,
+            StaleCacheHits = snap.StaleCacheHits,
+            PrefetchCount = snap.PrefetchCount,
             LastLatencyMs = snap.LastLatencyMs,
             HasAdapterBackup = snap.HasAdapterBackup,
+            ActiveVpnAdapterName = snap.ActiveVpnAdapterName,
+            IsCaptivePortalPaused = snap.IsCaptivePortalPaused,
             LastError = snap.LastError,
         };
     }

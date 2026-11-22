@@ -18,6 +18,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     private readonly IWindowsDnsManager _windowsDns;
     private readonly ISettingsService _settings;
     private readonly IResolverLibraryService? _resolverLibrary;
+    private readonly IServiceClient? _serviceClient;
     private readonly SynchronizationContext? _ui;
     private bool _loading;
 
@@ -63,7 +64,8 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         IDnsCryptProxyManager dnsCrypt,
         IWindowsDnsManager windowsDns,
         ISettingsService settings,
-        IResolverLibraryService? resolverLibrary = null)
+        IResolverLibraryService? resolverLibrary = null,
+        IServiceClient? serviceClient = null)
         : base("Nav_DnsManager", "Page_DnsManager_Subtitle")
     {
         _dnsEngine = dnsEngine;
@@ -71,6 +73,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         _windowsDns = windowsDns;
         _settings = settings;
         _resolverLibrary = resolverLibrary;
+        _serviceClient = serviceClient;
         _ui = SynchronizationContext.Current;
 
         var dns = settings.Current.Dns;
@@ -442,7 +445,10 @@ public sealed partial class DnsManagerViewModel : PageViewModel
 
         ListenPortText = conflict.SuggestedPort.ToString(CultureInfo.InvariantCulture);
         await ApplyProxySettingsAsync();
-        await ToggleEngineAsync();
+        if (!IsEngineRunning)
+        {
+            await ToggleEngineAsync();
+        }
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
@@ -451,6 +457,17 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         IsBusy = true;
         try
         {
+            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            {
+                var ipcRes = await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.RestoreOriginalDns));
+                if (ipcRes is { Success: true })
+                {
+                    ErrorMessage = null;
+                    InfoMessage = LocalizationManager.Instance["DnsMgr_RestoreSuccess"];
+                    return;
+                }
+            }
+
             var result = await _windowsDns.RestoreOriginalDnsAsync(_settings.Current.Dns.TargetAdapterId);
             if (result.Success)
             {
@@ -550,6 +567,26 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         InfoMessage = null;
         try
         {
+            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            {
+                var ipcRes = await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.InstallOrUpdateDnsCrypt));
+                if (ipcRes is not null)
+                {
+                    if (ipcRes.Success)
+                    {
+                        ErrorMessage = null;
+                        InfoMessage = LocalizationManager.Instance.Format("DnsMgr_DnsCryptInstalled", ipcRes.Message ?? "latest");
+                    }
+                    else
+                    {
+                        ErrorMessage = ipcRes.Message;
+                    }
+
+                    await RefreshDnsCryptVersionAsync();
+                    return;
+                }
+            }
+
             var (ok, version, err) = await _dnsCrypt.InstallOrUpdateAsync();
             if (ok)
             {

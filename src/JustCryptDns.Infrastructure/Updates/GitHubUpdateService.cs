@@ -173,6 +173,16 @@ public sealed class GitHubUpdateService : IUpdateService, IDisposable
         var asset = release.PreferredAsset
             ?? throw new InvalidOperationException("The selected release does not include a downloadable Windows package asset.");
 
+        if (!IsSafeHttpsUrl(asset.DownloadUrl))
+        {
+            throw new InvalidOperationException("Refusing to download update asset over a non-HTTPS URL.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(asset.ChecksumsUrl) && !IsSafeHttpsUrl(asset.ChecksumsUrl))
+        {
+            throw new InvalidOperationException("Refusing to download update checksums over a non-HTTPS URL.");
+        }
+
         var safeVersion = SanitizePathSegment(release.Version);
         var versionDir = Path.Combine(_paths.UpdatesDirectory, safeVersion);
         Directory.CreateDirectory(versionDir);
@@ -303,6 +313,12 @@ public sealed class GitHubUpdateService : IUpdateService, IDisposable
                 Directory.Delete(extractRoot, recursive: true);
                 throw new InvalidDataException("Downloaded update archive does not contain JustCryptDns.exe.");
             }
+
+            // Never carry portable.flag into an installed deployment (prevents switching %ProgramData% to %ProgramFiles%\data).
+            if (!_paths.IsPortableMode)
+            {
+                TryDeleteFile(Path.Combine(stagingRoot, "portable.flag"));
+            }
         }
 
         _logger.LogInformation(
@@ -364,14 +380,23 @@ public sealed class GitHubUpdateService : IUpdateService, IDisposable
                 waitPid: Environment.ProcessId,
                 sourceDir: package.StagingDirectory,
                 targetDir: targetDir,
-                cleanupDir: versionDir);
+                cleanupDir: versionDir,
+                isPortableMode: _paths.IsPortableMode);
 
             // UTF-8 BOM guarantees Windows PowerShell 5.1 reads non-ASCII install paths reliably.
             File.WriteAllText(scriptPath, scriptContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
 
             var requiresElevation = !CanWriteToDirectory(targetDir);
+            var psExePath = OperatingSystem.IsWindows()
+                ? Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe")
+                : "powershell.exe";
+            if (OperatingSystem.IsWindows() && !File.Exists(psExePath))
+            {
+                psExePath = "powershell.exe";
+            }
+
             var psPsi = new ProcessStartInfo(
-                "powershell.exe",
+                psExePath,
                 $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\"")
             {
                 UseShellExecute = true,
@@ -475,7 +500,8 @@ public sealed class GitHubUpdateService : IUpdateService, IDisposable
         var version = AppVersionComparer.NormalizeVersion(string.IsNullOrWhiteSpace(tagName) ? name : tagName);
         var effectiveTitle = string.IsNullOrWhiteSpace(name) ? $"JustCryptDns {version}" : name.Trim();
         var body = GetStringProperty(element, "body") ?? string.Empty;
-        var htmlUrl = GetStringProperty(element, "html_url") ?? BugReportBuilder.GitHubRepoUrl + "/releases";
+        var rawHtmlUrl = GetStringProperty(element, "html_url");
+        var htmlUrl = IsSafeHttpsUrl(rawHtmlUrl) ? rawHtmlUrl! : BugReportBuilder.GitHubRepoUrl + "/releases";
 
         var publishedAt = DateTimeOffset.UtcNow;
         var rawDate = GetStringProperty(element, "published_at") ?? GetStringProperty(element, "created_at");
@@ -512,7 +538,7 @@ public sealed class GitHubUpdateService : IUpdateService, IDisposable
         {
             var fileName = GetStringProperty(item, "name");
             var url = GetStringProperty(item, "browser_download_url");
-            if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(url))
+            if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(url) || !IsSafeHttpsUrl(url))
             {
                 continue;
             }
@@ -639,9 +665,15 @@ public sealed class GitHubUpdateService : IUpdateService, IDisposable
         }
     }
 
-    internal static string BuildPortableUpdateScript(int waitPid, string sourceDir, string targetDir, string cleanupDir)
+    private static bool IsSafeHttpsUrl(string? url) =>
+        !string.IsNullOrWhiteSpace(url)
+        && Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
+        && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+
+    internal static string BuildPortableUpdateScript(int waitPid, string sourceDir, string targetDir, string cleanupDir, bool isPortableMode = true)
     {
         static string EscapePs(string value) => value.Replace("'", "''", StringComparison.Ordinal);
+        var skipPortableFlagLiteral = isPortableMode ? "$false" : "$true";
 
         return $$"""
 $ErrorActionPreference = 'Stop'
@@ -649,6 +681,7 @@ $WaitPid = {{waitPid}}
 $SourceDir = '{{EscapePs(sourceDir)}}'
 $TargetDir = '{{EscapePs(targetDir)}}'
 $CleanupDir = '{{EscapePs(cleanupDir)}}'
+$SkipPortableFlag = {{skipPortableFlagLiteral}}
 $ExeName = 'JustCryptDns.exe'
 $ServiceName = 'JustCryptDnsService'
 
@@ -666,7 +699,7 @@ try {
         $wmi = Get-CimInstance Win32_Service -Filter "Name='$ServiceName'" -ErrorAction SilentlyContinue
         if ($null -ne $wmi -and $wmi.PathName -and $wmi.PathName.IndexOf($TargetDir, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
             Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-            $svc.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(10))
+            $svc.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(15))
             $restartService = $true
         }
     }
@@ -679,6 +712,7 @@ if (-not (Test-Path -LiteralPath $TargetDir)) {
 $sourceRoot = $SourceDir.TrimEnd('\', '/')
 Get-ChildItem -LiteralPath $SourceDir -Recurse -File | ForEach-Object {
     $rel = $_.FullName.Substring($sourceRoot.Length).TrimStart('\', '/')
+    if ($SkipPortableFlag -and ($rel -ieq 'portable.flag')) { return }
     $dest = Join-Path $TargetDir $rel
     $destParent = Split-Path -Parent $dest
     if (-not (Test-Path -LiteralPath $destParent)) {

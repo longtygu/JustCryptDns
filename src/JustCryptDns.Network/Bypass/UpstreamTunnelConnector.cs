@@ -80,6 +80,14 @@ public sealed class UpstreamTunnelConnector
         ArgumentException.ThrowIfNullOrWhiteSpace(targetHost);
         ArgumentNullException.ThrowIfNull(upstream);
 
+        foreach (var ch in targetHost)
+        {
+            if (char.IsControl(ch) || ch is ' ' or '\'' or '"' or '\\')
+            {
+                throw new ArgumentException("Target host contains invalid control characters.", nameof(targetHost));
+            }
+        }
+
         if (!upstream.Enabled || upstream.Kind == UpstreamTunnelKind.None)
         {
             throw new InvalidOperationException("Upstream tunnel is not enabled.");
@@ -260,7 +268,7 @@ public sealed class UpstreamTunnelConnector
             await stream.WriteAsync(new byte[] { 0x05, 0x01, 0x00 }, cts.Token).ConfigureAwait(false);
             var reply = new byte[2];
             await stream.ReadExactlyAsync(reply, cts.Token).ConfigureAwait(false);
-            return reply[0] == 0x05;
+            return reply[0] == 0x05 && reply[1] != 0xFF;
         }
         catch
         {
@@ -296,6 +304,11 @@ public sealed class UpstreamTunnelConnector
 
             var userBytes = Encoding.UTF8.GetBytes(username!);
             var passBytes = Encoding.UTF8.GetBytes(password ?? string.Empty);
+            if (userBytes.Length > 255 || passBytes.Length > 255)
+            {
+                throw new ArgumentException("SOCKS5 username or password exceeds 255 bytes.");
+            }
+
             var authReq = new byte[3 + userBytes.Length + passBytes.Length];
             authReq[0] = 0x01;
             authReq[1] = (byte)userBytes.Length;

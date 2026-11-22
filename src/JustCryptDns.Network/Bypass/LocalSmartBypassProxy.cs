@@ -37,7 +37,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
 
     private TcpListener? _listener;
     private Task? _acceptTask;
-    private bool _disposed;
+    private int _disposed;
     private int _activeTunnels;
 
     public LocalSmartBypassProxy(
@@ -325,7 +325,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
             return;
         }
 
-        var rebuilt = new StringBuilder(headerText.Length);
+        var rebuilt = new StringBuilder(headerText.Length + 32);
         rebuilt.Append(method).Append(' ').Append(pathAndQuery).Append(' ').Append(version).Append("\r\n");
         for (var i = 1; i < lines.Length; i++)
         {
@@ -335,7 +335,9 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
                 continue;
             }
 
-            if (line.StartsWith("Proxy-Connection:", StringComparison.OrdinalIgnoreCase))
+            if (line.StartsWith("Proxy-Connection:", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Proxy-Authorization:", StringComparison.OrdinalIgnoreCase)
+                || line.StartsWith("Connection:", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -343,9 +345,23 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
             rebuilt.Append(line).Append("\r\n");
         }
 
-        rebuilt.Append("\r\n");
+        rebuilt.Append("Connection: close\r\n\r\n");
         var rewrittenHeaderBytes = Encoding.ASCII.GetBytes(rebuilt.ToString());
         await StreamSessionAsync(client, stream, plainHost, plainPort, "HTTP", rewrittenHeaderBytes, ct).ConfigureAwait(false);
+    }
+
+    private static bool HttpHeaderIndicatesRequestBody(ReadOnlySpan<byte> payload)
+    {
+        var text = Encoding.ASCII.GetString(payload);
+        if (text.StartsWith("POST ", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("PUT ", StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith("PATCH ", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return text.Contains("\r\nContent-Length:", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("\r\nTransfer-Encoding:", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task StreamSessionAsync(
@@ -391,8 +407,11 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
             return;
         }
 
-        var isTlsHello = TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload);
-        var isHttpSplit = !isTlsHello && settings.FragmentHttpHostHeader && TlsClientHelloFragmenter.TrySplitHttpHostHeader(initial.FirstPayload, out _);
+        var isTlsHello = initial.IsCompleteTlsClientHello && TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload);
+        var isHttpSplit = !isTlsHello
+            && settings.FragmentHttpHostHeader
+            && !HttpHeaderIndicatesRequestBody(initial.FirstPayload)
+            && TlsClientHelloFragmenter.TrySplitHttpHostHeader(initial.FirstPayload, out _);
         if (!isTlsHello && !isHttpSplit)
         {
             await ExecuteDirectFirstPayloadRelayAsync(client, clientStream, targetHost, targetPort, clientProtocol, initial, settings, allowIpv6, sw, ct).ConfigureAwait(false);
@@ -542,7 +561,13 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         TcpClient? direct = null;
         try
         {
-            (direct, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            IPAddress remoteIp;
+            (direct, remoteIp) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            if (IsLoopbackSelfEndpoint(remoteIp, targetPort))
+            {
+                throw new IOException("Blocked proxy self-loop to resolved local listener.");
+            }
+
             RegisterActiveClient(direct);
             var directStream = direct.GetStream();
             if (preBufferedPayload is { Length: > 0 })
@@ -585,7 +610,13 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         TcpClient? direct = null;
         try
         {
-            (direct, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            IPAddress remoteIp;
+            (direct, remoteIp) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            if (IsLoopbackSelfEndpoint(remoteIp, targetPort))
+            {
+                throw new IOException("Blocked proxy self-loop to resolved local listener.");
+            }
+
             RegisterActiveClient(direct);
             var directStream = direct.GetStream();
             await directStream.WriteAsync(initial.FirstPayload, ct).ConfigureAwait(false);
@@ -681,7 +712,13 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         try
         {
             var connectSw = Stopwatch.StartNew();
-            (upstream, _) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            IPAddress remoteIp;
+            (upstream, remoteIp) = await _connector.ConnectDirectAsync(targetHost, targetPort, settings.ResolveTargetViaLocalDns, allowIpv6, settings.ConnectTimeoutMs, ct).ConfigureAwait(false);
+            if (IsLoopbackSelfEndpoint(remoteIp, targetPort))
+            {
+                throw new IOException("Blocked proxy self-loop to resolved local listener.");
+            }
+
             connectSw.Stop();
             var tcpConnectMs = connectSw.Elapsed.TotalMilliseconds;
             RegisterActiveClient(upstream);
@@ -949,12 +986,29 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
             return false;
         }
 
-        if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+        var clean = host.Trim().TrimEnd('.');
+        if (string.Equals(clean, "localhost", StringComparison.OrdinalIgnoreCase)
+            || clean.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
-        return IPAddress.TryParse(host, out var ip) && (IPAddress.IsLoopback(ip) || ip.Equals(_listenAddress));
+        return IPAddress.TryParse(clean, out var ip) && IsLoopbackSelfEndpoint(ip, port);
+    }
+
+    private bool IsLoopbackSelfEndpoint(IPAddress ip, int port)
+    {
+        var pacPort = _getPacPort();
+        if (port != BoundPort && (pacPort <= 0 || port != pacPort))
+        {
+            return false;
+        }
+
+        var normalized = ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip;
+        return IPAddress.IsLoopback(normalized)
+            || normalized.Equals(_listenAddress)
+            || normalized.Equals(IPAddress.Any)
+            || normalized.Equals(IPAddress.IPv6Any);
     }
 
     private static bool TryParseHostPort(string value, int defaultPort, out string host, out int port)
@@ -1000,12 +1054,11 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
-        _disposed = true;
         await _cts.CancelAsync().ConfigureAwait(false);
         try { _listener?.Stop(); } catch { }
         foreach (var active in _activeClients.Keys)

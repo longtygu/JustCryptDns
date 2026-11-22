@@ -130,6 +130,9 @@ public sealed class DnsFilteringService : IDnsFilteringService
 {
     public const int MaxLogEntries = 200;
 
+    private static readonly Dictionary<string, DnsBlocklistSource> BuiltInSeedsById =
+        BuiltInBlocklists.All.ToDictionary(b => b.Id, StringComparer.OrdinalIgnoreCase);
+
     private readonly ISettingsService _settings;
     private readonly IAppPaths? _paths;
     private readonly ILogger<DnsFilteringService> _logger;
@@ -178,12 +181,11 @@ public sealed class DnsFilteringService : IDnsFilteringService
     public IReadOnlyList<DnsBlocklistSource> GetBlocklists()
     {
         var configured = _settings.Current.Filtering.Blocklists ?? BuiltInBlocklists.All.ToList();
-        var seeds = BuiltInBlocklists.All.ToDictionary(b => b.Id, StringComparer.OrdinalIgnoreCase);
 
         var result = new List<DnsBlocklistSource>(configured.Count);
         foreach (var item in configured)
         {
-            var seedList = seeds.TryGetValue(item.Id, out var seed) ? seed.SeedDomains : [];
+            var seedList = BuiltInSeedsById.TryGetValue(item.Id, out var seed) ? seed.SeedDomains : [];
             var count = _listDomains.TryGetValue(item.Id, out var loaded) ? loaded.Count : Math.Max(item.DomainCount, seedList.Count);
             result.Add(item with
             {
@@ -561,6 +563,12 @@ public sealed class DnsFilteringService : IDnsFilteringService
         RaiseFilteringChanged();
     }
 
+    public void ReloadBlocklistsFromDisk()
+    {
+        InitializeListsInMemory(forceReloadFromDisk: true);
+        RaiseFilteringChanged();
+    }
+
     private static bool MatchesDomainOrParentInSet(string normalizedDomain, HashSet<string> domainSet)
     {
         var current = normalizedDomain;
@@ -620,7 +628,7 @@ public sealed class DnsFilteringService : IDnsFilteringService
         return decision;
     }
 
-    private void InitializeListsInMemory()
+    private void InitializeListsInMemory(bool forceReloadFromDisk = false)
     {
         foreach (var builtIn in BuiltInBlocklists.All)
         {
@@ -634,9 +642,10 @@ public sealed class DnsFilteringService : IDnsFilteringService
         {
             foreach (var item in configured)
             {
-                if (!_listDomains.TryGetValue(item.Id, out var set))
+                if (forceReloadFromDisk || !_listDomains.TryGetValue(item.Id, out var set))
                 {
-                    set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var seeds = BuiltInSeedsById.TryGetValue(item.Id, out var builtIn) ? builtIn.SeedDomains : [];
+                    set = new HashSet<string>(seeds, StringComparer.OrdinalIgnoreCase);
                     LoadCachedBlocklistFromDisk(item.Id, set);
                     _listDomains[item.Id] = set;
                 }
@@ -644,18 +653,42 @@ public sealed class DnsFilteringService : IDnsFilteringService
         }
     }
 
+    private bool TryGetSafeBlocklistFilePath(string listId, out string filePath)
+    {
+        filePath = string.Empty;
+        if (_paths is null || string.IsNullOrWhiteSpace(listId))
+        {
+            return false;
+        }
+
+        var trimmed = Path.GetFileName(listId.Trim());
+        if (string.IsNullOrWhiteSpace(trimmed)
+            || !trimmed.All(c => char.IsLetterOrDigit(c) || c is '-' or '_'))
+        {
+            return false;
+        }
+
+        var dir = Path.Combine(_paths.DataDirectory, "blocklists");
+        filePath = Path.Combine(dir, $"{trimmed}.txt");
+        return true;
+    }
+
     private void SaveCachedBlocklistToDisk(string listId, HashSet<string> domains)
     {
-        if (_paths is null)
+        if (!TryGetSafeBlocklistFilePath(listId, out var filePath))
         {
             return;
         }
 
         try
         {
-            var dir = Path.Combine(_paths.DataDirectory, "blocklists");
-            Directory.CreateDirectory(dir);
-            File.WriteAllLines(Path.Combine(dir, $"{listId}.txt"), domains);
+            var dir = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            File.WriteAllLines(filePath, domains);
         }
         catch (Exception ex)
         {
@@ -665,14 +698,13 @@ public sealed class DnsFilteringService : IDnsFilteringService
 
     private void LoadCachedBlocklistFromDisk(string listId, HashSet<string> target)
     {
-        if (_paths is null)
+        if (!TryGetSafeBlocklistFilePath(listId, out var file))
         {
             return;
         }
 
         try
         {
-            var file = Path.Combine(_paths.DataDirectory, "blocklists", $"{listId}.txt");
             if (File.Exists(file))
             {
                 foreach (var line in File.ReadLines(file))

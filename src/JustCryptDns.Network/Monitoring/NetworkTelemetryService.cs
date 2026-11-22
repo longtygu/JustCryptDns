@@ -298,6 +298,17 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         {
             _logger.LogDebug(ex, "Live telemetry sampling loop stopped due to network/state error.");
         }
+        finally
+        {
+            lock (_sync)
+            {
+                if (_loopCts is { IsCancellationRequested: false })
+                {
+                    IsActive = false;
+                    StopLoopLocked();
+                }
+            }
+        }
     }
 
     private async Task<(NetworkTelemetrySample Sample, double? UpdatedPingMs)> CaptureSampleAsync(

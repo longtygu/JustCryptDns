@@ -33,7 +33,9 @@ public sealed class WindowsBrowserPolicyInspector : IBrowserPolicyInspector
         try
         {
             using var key = hive.OpenSubKey(subKeyPath, writable: false);
-            if (key?.GetValue("DnsOverHttpsMode") is string mode && !string.IsNullOrWhiteSpace(mode))
+            if (key?.GetValue("DnsOverHttpsMode") is string mode
+                && !string.IsNullOrWhiteSpace(mode)
+                && !string.Equals(mode.Trim(), "off", StringComparison.OrdinalIgnoreCase))
             {
                 findings.Add($"{browserName} ({hiveName}): DnsOverHttpsMode={mode}");
             }
@@ -49,7 +51,7 @@ public sealed class WindowsBrowserPolicyInspector : IBrowserPolicyInspector
         try
         {
             using var key = hive.OpenSubKey(@"SOFTWARE\Policies\Mozilla\Firefox\DNSOverHTTPS", writable: false);
-            if (key?.GetValue("Enabled") is int enabled)
+            if (key?.GetValue("Enabled") is int enabled && enabled != 0)
             {
                 findings.Add($"Mozilla Firefox ({hiveName}): DNSOverHTTPS.Enabled={enabled}");
             }

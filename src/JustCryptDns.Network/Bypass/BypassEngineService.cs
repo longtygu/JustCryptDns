@@ -42,7 +42,8 @@ public sealed class BypassEngineService : IBypassEngineService
     private long _escalatedDpiCount;
     private int _pacRevision = 1;
     private bool _hasStartedOnce;
-    private bool _disposed;
+    private int _disposed;
+    private long _lastStatsBroadcastTick;
 
     public BypassEngineService(
         ISettingsService settings,
@@ -115,30 +116,15 @@ public sealed class BypassEngineService : IBypassEngineService
             var bypass = _settings.Current.Bypass;
             var listenIp = ParseListenIp(bypass.ListenAddress);
 
-            var (pacServer, pacError) = await StartListenerWithFallbackAsync(
-                "local PAC server",
-                listenIp,
-                bypass.PacPort,
-                avoidPort: bypass.ProxyPort,
-                port => new LocalPacHttpServer(listenIp, port, GeneratePacScript, _logger),
-                server => server.Start()).ConfigureAwait(false);
-
-            if (pacServer is null)
-            {
-                _logger.LogError("Bypass start failed: {Error}", pacError);
-                SetState(BypassEngineState.Stopped, pacError);
-                return (false, pacError);
-            }
-
             var (proxy, proxyError) = await StartListenerWithFallbackAsync(
                 "DPI bypass proxy",
                 listenIp,
                 bypass.ProxyPort,
-                avoidPort: pacServer.BoundPort,
+                avoidPort: bypass.PacPort,
                 port => new LocalSmartBypassProxy(
                     listenIp,
                     port,
-                    () => pacServer.BoundPort,
+                    () => _pacServer?.BoundPort ?? 0,
                     () => _settings.Current.Bypass,
                     () => _settings.Current.Dns.EnableIpv6,
                     _matcher,
@@ -149,23 +135,38 @@ public sealed class BypassEngineService : IBypassEngineService
 
             if (proxy is null)
             {
-                await pacServer.DisposeAsync().ConfigureAwait(false);
                 _logger.LogError("Bypass start failed: {Error}", proxyError);
                 SetState(BypassEngineState.Stopped, proxyError);
                 return (false, proxyError);
             }
 
-            _pacServer = pacServer;
             _proxy = proxy;
+
+            var (pacServer, pacError) = await StartListenerWithFallbackAsync(
+                "local PAC server",
+                listenIp,
+                bypass.PacPort,
+                avoidPort: proxy.BoundPort,
+                port => new LocalPacHttpServer(listenIp, port, GeneratePacScript, _logger),
+                server => server.Start()).ConfigureAwait(false);
+
+            if (pacServer is null)
+            {
+                _proxy = null;
+                await proxy.DisposeAsync().ConfigureAwait(false);
+                _logger.LogError("Bypass start failed: {Error}", pacError);
+                SetState(BypassEngineState.Stopped, pacError);
+                return (false, pacError);
+            }
+
+            _pacServer = pacServer;
             _windowsProxyApplied = false;
-            if (_hasStartedOnce)
+            if (_hasStartedOnce || (bypass.ProxyPort > 0 && proxy.BoundPort != bypass.ProxyPort))
             {
                 Interlocked.Increment(ref _pacRevision);
             }
-            else
-            {
-                _hasStartedOnce = true;
-            }
+
+            _hasStartedOnce = true;
 
             string? warning = null;
             var pacUrl = BuildVersionedPacUrl(listenIp, pacServer.BoundPort);
@@ -959,7 +960,8 @@ public sealed class BypassEngineService : IBypassEngineService
 
     private static async Task<int> SendHeadRequestAsync(SslStream ssl, string host, CancellationToken ct)
     {
-        var req = Encoding.ASCII.GetBytes($"HEAD / HTTP/1.1\r\nHost: {host}\r\nUser-Agent: JustCryptDns/1.7.0\r\nConnection: close\r\n\r\n");
+        var safeHost = host.Replace("\r", string.Empty, StringComparison.Ordinal).Replace("\n", string.Empty, StringComparison.Ordinal);
+        var req = Encoding.ASCII.GetBytes($"HEAD / HTTP/1.1\r\nHost: {safeHost}\r\nUser-Agent: JustCryptDns/1.7.1\r\nConnection: close\r\n\r\n");
         await ssl.WriteAsync(req, ct).ConfigureAwait(false);
         await ssl.FlushAsync(ct).ConfigureAwait(false);
 
@@ -1154,20 +1156,45 @@ public sealed class BypassEngineService : IBypassEngineService
     {
         _state = state;
         _lastError = error;
-        RaiseStateChanged();
+        RaiseStateChanged(force: true);
     }
 
-    private void RaiseStateChanged() => StateChanged?.Invoke(this, GetStats());
-
-    public async ValueTask DisposeAsync()
+    private void RaiseStateChanged(bool force = false)
     {
-        if (_disposed)
+        var handler = StateChanged;
+        if (handler is null)
         {
             return;
         }
 
-        await StopAsync().ConfigureAwait(false);
-        _disposed = true;
-        _lifecycleGate.Dispose();
+        var nowTick = Environment.TickCount64;
+        if (!force)
+        {
+            var prevTick = Volatile.Read(ref _lastStatsBroadcastTick);
+            if (nowTick - prevTick < 150)
+            {
+                return;
+            }
+        }
+
+        Volatile.Write(ref _lastStatsBroadcastTick, nowTick);
+        handler.Invoke(this, GetStats());
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await StopAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _lifecycleGate.Dispose();
+        }
     }
 }

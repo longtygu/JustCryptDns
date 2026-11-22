@@ -20,10 +20,22 @@ public partial class ConnectionMonitorView : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        if (_hostWindow is not null)
+        {
+            _hostWindow.StateChanged -= OnVisibilityOrStateChanged;
+        }
+
         _hostWindow = Window.GetWindow(this);
         if (_hostWindow is not null)
         {
             _hostWindow.StateChanged += OnVisibilityOrStateChanged;
+        }
+
+        if (_boundVm is null && DataContext is ConnectionMonitorViewModel vm)
+        {
+            _boundVm = vm;
+            _boundVm.AutoScrollRequested += OnAutoScrollRequested;
+            _boundVm.EditNoteRequested += OnEditNoteRequested;
         }
 
         UpdateWindowActiveState();

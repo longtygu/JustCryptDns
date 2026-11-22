@@ -25,6 +25,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
     private readonly object _procCacheLock = new();
     private Dictionary<int, string> _processNames = new();
     private readonly Dictionary<int, (string Name, string? Path)> _exePathCache = new();
+    private readonly Dictionary<int, DateTimeOffset> _missingPids = new();
     private DateTimeOffset _processCacheUpdatedAt = DateTimeOffset.MinValue;
 
     public WindowsConnectionTableReader(ILogger<WindowsConnectionTableReader> logger)
@@ -202,7 +203,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
         return map;
     }
 
-    private static bool TryResolveProcessName(Dictionary<int, string> map, int pid, out string name)
+    private bool TryResolveProcessName(Dictionary<int, string> map, int pid, out string name)
     {
         if (map.TryGetValue(pid, out var mapped))
         {
@@ -222,6 +223,16 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
             return true;
         }
 
+        var now = DateTimeOffset.UtcNow;
+        lock (_procCacheLock)
+        {
+            if (_missingPids.TryGetValue(pid, out var failedAt) && (now - failedAt).TotalMilliseconds < 2500)
+            {
+                name = $"PID {pid}";
+                return true;
+            }
+        }
+
         try
         {
             using var proc = Process.GetProcessById(pid);
@@ -230,6 +241,16 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
         }
         catch (Exception)
         {
+            lock (_procCacheLock)
+            {
+                if (_missingPids.Count > 512)
+                {
+                    _missingPids.Clear();
+                }
+
+                _missingPids[pid] = now;
+            }
+
             name = $"PID {pid}";
             return false;
         }
@@ -237,7 +258,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
     private void ReadTcp4(Action<ConnectionProtocol, string, int, string, int, string, int> emit)
     {
-        var buffer = QueryTable((ptr, ref size) =>
+        var (buffer, allocatedSize) = QueryTable((ptr, ref size) =>
             NativeMethods.GetExtendedTcpTable(ptr, ref size, false, AfInet, TcpTableOwnerPidAll, 0));
         if (buffer == nint.Zero)
         {
@@ -246,9 +267,9 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
         try
         {
-            var count = Marshal.ReadInt32(buffer);
-            var rowPtr = buffer + 4;
             const int rowSize = 24;
+            var count = GetSafeRowCount(buffer, allocatedSize, rowSize);
+            var rowPtr = buffer + 4;
             var ip4 = new byte[4];
 
             for (var i = 0; i < count; i++)
@@ -286,7 +307,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
     private void ReadTcp6(Action<ConnectionProtocol, string, int, string, int, string, int> emit)
     {
-        var buffer = QueryTable((ptr, ref size) =>
+        var (buffer, allocatedSize) = QueryTable((ptr, ref size) =>
             NativeMethods.GetExtendedTcpTable(ptr, ref size, false, AfInet6, TcpTableOwnerPidAll, 0));
         if (buffer == nint.Zero)
         {
@@ -295,9 +316,9 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
         try
         {
-            var count = Marshal.ReadInt32(buffer);
-            var rowPtr = buffer + 4;
             const int rowSize = 56;
+            var count = GetSafeRowCount(buffer, allocatedSize, rowSize);
+            var rowPtr = buffer + 4;
             var ip16 = new byte[16];
 
             for (var i = 0; i < count; i++)
@@ -338,7 +359,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
     private void ReadUdp4(Action<ConnectionProtocol, string, int, string, int, string, int> emit)
     {
-        var buffer = QueryTable((ptr, ref size) =>
+        var (buffer, allocatedSize) = QueryTable((ptr, ref size) =>
             NativeMethods.GetExtendedUdpTable(ptr, ref size, false, AfInet, UdpTableOwnerPid, 0));
         if (buffer == nint.Zero)
         {
@@ -347,9 +368,9 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
         try
         {
-            var count = Marshal.ReadInt32(buffer);
-            var rowPtr = buffer + 4;
             const int rowSize = 12;
+            var count = GetSafeRowCount(buffer, allocatedSize, rowSize);
+            var rowPtr = buffer + 4;
             var ip4 = new byte[4];
 
             for (var i = 0; i < count; i++)
@@ -379,7 +400,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
     private void ReadUdp6(Action<ConnectionProtocol, string, int, string, int, string, int> emit)
     {
-        var buffer = QueryTable((ptr, ref size) =>
+        var (buffer, allocatedSize) = QueryTable((ptr, ref size) =>
             NativeMethods.GetExtendedUdpTable(ptr, ref size, false, AfInet6, UdpTableOwnerPid, 0));
         if (buffer == nint.Zero)
         {
@@ -388,9 +409,9 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
         try
         {
-            var count = Marshal.ReadInt32(buffer);
-            var rowPtr = buffer + 4;
             const int rowSize = 28;
+            var count = GetSafeRowCount(buffer, allocatedSize, rowSize);
+            var rowPtr = buffer + 4;
             var ip16 = new byte[16];
 
             for (var i = 0; i < count; i++)
@@ -418,37 +439,66 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
         }
     }
 
+    private static int GetSafeRowCount(nint buffer, int allocatedSize, int rowSize)
+    {
+        if (allocatedSize < 4 || rowSize <= 0)
+        {
+            return 0;
+        }
+
+        var rawCount = Marshal.ReadInt32(buffer);
+        if (rawCount <= 0)
+        {
+            return 0;
+        }
+
+        var maxRows = (allocatedSize - 4) / rowSize;
+        return Math.Min(rawCount, maxRows);
+    }
+
     private delegate uint TableQueryDelegate(nint buffer, ref int size);
 
-    private static nint QueryTable(TableQueryDelegate query)
+    private static (nint Buffer, int AllocatedSize) QueryTable(TableQueryDelegate query)
     {
         var size = 0;
         _ = query(nint.Zero, ref size);
         if (size <= 0)
         {
-            return nint.Zero;
+            return (nint.Zero, 0);
         }
 
         size += 4096;
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var buffer = Marshal.AllocHGlobal(size);
-            var status = query(buffer, ref size);
-            if (status == 0)
+            var allocSize = size;
+            var buffer = Marshal.AllocHGlobal(allocSize);
+            var keepBuffer = false;
+            try
             {
-                return buffer;
-            }
+                var status = query(buffer, ref size);
+                if (status == 0)
+                {
+                    keepBuffer = true;
+                    return (buffer, allocSize);
+                }
 
-            Marshal.FreeHGlobal(buffer);
-            if (status != ErrorInsufficientBuffer)
+                if (status != ErrorInsufficientBuffer)
+                {
+                    return (nint.Zero, 0);
+                }
+            }
+            finally
             {
-                return nint.Zero;
+                if (!keepBuffer)
+                {
+                    Marshal.FreeHGlobal(buffer);
+                }
             }
 
             size += 4096;
         }
 
-        return nint.Zero;
+        return (nint.Zero, 0);
     }
 
     private static int DecodePort(int rawPort) => ((rawPort & 0xFF) << 8) | ((rawPort >> 8) & 0xFF);
@@ -474,6 +524,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
 
     private static class NativeMethods
     {
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("iphlpapi.dll", SetLastError = true)]
         public static extern uint GetExtendedTcpTable(
             nint pTcpTable,
@@ -483,6 +534,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
             int tableClass,
             uint reserved);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("iphlpapi.dll", SetLastError = true)]
         public static extern uint GetExtendedUdpTable(
             nint pUdpTable,
@@ -492,27 +544,33 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
             int tableClass,
             uint reserved);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern nint CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool Process32FirstW(nint hSnapshot, ref ProcessEntry32W lppe);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool Process32NextW(nint hSnapshot, ref ProcessEntry32W lppe);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool CloseHandle(nint hObject);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern nint OpenProcess(
             uint dwDesiredAccess,
             [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
             uint dwProcessId);
 
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool QueryFullProcessImageNameW(

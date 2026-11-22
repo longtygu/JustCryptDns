@@ -7,10 +7,13 @@ using Microsoft.Extensions.Logging;
 namespace JustCryptDns.Infrastructure.Storage;
 
 /// <summary>
-/// JSON file store with atomic replacement, a rolling <c>.bak</c> copy, schema migration and corruption recovery.
+/// JSON file store with atomic replacement, retry on transient cross-process locks,
+/// a rolling <c>.bak</c> copy, schema migration and corruption recovery.
 /// </summary>
 public sealed class JsonSettingsStore : ISettingsStore
 {
+    private const int MaxIoAttempts = 4;
+
     private readonly string _path;
     private readonly string _backupPath;
     private readonly SettingsMigrator _migrator;
@@ -31,17 +34,26 @@ public sealed class JsonSettingsStore : ISettingsStore
             return new SettingsLoadResult(new AppSettings(), SettingsLoadOutcome.Defaults);
         }
 
-        if (TryRead(_path, out var settings, out var outcome, out var error))
+        if (TryRead(_path, out var settings, out var outcome, out var error, out var transientIo))
         {
             return new SettingsLoadResult(settings!, outcome);
         }
 
         _logger.LogWarning("Settings file unreadable ({Error}); trying backup.", error);
 
-        if (File.Exists(_backupPath) && TryRead(_backupPath, out settings, out _, out var backupError))
+        if (File.Exists(_backupPath) && TryRead(_backupPath, out settings, out _, out _, out _))
         {
-            PreserveCorrupt();
+            if (!transientIo)
+            {
+                PreserveCorrupt();
+            }
+
             return new SettingsLoadResult(settings!, SettingsLoadOutcome.RecoveredFromBackup, error);
+        }
+
+        if (transientIo)
+        {
+            return new SettingsLoadResult(new AppSettings(), SettingsLoadOutcome.ResetAfterCorruption, error);
         }
 
         var preserved = PreserveCorrupt();
@@ -70,40 +82,87 @@ public sealed class JsonSettingsStore : ISettingsStore
                 await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            if (File.Exists(_path))
+            for (var attempt = 1; attempt <= MaxIoAttempts; attempt++)
             {
-                // Only keep the current file as backup if it is valid, so a corrupt file never overwrites a good backup.
-                if (TryRead(_path, out _, out _, out _))
+                try
                 {
-                    File.Replace(temp, _path, _backupPath, ignoreMetadataErrors: true);
+                    if (File.Exists(_path))
+                    {
+                        // Only keep the current file as backup if it is valid, so a corrupt file never overwrites a good backup.
+                        if (TryRead(_path, out _, out _, out _, out _))
+                        {
+                            File.Replace(temp, _path, _backupPath, ignoreMetadataErrors: true);
+                        }
+                        else
+                        {
+                            File.Move(temp, _path, overwrite: true);
+                        }
+                    }
+                    else
+                    {
+                        File.Move(temp, _path, overwrite: true);
+                    }
+
+                    break;
                 }
-                else
+                catch (IOException) when (attempt < MaxIoAttempts)
                 {
-                    File.Move(temp, _path, overwrite: true);
+                    await Task.Delay(30 * attempt, cancellationToken).ConfigureAwait(false);
                 }
-            }
-            else
-            {
-                File.Move(temp, _path);
             }
         }
         finally
         {
-            if (File.Exists(temp))
+            try
             {
-                File.Delete(temp);
+                if (File.Exists(temp))
+                {
+                    File.Delete(temp);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Ignore temp cleanup failure so we never mask the primary save result.
             }
         }
     }
 
-    private bool TryRead(string path, out AppSettings? settings, out SettingsLoadOutcome outcome, out string? error)
+    private bool TryRead(
+        string path,
+        out AppSettings? settings,
+        out SettingsLoadOutcome outcome,
+        out string? error,
+        out bool isTransientIoError)
     {
         settings = null;
         outcome = SettingsLoadOutcome.Loaded;
         error = null;
+        isTransientIoError = false;
         try
         {
-            var text = File.ReadAllText(path, Encoding.UTF8);
+            string? text = null;
+            for (var attempt = 1; attempt <= MaxIoAttempts; attempt++)
+            {
+                try
+                {
+                    using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    using var reader = new StreamReader(fs, Encoding.UTF8);
+                    text = reader.ReadToEnd();
+                    break;
+                }
+                catch (IOException) when (attempt < MaxIoAttempts)
+                {
+                    Thread.Sleep(25 * attempt);
+                }
+            }
+
+            if (text is null)
+            {
+                isTransientIoError = true;
+                error = "Settings file was locked by another process.";
+                return false;
+            }
+
             var node = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions
             {
                 CommentHandling = JsonCommentHandling.Skip,
@@ -136,7 +195,13 @@ public sealed class JsonSettingsStore : ISettingsStore
             settings.Normalize();
             return true;
         }
-        catch (Exception ex) when (ex is JsonException or IOException or InvalidOperationException or UnauthorizedAccessException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            isTransientIoError = true;
+            error = ex.Message;
+            return false;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
         {
             error = ex.Message;
             return false;

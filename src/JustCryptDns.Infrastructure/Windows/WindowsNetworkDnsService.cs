@@ -8,6 +8,7 @@ using System.Text.Json;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Models;
+using JustCryptDns.Infrastructure.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
@@ -199,18 +200,34 @@ public sealed partial class NetshAdapterDnsConfigurator : IAdapterDnsConfigurato
         IReadOnlyList<string> servers)
     {
         var family = ipv6 ? "ipv6" : "ipv4";
-        var safeName = adapterName.Replace("\"", string.Empty, StringComparison.Ordinal);
+        var safeName = adapterName
+            .Replace("\"", string.Empty, StringComparison.Ordinal)
+            .Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", string.Empty, StringComparison.Ordinal)
+            .Replace("\0", string.Empty, StringComparison.Ordinal);
 
-        if (useDhcp || servers.Count == 0)
+        var validServers = new List<string>(servers.Count);
+        foreach (var rawServer in servers)
+        {
+            if (IPAddress.TryParse(rawServer?.Trim(), out var parsedIp)
+                && (ipv6
+                    ? parsedIp.AddressFamily == AddressFamily.InterNetworkV6
+                    : parsedIp.AddressFamily == AddressFamily.InterNetwork))
+            {
+                validServers.Add(parsedIp.ToString());
+            }
+        }
+
+        if (useDhcp || validServers.Count == 0)
         {
             commands.Add($"interface {family} set dnsservers name=\"{safeName}\" source=dhcp");
             return;
         }
 
-        commands.Add($"interface {family} set dnsservers name=\"{safeName}\" static {servers[0]} primary validate=no");
-        for (var i = 1; i < servers.Count; i++)
+        commands.Add($"interface {family} set dnsservers name=\"{safeName}\" static {validServers[0]} primary validate=no");
+        for (var i = 1; i < validServers.Count; i++)
         {
-            commands.Add($"interface {family} add dnsservers name=\"{safeName}\" {servers[i]} index={i + 1} validate=no");
+            commands.Add($"interface {family} add dnsservers name=\"{safeName}\" {validServers[i]} index={i + 1} validate=no");
         }
     }
 
@@ -289,11 +306,15 @@ public sealed partial class NetshAdapterDnsConfigurator : IAdapterDnsConfigurato
 
     private static async Task<(bool Success, string? Error)> RunNetshAsync(string arguments, CancellationToken ct)
     {
+        var netshPath = OperatingSystem.IsWindows()
+            ? Path.Combine(Environment.SystemDirectory, "netsh.exe")
+            : "netsh.exe";
+
         try
         {
             if (!IsProcessElevated() && OperatingSystem.IsWindows())
             {
-                var elevatedPsi = new ProcessStartInfo("netsh.exe", arguments)
+                var elevatedPsi = new ProcessStartInfo(netshPath, arguments)
                 {
                     UseShellExecute = true,
                     Verb = "runas",
@@ -311,7 +332,7 @@ public sealed partial class NetshAdapterDnsConfigurator : IAdapterDnsConfigurato
                     : (false, $"Elevated netsh exited with code {elevatedProc.ExitCode}.");
             }
 
-            var psi = new ProcessStartInfo("netsh.exe", arguments)
+            var psi = new ProcessStartInfo(netshPath, arguments)
             {
                 CreateNoWindow = true,
                 UseShellExecute = false,
@@ -325,19 +346,39 @@ public sealed partial class NetshAdapterDnsConfigurator : IAdapterDnsConfigurato
                 return (false, "Failed to launch netsh.exe.");
             }
 
-            var stdout = await proc.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
-            var stderr = await proc.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
-
-            if (proc.ExitCode == 0)
+            try
             {
-                return (true, null);
-            }
+                var stdoutTask = proc.StandardOutput.ReadToEndAsync(ct);
+                var stderrTask = proc.StandardError.ReadToEndAsync(ct);
+                await Task.WhenAll(stdoutTask, stderrTask, proc.WaitForExitAsync(ct)).ConfigureAwait(false);
+                var stdout = await stdoutTask.ConfigureAwait(false);
+                var stderr = await stderrTask.ConfigureAwait(false);
 
-            var detail = !string.IsNullOrWhiteSpace(stderr) ? stderr.Trim() : stdout.Trim();
-            return (false, string.IsNullOrWhiteSpace(detail)
-                ? $"netsh exited with code {proc.ExitCode} (Administrator privileges may be required)."
-                : detail);
+                if (proc.ExitCode == 0)
+                {
+                    return (true, null);
+                }
+
+                var detail = !string.IsNullOrWhiteSpace(stderr) ? stderr.Trim() : stdout.Trim();
+                return (false, string.IsNullOrWhiteSpace(detail)
+                    ? $"netsh exited with code {proc.ExitCode} (Administrator privileges may be required)."
+                    : detail);
+            }
+            catch (OperationCanceledException)
+            {
+                try
+                {
+                    if (!proc.HasExited)
+                    {
+                        proc.Kill(entireProcessTree: true);
+                    }
+                }
+                catch
+                {
+                }
+
+                throw;
+            }
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
@@ -432,13 +473,35 @@ public sealed class WindowsNetworkDnsService : IWindowsDnsManager, IDisposable
                 return new WindowsDnsOperationResult(false, "No active network adapter found to configure.");
             }
 
-            // Step 2: Back up existing DNS configuration (preserve existing active backup if one is already active).
+            // Step 2: Back up existing DNS configuration (preserve existing active backup and append new adapters on network switch).
             var existingBackup = ReadBackup();
             var hadExistingActiveBackup = existingBackup is { IsActive: true } && existingBackup.VerifyIntegrity();
             AdapterDnsBackupDocument backup;
             if (hadExistingActiveBackup)
             {
                 backup = existingBackup!;
+                if (!backup.Adapters.Any(a => string.Equals(a.AdapterId, adapter.Id, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var (rawV4Dhcp, rawV4Servers, rawV6Dhcp, rawV6Servers) = _configurator.ReadStaticConfiguration(adapter);
+                    var (v4Dhcp, v4Servers) = SanitizeBackupServers(rawV4Dhcp, rawV4Servers, ipv4Dns, adapter.Name);
+                    var (v6Dhcp, v6Servers) = SanitizeBackupServers(rawV6Dhcp, rawV6Servers, ipv6Dns, adapter.Name);
+                    var updatedAdapters = backup.Adapters.ToList();
+                    updatedAdapters.Add(new AdapterDnsBackupEntry
+                    {
+                        AdapterId = adapter.Id,
+                        AdapterName = adapter.Name,
+                        WasIpv4Dhcp = v4Dhcp,
+                        Ipv4DnsServers = v4Servers,
+                        WasIpv6Dhcp = v6Dhcp,
+                        Ipv6DnsServers = v6Servers,
+                    });
+                    backup = backup with
+                    {
+                        Adapters = updatedAdapters,
+                        IntegrityHash = AdapterDnsBackupDocument.ComputeHash(updatedAdapters),
+                    };
+                    await WriteBackupAsync(backup, cancellationToken).ConfigureAwait(false);
+                }
             }
             else
             {
@@ -800,7 +863,39 @@ public sealed class WindowsNetworkDnsService : IWindowsDnsManager, IDisposable
     {
         Directory.CreateDirectory(_paths.DataDirectory);
         var json = JsonSerializer.Serialize(doc, SettingsJson.Options);
-        await File.WriteAllTextAsync(_paths.DnsBackupFile, json, Encoding.UTF8, ct).ConfigureAwait(false);
+        var tempPath = $"{_paths.DnsBackupFile}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await using (var fs = new FileStream(
+                tempPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 4096,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            await using (var writer = new StreamWriter(fs, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+            {
+                await writer.WriteAsync(json.AsMemory(), ct).ConfigureAwait(false);
+                await writer.FlushAsync(ct).ConfigureAwait(false);
+                await fs.FlushAsync(ct).ConfigureAwait(false);
+            }
+
+            File.Move(tempPath, _paths.DnsBackupFile, overwrite: true);
+            SharedDataAclHelper.TryApplyAdminOnlyWriteFileAcl(_paths.DnsBackupFile, _logger);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+        }
     }
 
     public void Dispose() => _gate.Dispose();

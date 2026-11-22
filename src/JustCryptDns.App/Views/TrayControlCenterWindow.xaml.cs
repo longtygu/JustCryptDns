@@ -153,61 +153,85 @@ public partial class TrayControlCenterWindow : Window
 
     private async void OnToggleDnsClick(object sender, RoutedEventArgs e)
     {
-        var enable = DnsToggle.IsChecked == true;
-        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        try
         {
-            await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, enable)).ConfigureAwait(true);
+            var enable = DnsToggle.IsChecked == true;
+            if (_localEngine is not null)
+            {
+                if (enable)
+                {
+                    await _localEngine.StartAsync().ConfigureAwait(true);
+                }
+                else
+                {
+                    await _localEngine.StopAsync().ConfigureAwait(true);
+                }
+            }
+            else if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            {
+                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, enable)).ConfigureAwait(true);
+            }
         }
-        else if (_localEngine is not null)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            if (enable)
-            {
-                await _localEngine.StartAsync().ConfigureAwait(true);
-            }
-            else
-            {
-                await _localEngine.StopAsync().ConfigureAwait(true);
-            }
         }
-
-        RefreshState();
+        finally
+        {
+            RefreshState();
+        }
     }
 
     private async void OnToggleDpiClick(object sender, RoutedEventArgs e)
     {
-        var enable = DpiToggle.IsChecked == true;
-        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        try
         {
-            await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetBypassEnabled, enable)).ConfigureAwait(true);
+            var enable = DpiToggle.IsChecked == true;
+            if (_bypassEngine is not null)
+            {
+                if (enable)
+                {
+                    await _bypassEngine.StartAsync().ConfigureAwait(true);
+                }
+                else
+                {
+                    await _bypassEngine.StopAsync().ConfigureAwait(true);
+                }
+            }
+            else if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            {
+                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetBypassEnabled, enable)).ConfigureAwait(true);
+            }
         }
-        else if (_bypassEngine is not null)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            if (enable)
-            {
-                await _bypassEngine.StartAsync().ConfigureAwait(true);
-            }
-            else
-            {
-                await _bypassEngine.StopAsync().ConfigureAwait(true);
-            }
         }
-
-        RefreshState();
+        finally
+        {
+            RefreshState();
+        }
     }
 
     private async void OnToggleGameClick(object sender, RoutedEventArgs e)
     {
-        var enable = GameToggle.IsChecked == true;
-        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        try
         {
-            await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetGamingMode, enable)).ConfigureAwait(true);
+            var enable = GameToggle.IsChecked == true;
+            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            {
+                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetGamingMode, enable)).ConfigureAwait(true);
+            }
+            else if (_gamingEngine is not null)
+            {
+                await _gamingEngine.SetGamingModeAsync(enable).ConfigureAwait(true);
+            }
         }
-        else if (_gamingEngine is not null)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            await _gamingEngine.SetGamingModeAsync(enable).ConfigureAwait(true);
         }
-
-        RefreshState();
+        finally
+        {
+            RefreshState();
+        }
     }
 
     private async void OnToggleLockdownClick(object sender, RoutedEventArgs e)
@@ -218,14 +242,21 @@ public partial class TrayControlCenterWindow : Window
         }
 
         var enable = LockdownToggle.IsChecked == true;
-        var conn = _settings.Current.Connections;
-        var result = await _firewall.SyncSecurityAsync(new FirewallSyncRequestPayload(
-            conn.BlockedRules.ToList(),
-            conn.BlockedApps.ToList(),
-            conn.EnableDnsLeakGuard,
-            enable)).ConfigureAwait(true);
+        try
+        {
+            var conn = _settings.Current.Connections;
+            var result = await _firewall.SyncSecurityAsync(new FirewallSyncRequestPayload(
+                conn.BlockedRules.ToList(),
+                conn.BlockedApps.ToList(),
+                conn.EnableDnsLeakGuard,
+                enable)).ConfigureAwait(true);
 
-        if (!result.Success)
+            if (!result.Success)
+            {
+                LockdownToggle.IsChecked = !enable;
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             LockdownToggle.IsChecked = !enable;
         }
@@ -238,17 +269,32 @@ public partial class TrayControlCenterWindow : Window
             return;
         }
 
-        if (_isCaptivePaused)
+        try
         {
-            await _localEngine.ResumeFromCaptivePortalAsync().ConfigureAwait(true);
+            if (_isCaptivePaused)
+            {
+                await _localEngine.ResumeFromCaptivePortalAsync().ConfigureAwait(true);
+            }
+            else
+            {
+                await _localEngine.PauseForCaptivePortalAsync(TimeSpan.FromMinutes(5)).ConfigureAwait(true);
+            }
         }
-        else
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            await _localEngine.PauseForCaptivePortalAsync(TimeSpan.FromMinutes(5)).ConfigureAwait(true);
         }
-
-        RefreshState();
+        finally
+        {
+            RefreshState();
+        }
     }
 
-    private void OnFlushCacheClick(object sender, RoutedEventArgs e) => _cache?.Clear();
+    private void OnFlushCacheClick(object sender, RoutedEventArgs e)
+    {
+        _cache?.Clear();
+        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+        {
+            _ = _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ClearDnsCache));
+        }
+    }
 }

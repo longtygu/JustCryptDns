@@ -500,6 +500,7 @@ public static class PortConflictDetector
 public sealed class LocalDnsProxy : IAsyncDisposable
 {
     private const int MaxConcurrentQueries = 128;
+    private const int MaxConcurrentTcpQueries = 32;
 
     private readonly IPAddress _listenAddress;
     private readonly int _port;
@@ -508,10 +509,12 @@ public sealed class LocalDnsProxy : IAsyncDisposable
     private readonly Func<ReadOnlyMemory<byte>, CancellationToken, Task<byte[]>> _queryHandler;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _concurrency = new(MaxConcurrentQueries, MaxConcurrentQueries);
+    private readonly SemaphoreSlim _tcpConcurrency = new(MaxConcurrentTcpQueries, MaxConcurrentTcpQueries);
     private readonly List<Socket> _udpSockets = [];
     private readonly List<TcpListener> _tcpListeners = [];
     private readonly List<Task> _loops = [];
     private CancellationTokenSource? _cts;
+    private int _disposed;
 
     public LocalDnsProxy(
         IPAddress listenAddress,
@@ -575,6 +578,11 @@ public sealed class LocalDnsProxy : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         if (_cts is not null)
         {
             await _cts.CancelAsync().ConfigureAwait(false);
@@ -621,6 +629,7 @@ public sealed class LocalDnsProxy : IAsyncDisposable
         _cts?.Dispose();
         _cts = null;
         _concurrency.Dispose();
+        _tcpConcurrency.Dispose();
     }
 
     private void BindEndpoint(IPAddress address, int port, CancellationToken ct)
@@ -643,11 +652,16 @@ public sealed class LocalDnsProxy : IAsyncDisposable
                 tcp.Start();
                 break;
             }
-            catch (SocketException) when (attempt < maxAttempts)
+            catch (SocketException)
             {
+                try { tcp?.Stop(); } catch { }
                 udp.Dispose();
                 udp = null;
                 tcp = null;
+                if (attempt >= maxAttempts)
+                {
+                    throw;
+                }
             }
         }
 
@@ -700,7 +714,14 @@ public sealed class LocalDnsProxy : IAsyncDisposable
 
     private async Task HandleUdpClientAsync(Socket udp, byte[] query, EndPoint clientEndpoint, CancellationToken ct)
     {
-        if (!await _concurrency.WaitAsync(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false))
+        try
+        {
+            if (!await _concurrency.WaitAsync(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false))
+            {
+                return;
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
         {
             return;
         }
@@ -724,7 +745,7 @@ public sealed class LocalDnsProxy : IAsyncDisposable
         }
         finally
         {
-            _concurrency.Release();
+            ReleaseSafe(_concurrency);
         }
     }
 
@@ -737,7 +758,16 @@ public sealed class LocalDnsProxy : IAsyncDisposable
             {
                 client = await listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is OperationCanceledException or SocketException or ObjectDisposedException)
+            catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+            {
+                break;
+            }
+            catch (SocketException) when (!ct.IsCancellationRequested && Volatile.Read(ref _disposed) == 0)
+            {
+                try { await Task.Delay(50, ct).ConfigureAwait(false); } catch (OperationCanceledException) { break; }
+                continue;
+            }
+            catch (SocketException)
             {
                 break;
             }
@@ -748,22 +778,28 @@ public sealed class LocalDnsProxy : IAsyncDisposable
 
     private async Task HandleTcpClientAsync(TcpClient client, CancellationToken ct)
     {
-        if (!await _concurrency.WaitAsync(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false))
+        using (client)
         {
-            client.Dispose();
-            return;
-        }
-
-        try
-        {
-            using (client)
+            try
             {
-                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(8));
+                if (!await _tcpConcurrency.WaitAsync(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false))
+                {
+                    return;
+                }
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+            {
+                return;
+            }
+
+            try
+            {
+                using var readCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                readCts.CancelAfter(TimeSpan.FromSeconds(2));
                 var stream = client.GetStream();
 
                 var lenBuf = new byte[2];
-                await stream.ReadExactlyAsync(lenBuf, timeoutCts.Token).ConfigureAwait(false);
+                await stream.ReadExactlyAsync(lenBuf, readCts.Token).ConfigureAwait(false);
                 var queryLen = BinaryPrimitives.ReadUInt16BigEndian(lenBuf);
                 if (queryLen < DnsPacket.HeaderSize)
                 {
@@ -771,9 +807,11 @@ public sealed class LocalDnsProxy : IAsyncDisposable
                 }
 
                 var query = new byte[queryLen];
-                await stream.ReadExactlyAsync(query, timeoutCts.Token).ConfigureAwait(false);
+                await stream.ReadExactlyAsync(query, readCts.Token).ConfigureAwait(false);
 
-                var response = await _queryHandler(query, timeoutCts.Token).ConfigureAwait(false);
+                using var queryCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                queryCts.CancelAfter(TimeSpan.FromSeconds(8));
+                var response = await _queryHandler(query, queryCts.Token).ConfigureAwait(false);
                 if (response.Length < DnsPacket.HeaderSize)
                 {
                     response = DnsPacket.CreateErrorResponse(query, DnsResponseCode.ServFail);
@@ -784,18 +822,29 @@ public sealed class LocalDnsProxy : IAsyncDisposable
                     var framed = new byte[2 + response.Length];
                     BinaryPrimitives.WriteUInt16BigEndian(framed.AsSpan(0, 2), (ushort)response.Length);
                     response.CopyTo(framed.AsSpan(2));
-                    await stream.WriteAsync(framed, timeoutCts.Token).ConfigureAwait(false);
-                    await stream.FlushAsync(timeoutCts.Token).ConfigureAwait(false);
+                    await stream.WriteAsync(framed, queryCts.Token).ConfigureAwait(false);
+                    await stream.FlushAsync(queryCts.Token).ConfigureAwait(false);
                 }
             }
+            catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException or ObjectDisposedException)
+            {
+                // Client closed connection early or proxy disposed.
+            }
+            finally
+            {
+                ReleaseSafe(_tcpConcurrency);
+            }
         }
-        catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException)
+    }
+
+    private static void ReleaseSafe(SemaphoreSlim semaphore)
+    {
+        try
         {
-            // Client closed connection early.
+            semaphore.Release();
         }
-        finally
+        catch (ObjectDisposedException)
         {
-            _concurrency.Release();
         }
     }
 }

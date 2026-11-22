@@ -252,6 +252,12 @@ public sealed partial class DashboardViewModel : PageViewModel
             RefreshRecentQueries();
         }
 
+        if (_serviceClient is not null)
+        {
+            _serviceClient.StateChanged -= OnServiceClientStateChanged;
+            _serviceClient.StateChanged += OnServiceClientStateChanged;
+        }
+
         ApplyEngineStats(_dnsEngine.GetStats());
         StartServicePolling();
         _ = RefreshCommand.ExecuteAsync(null);
@@ -260,6 +266,11 @@ public sealed partial class DashboardViewModel : PageViewModel
     public override void OnNavigatedFrom()
     {
         StopServicePolling();
+        if (_serviceClient is not null)
+        {
+            _serviceClient.StateChanged -= OnServiceClientStateChanged;
+        }
+
         _network.NetworkChanged -= OnNetworkChanged;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
         if (_bypassEngine is not null)
@@ -291,6 +302,11 @@ public sealed partial class DashboardViewModel : PageViewModel
         if (disposing)
         {
             StopServicePolling();
+            if (_serviceClient is not null)
+            {
+                _serviceClient.StateChanged -= OnServiceClientStateChanged;
+            }
+
             _network.NetworkChanged -= OnNetworkChanged;
             _dnsEngine.StateChanged -= OnEngineStateChanged;
             if (_bypassEngine is not null)
@@ -848,6 +864,30 @@ public sealed partial class DashboardViewModel : PageViewModel
     private void OnSettingsChanged(object? sender, AppSettings settings)
     {
         void Sync() => StatusPulseStyle = settings.Appearance.StatusPulseStyle;
+        if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+        {
+            dispatcher.BeginInvoke(Sync);
+        }
+        else
+        {
+            Sync();
+        }
+    }
+
+    private void OnServiceClientStateChanged(object? sender, EventArgs e)
+    {
+        void Sync()
+        {
+            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            {
+                StartServicePolling();
+            }
+            else
+            {
+                StopServicePolling();
+            }
+        }
+
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(Sync);

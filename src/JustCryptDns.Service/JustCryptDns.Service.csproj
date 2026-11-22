@@ -6,7 +6,7 @@
     <RootNamespace>JustCryptDns.Service</RootNamespace>
     <AssemblyName>JustCryptDns.Service</AssemblyName>
     <ServerGarbageCollector>false</ServerGarbageCollector>
-    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>

@@ -311,20 +311,27 @@ public sealed class TrayIconService : ITrayIconService
         var dnsLabel = engineEnabled ? loc["Tray_DisableDns"] : loc["Tray_EnableDns"];
         var dnsItem = CreateItem("\uEA18", dnsLabel, async () =>
         {
-            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            try
             {
-                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, !engineEnabled)).ConfigureAwait(false);
+                if (_localEngine is not null)
+                {
+                    if (engineEnabled)
+                    {
+                        await _localEngine.StopAsync().ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await _localEngine.StartAsync().ConfigureAwait(false);
+                    }
+                }
+                else if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+                {
+                    await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetEngineEnabled, !engineEnabled)).ConfigureAwait(false);
+                }
             }
-            else if (_localEngine is not null)
+            catch (Exception ex) when (ex is not OutOfMemoryException)
             {
-                if (engineEnabled)
-                {
-                    await _localEngine.StopAsync().ConfigureAwait(false);
-                }
-                else
-                {
-                    await _localEngine.StartAsync().ConfigureAwait(false);
-                }
+                _logger.LogDebug(ex, "Tray DNS toggle action failed.");
             }
         });
         menu.Items.Add(dnsItem);
@@ -332,20 +339,27 @@ public sealed class TrayIconService : ITrayIconService
         var bypassLabel = bypassEnabled ? loc["Tray_DisableBypass"] : loc["Tray_EnableBypass"];
         var bypassItem = CreateItem("\uE705", bypassLabel, async () =>
         {
-            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            try
             {
-                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetBypassEnabled, !bypassEnabled)).ConfigureAwait(false);
+                if (_bypassEngine is not null)
+                {
+                    if (bypassEnabled)
+                    {
+                        await _bypassEngine.StopAsync().ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await _bypassEngine.StartAsync().ConfigureAwait(false);
+                    }
+                }
+                else if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+                {
+                    await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetBypassEnabled, !bypassEnabled)).ConfigureAwait(false);
+                }
             }
-            else if (_bypassEngine is not null)
+            catch (Exception ex) when (ex is not OutOfMemoryException)
             {
-                if (bypassEnabled)
-                {
-                    await _bypassEngine.StopAsync().ConfigureAwait(false);
-                }
-                else
-                {
-                    await _bypassEngine.StartAsync().ConfigureAwait(false);
-                }
+                _logger.LogDebug(ex, "Tray DPI bypass toggle action failed.");
             }
         });
         menu.Items.Add(bypassItem);
@@ -353,13 +367,20 @@ public sealed class TrayIconService : ITrayIconService
         var gamingLabel = gamingEnabled ? loc["Tray_DisableGaming"] : loc["Tray_EnableGaming"];
         var gamingItem = CreateItem("\uE7FC", gamingLabel, async () =>
         {
-            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            try
             {
-                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetGamingMode, !gamingEnabled)).ConfigureAwait(false);
+                if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+                {
+                    await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.SetGamingMode, !gamingEnabled)).ConfigureAwait(false);
+                }
+                else if (_gamingEngine is not null)
+                {
+                    await _gamingEngine.SetGamingModeAsync(!gamingEnabled).ConfigureAwait(false);
+                }
             }
-            else if (_gamingEngine is not null)
+            catch (Exception ex) when (ex is not OutOfMemoryException)
             {
-                await _gamingEngine.SetGamingModeAsync(!gamingEnabled).ConfigureAwait(false);
+                _logger.LogDebug(ex, "Tray Gaming Mode toggle action failed.");
             }
         });
         menu.Items.Add(gamingItem);
@@ -373,18 +394,25 @@ public sealed class TrayIconService : ITrayIconService
 
         var restoreItem = CreateItem("\uE777", loc["Tray_RestoreDns"], async () =>
         {
-            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            try
             {
-                await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.RestoreOriginalDns)).ConfigureAwait(false);
-            }
-            else if (_windowsDns is not null)
-            {
-                await _windowsDns.RestoreOriginalDnsAsync().ConfigureAwait(false);
-            }
+                if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+                {
+                    await _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.RestoreOriginalDns)).ConfigureAwait(false);
+                }
+                else if (_windowsDns is not null)
+                {
+                    await _windowsDns.RestoreOriginalDnsAsync().ConfigureAwait(false);
+                }
 
-            if (_windowsProxy is not null && _windowsProxy.HasActiveBackup())
+                if (_windowsProxy is not null && _windowsProxy.HasActiveBackup())
+                {
+                    await _windowsProxy.RestoreOriginalProxyAsync().ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
             {
-                await _windowsProxy.RestoreOriginalProxyAsync().ConfigureAwait(false);
+                _logger.LogDebug(ex, "Tray Emergency Restore DNS action failed.");
             }
         });
         menu.Items.Add(restoreItem);

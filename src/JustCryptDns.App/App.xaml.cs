@@ -60,18 +60,6 @@ public partial class App : Application
         var clearFirewallOnRecovery = e.Args.Any(a =>
             string.Equals(a, "--clear-firewall", StringComparison.OrdinalIgnoreCase));
 
-        _instanceGuard = SingleInstanceGuard.Acquire("JustCryptDns");
-        if (!_instanceGuard.IsPrimary)
-        {
-            if (!isRecoveryMode)
-            {
-                _instanceGuard.SignalPrimary();
-            }
-
-            Shutdown(0);
-            return;
-        }
-
         var paths = new AppPaths(Environment.GetEnvironmentVariable("JUSTCRYPTDNS_DATA_DIR"));
         paths.EnsureCreated();
         if (OperatingSystem.IsWindows())
@@ -93,6 +81,22 @@ public partial class App : Application
             _recoveryLoggerFactory = loggerFactory;
             var exitCode = RunHeadlessBootRecovery(paths, loggerFactory, clearFirewallOnRecovery);
             Shutdown(exitCode);
+            return;
+        }
+
+        try
+        {
+            _instanceGuard = SingleInstanceGuard.Acquire("JustCryptDns");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "SingleInstanceGuard named kernel objects were inaccessible; continuing startup.");
+        }
+
+        if (_instanceGuard is { IsPrimary: false })
+        {
+            _instanceGuard.SignalPrimary();
+            Shutdown(0);
             return;
         }
 
@@ -167,7 +171,7 @@ public partial class App : Application
                 (int)(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds);
         }
 
-        _instanceGuard.ListenForActivation(() => Dispatcher.BeginInvoke(ActivateMainWindow));
+        _instanceGuard?.ListenForActivation(() => Dispatcher.BeginInvoke(ActivateMainWindow));
     }
 
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
@@ -217,21 +221,11 @@ public partial class App : Application
                 // TrayIconService wraps an HwndSource tied to the UI Dispatcher thread; dispose it here before offloading async container teardown.
                 services.GetService<ITrayIconService>()?.Dispose();
 
-                if (services.GetService<IBypassEngineService>() is { } bypassEngine)
-                {
-                    Task.Run(() => bypassEngine.DisposeAsync().AsTask()).Wait(1500);
-                }
-
-                if (services.GetService<IDnsEngine>() is { } dnsEngine)
-                {
-                    Task.Run(() => dnsEngine.DisposeAsync().AsTask()).Wait(1500);
-                }
-
-                Task.Run(() => services.DisposeAsync().AsTask()).Wait(2000);
+                Task.Run(async () => await services.DisposeAsync().ConfigureAwait(false)).Wait(3500);
             }
             catch (Exception ex) when (ex is AggregateException or OperationCanceledException or ObjectDisposedException or InvalidOperationException)
             {
-                _logger.LogWarning(ex, "Engine async disposal during exit did not finish cleanly.");
+                _logger.LogDebug(ex, "Service container async disposal completed with expected cancellation.");
             }
 
             _services = null;
@@ -445,6 +439,15 @@ public partial class App : Application
             var bypassEngine = services.GetRequiredService<IBypassEngineService>();
 
             await serviceClient.RefreshStatusAsync().ConfigureAwait(false);
+            if (serviceClient.ConnectionState != ServiceConnectionState.Connected && IsWindowsServiceRunningOrStarting())
+            {
+                for (var retry = 0; retry < 4 && serviceClient.ConnectionState != ServiceConnectionState.Connected; retry++)
+                {
+                    await Task.Delay(500).ConfigureAwait(false);
+                    await serviceClient.RefreshStatusAsync().ConfigureAwait(false);
+                }
+            }
+
             var serviceConnected = serviceClient.ConnectionState == ServiceConnectionState.Connected;
             var serviceBypassRunning = serviceConnected && serviceClient.LastStatus?.IsBypassRunning == true;
             await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: serviceBypassRunning).ConfigureAwait(false);
@@ -535,6 +538,30 @@ public partial class App : Application
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Standalone startup initialization encountered an error.");
+        }
+    }
+
+    private static bool IsWindowsServiceRunningOrStarting()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        try
+        {
+            var procs = System.Diagnostics.Process.GetProcessesByName("JustCryptDns.Service");
+            var running = procs.Length > 0;
+            foreach (var p in procs)
+            {
+                p.Dispose();
+            }
+
+            return running;
+        }
+        catch
+        {
+            return false;
         }
     }
 

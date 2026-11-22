@@ -126,6 +126,11 @@ public sealed class DnsPacket
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
         var txId = id ?? GenerateTransactionId();
         var flags = recursionDesired ? (ushort)0x0100 : (ushort)0x0000;
+        if (dnssecOk)
+        {
+            flags |= 0x0020; // RFC 6840 §5.7 AD bit in query requests AD validation indicator
+        }
+
         var arCount = dnssecOk ? (ushort)1 : (ushort)0;
 
         using var ms = new MemoryStream(64);
@@ -239,7 +244,8 @@ public sealed class DnsPacket
 
             if (rrType != DnsRecordType.OPT)
             {
-                BinaryPrimitives.WriteUInt32BigEndian(wire.Slice(offset + 4, 4), newTtlSeconds);
+                var existingTtl = BinaryPrimitives.ReadUInt32BigEndian(ro.Slice(offset + 4, 4));
+                BinaryPrimitives.WriteUInt32BigEndian(wire.Slice(offset + 4, 4), Math.Min(existingTtl, newTtlSeconds));
             }
 
             offset += 10 + rdLength;
@@ -303,10 +309,18 @@ public sealed class DnsPacket
 
             case LocalDnsRewriteRecordType.CNAME:
             {
-                using var cnameStream = new MemoryStream(64);
-                WriteDomainName(cnameStream, cleanTarget);
-                wireType = DnsRecordType.CNAME;
-                rdata = cnameStream.ToArray();
+                try
+                {
+                    using var cnameStream = new MemoryStream(64);
+                    WriteDomainName(cnameStream, cleanTarget);
+                    wireType = DnsRecordType.CNAME;
+                    rdata = cnameStream.ToArray();
+                }
+                catch (ArgumentException)
+                {
+                    return CreateErrorResponse(requestWire, DnsResponseCode.ServFail);
+                }
+
                 break;
             }
 
@@ -356,6 +370,11 @@ public sealed class DnsPacket
             AnswerCount: BinaryPrimitives.ReadUInt16BigEndian(buffer[6..8]),
             AuthorityCount: BinaryPrimitives.ReadUInt16BigEndian(buffer[8..10]),
             AdditionalCount: BinaryPrimitives.ReadUInt16BigEndian(buffer[10..12]));
+
+        if (header.QuestionCount > 64 || header.AnswerCount > 256)
+        {
+            return false;
+        }
 
         var offset = HeaderSize;
         var questions = new List<DnsQuestion>(Math.Min((int)header.QuestionCount, 16));
@@ -537,7 +556,8 @@ public sealed class DnsPacket
                 }
 
                 var pointer = ((len & 0x3F) << 8) | buffer[current + 1];
-                if (pointer >= buffer.Length)
+                // Pointer must point strictly backward within the DNS payload (after the 12-byte header).
+                if (pointer < HeaderSize || pointer >= current || pointer >= buffer.Length)
                 {
                     return false;
                 }
@@ -560,6 +580,11 @@ public sealed class DnsPacket
             if (sb.Length > 0)
             {
                 sb.Append('.');
+            }
+
+            if (sb.Length + len > 253)
+            {
+                return false;
             }
 
             sb.Append(Encoding.ASCII.GetString(buffer.Slice(current + 1, len)));

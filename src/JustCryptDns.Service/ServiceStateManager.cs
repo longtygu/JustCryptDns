@@ -5,6 +5,8 @@ using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
 using JustCryptDns.Core.Security;
+using JustCryptDns.DNS.DnsCrypt;
+using JustCryptDns.Infrastructure.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace JustCryptDns.Service;
@@ -26,6 +28,9 @@ public sealed class ServiceStateManager : IServiceIpcHandler
     private readonly IResolverLibraryService? _resolverLibrary;
     private readonly INetworkDiagnosticsService? _diagnostics;
     private readonly IDnsFailoverService? _failover;
+    private readonly IDnsFilteringService? _filtering;
+    private readonly IDnsCacheService? _cache;
+    private readonly IDnsCryptProxyManager? _dnsCryptManager;
     private readonly ILogger<ServiceStateManager> _logger;
     private readonly DateTimeOffset _startedAt = DateTimeOffset.UtcNow;
     private readonly string _version;
@@ -45,7 +50,10 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         INetworkInfoService? networkInfo = null,
         IResolverLibraryService? resolverLibrary = null,
         INetworkDiagnosticsService? diagnostics = null,
-        IDnsFailoverService? failover = null)
+        IDnsFailoverService? failover = null,
+        IDnsFilteringService? filtering = null,
+        IDnsCacheService? cache = null,
+        IDnsCryptProxyManager? dnsCryptManager = null)
     {
         _settings = settings;
         _dnsEngine = dnsEngine;
@@ -59,8 +67,11 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         _resolverLibrary = resolverLibrary;
         _diagnostics = diagnostics;
         _failover = failover;
+        _filtering = filtering;
+        _cache = cache;
+        _dnsCryptManager = dnsCryptManager;
         _version = typeof(ServiceStateManager).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.7.0";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.7.1";
     }
 
     public async Task InitializeFromSettingsAsync(CancellationToken cancellationToken = default)
@@ -189,6 +200,17 @@ public sealed class ServiceStateManager : IServiceIpcHandler
             IsBypassRunning = bypassStats?.State is BypassEngineState.Running or BypassEngineState.Degraded,
             BypassEndpoint = bypassStats?.ProxyEndpoint,
             DpiBypassedConnections = bypassStats?.DpiBypassedConnections ?? 0,
+            BypassPacUrl = bypassStats?.PacUrl,
+            BoundProxyPort = bypassStats?.BoundProxyPort ?? 0,
+            BoundPacPort = bypassStats?.BoundPacPort ?? 0,
+            BlockedQueries = stats.BlockedQueries,
+            CacheHits = stats.CacheHits,
+            CacheHitRatioPercent = stats.CacheHitRatioPercent,
+            RewrittenQueries = stats.RewrittenQueries,
+            StaleCacheHits = stats.StaleCacheHits,
+            PrefetchCount = stats.PrefetchCount,
+            ActiveVpnAdapterName = stats.ActiveVpnAdapterName,
+            IsCaptivePortalPaused = stats.IsCaptivePortalPaused,
         };
     }
 
@@ -222,10 +244,21 @@ public sealed class ServiceStateManager : IServiceIpcHandler
             case IpcRequestKind.ReloadConfiguration:
             {
                 await _settings.ReloadFromDiskAsync(cancellationToken).ConfigureAwait(false);
+                LoggingSetup.SetLevel(_settings.Current.Performance.LogLevel);
+                _filtering?.ReloadBlocklistsFromDisk();
+
                 if (!string.IsNullOrWhiteSpace(request.StringValue))
                 {
                     var (ok, err) = await _dnsEngine.SwitchResolverAsync(request.StringValue, cancellationToken).ConfigureAwait(false);
                     return new IpcResponse(ok, GetSnapshot(), ok ? null : "SwitchResolverFailed", err);
+                }
+
+                var configuredResolverId = _settings.Current.Dns.ActiveResolverId;
+                var currentStats = _dnsEngine.GetStats();
+                if (!string.IsNullOrWhiteSpace(configuredResolverId)
+                    && !string.Equals(configuredResolverId, currentStats.ActiveResolverId, StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = await _dnsEngine.SwitchResolverAsync(configuredResolverId, cancellationToken).ConfigureAwait(false);
                 }
 
                 if (_bypassEngine is not null
@@ -435,7 +468,7 @@ public sealed class ServiceStateManager : IServiceIpcHandler
                 var seconds = 300;
                 if (int.TryParse(request.StringValue, out var parsed) && parsed >= 30)
                 {
-                    seconds = parsed;
+                    seconds = Math.Clamp(parsed, 30, 3600);
                 }
 
                 var (ok, err) = await _dnsEngine
@@ -448,6 +481,67 @@ public sealed class ServiceStateManager : IServiceIpcHandler
             {
                 var (ok, err) = await _dnsEngine.ResumeFromCaptivePortalAsync(cancellationToken).ConfigureAwait(false);
                 return new IpcResponse(ok, GetSnapshot(), ok ? null : "CaptiveResumeFailed", err);
+            }
+
+            case IpcRequestKind.ClearDnsCache:
+            {
+                _cache?.Clear();
+                return new IpcResponse(true, GetSnapshot());
+            }
+
+            case IpcRequestKind.GetFilterAndCacheStats:
+            {
+                var payload = new ServiceFilterAndCacheSnapshot(
+                    _cache?.GetStats(),
+                    _filtering?.BlockedQueryCount ?? 0,
+                    _filtering?.TotalBlockedDomains ?? 0,
+                    _filtering?.GetRecentLogs().Take(100).ToList() ?? []);
+                var json = JsonSerializer.Serialize(payload, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.ReloadFilteringBlocklists:
+            {
+                await _settings.ReloadFromDiskAsync(cancellationToken).ConfigureAwait(false);
+                _filtering?.ReloadBlocklistsFromDisk();
+                return new IpcResponse(true, GetSnapshot());
+            }
+
+            case IpcRequestKind.GetLearnedHosts:
+            {
+                var hosts = _bypassEngine?.GetLearnedHosts() ?? [];
+                var json = JsonSerializer.Serialize(hosts, SettingsJson.Options);
+                return new IpcResponse(true, GetSnapshot(), Message: json);
+            }
+
+            case IpcRequestKind.ClearLearnedHosts:
+            {
+                _bypassEngine?.ClearLearnedHosts();
+                return new IpcResponse(true, GetSnapshot());
+            }
+
+            case IpcRequestKind.ClearBypassEvents:
+            {
+                _bypassEngine?.ClearRecentEvents();
+                return new IpcResponse(true, GetSnapshot());
+            }
+
+            case IpcRequestKind.ClearDiagnosticMonitors:
+            {
+                _diagnostics?.ClearMonitorEntries();
+                _filtering?.ClearLogs();
+                return new IpcResponse(true, GetSnapshot());
+            }
+
+            case IpcRequestKind.InstallOrUpdateDnsCrypt:
+            {
+                if (_dnsCryptManager is null)
+                {
+                    return new IpcResponse(false, GetSnapshot(), "DnsCryptUnavailable", "DNSCrypt manager is not registered in service.");
+                }
+
+                var (ok, ver, err) = await _dnsCryptManager.InstallOrUpdateAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                return new IpcResponse(ok, GetSnapshot(), ok ? null : "DnsCryptInstallFailed", ok ? ver : err);
             }
 
             default:

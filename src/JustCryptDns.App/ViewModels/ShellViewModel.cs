@@ -120,6 +120,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool _hasPaletteMatches;
 
     private bool _isRefreshingFirewall;
+    private readonly IServiceClient? _serviceClient;
 
     public ShellViewModel(
         IPageFactory pageFactory,
@@ -134,7 +135,8 @@ public sealed partial class ShellViewModel : ObservableObject
         IFirewallBlocklistCoordinator? firewall = null,
         IDnsCacheService? cache = null,
         IConnectionMonitorService? connectionMonitor = null,
-        IThreatIntelligenceService? threatIntel = null)
+        IThreatIntelligenceService? threatIntel = null,
+        IServiceClient? serviceClient = null)
     {
         _pageFactory = pageFactory;
         _settings = settings;
@@ -147,6 +149,7 @@ public sealed partial class ShellViewModel : ObservableObject
         _cache = cache;
         _connectionMonitor = connectionMonitor;
         _threatIntel = threatIntel;
+        _serviceClient = serviceClient;
         _logger = logger;
 
         NavItems =
@@ -409,7 +412,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 break;
 
             case "toggle-dpi" when _bypassEngine is not null:
-                if (_bypassEngine.GetStats().State is BypassEngineState.Running or BypassEngineState.Starting)
+                if (_bypassEngine.GetStats().State is BypassEngineState.Running or BypassEngineState.Degraded or BypassEngineState.Starting)
                 {
                     await _bypassEngine.StopAsync().ConfigureAwait(true);
                 }
@@ -422,6 +425,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
             case "flush-cache":
                 _cache?.Clear();
+                if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+                {
+                    _ = _serviceClient.SendAsync(new IpcRequest(IpcRequestKind.ClearDnsCache));
+                }
+
                 break;
 
             case "toggle-lockdown":
@@ -603,7 +611,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (_bypassEngine is not null)
         {
             var bypass = _bypassEngine.GetStats();
-            IsDpiActive = bypass.State == BypassEngineState.Running;
+            IsDpiActive = bypass.State is BypassEngineState.Running or BypassEngineState.Degraded;
             DpiStripValue = IsDpiActive ? loc.Get("Strip_On") : loc.Get("Strip_Off");
         }
         else
@@ -612,7 +620,10 @@ public sealed partial class ShellViewModel : ObservableObject
             DpiStripValue = loc.Get("Strip_Off");
         }
 
-        IsLeakGuardActive = _settings.Current.Connections.EnableDnsLeakGuard;
+        if (_firewall is null)
+        {
+            IsLeakGuardActive = _settings.Current.Connections.EnableDnsLeakGuard;
+        }
 
         if (checkFirewallAndAlerts)
         {
@@ -623,6 +634,12 @@ public sealed partial class ShellViewModel : ObservableObject
     private async Task RefreshFirewallAndAlertsAsync()
     {
         if (_isRefreshingFirewall)
+        {
+            return;
+        }
+
+        if (Application.Current?.MainWindow is { } mainWin
+            && (!mainWin.IsVisible || mainWin.WindowState == WindowState.Minimized))
         {
             return;
         }
@@ -638,7 +655,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 {
                     await dispatcher.InvokeAsync(() =>
                     {
-                        IsLeakGuardActive = status.IsDnsLeakGuardActive || _settings.Current.Connections.EnableDnsLeakGuard;
+                        IsLeakGuardActive = status.IsDnsLeakGuardActive;
                         IsLockdownActive = status.IsLockdownActive;
                         ConnectionAlertCount = threatAlerts;
                         HasConnectionSecurityAlert = threatAlerts > 0 || status.IsLockdownActive;

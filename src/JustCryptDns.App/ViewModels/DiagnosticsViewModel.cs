@@ -561,6 +561,7 @@ public sealed partial class DiagnosticsViewModel : PageViewModel
         string initialTarget,
         string initialDetail)
     {
+        try { _activeTestCts?.Cancel(); } catch { }
         _activeTestCts?.Dispose();
         _activeTestCts = new CancellationTokenSource();
 

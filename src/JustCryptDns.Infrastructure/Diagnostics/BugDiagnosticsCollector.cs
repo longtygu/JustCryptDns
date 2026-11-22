@@ -45,7 +45,7 @@ public sealed class BugDiagnosticsCollector : IBugDiagnosticsCollector
         var infoVersion = Assembly.GetEntryAssembly()
             ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion
-            ?.Split('+')[0] ?? "1.3.0";
+            ?.Split('+')[0] ?? "1.7.1";
 
         var dnsStats = _dnsEngine.GetStats();
         var bypassStats = _bypassEngine.GetStats();
@@ -75,44 +75,50 @@ public sealed class BugDiagnosticsCollector : IBugDiagnosticsCollector
                 return results;
             }
 
-            var latestLog = new DirectoryInfo(_paths.LogsDirectory)
-                .EnumerateFiles("ui-*.log")
+            var latestLogs = new DirectoryInfo(_paths.LogsDirectory)
+                .EnumerateFiles("*.log")
+                .Where(f => f.Name.StartsWith("ui-", StringComparison.OrdinalIgnoreCase)
+                         || f.Name.StartsWith("service-", StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(f => f.LastWriteTimeUtc)
-                .FirstOrDefault();
-            if (latestLog is null)
+                .Take(2)
+                .ToList();
+            if (latestLogs.Count == 0)
             {
                 return results;
             }
 
-            using var stream = new FileStream(latestLog.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-
             var warningsAndErrors = new Queue<string>(MaxLogLines + 1);
             var tailFallback = new Queue<string>(MaxLogLines + 1);
 
-            while (reader.ReadLine() is { } line)
+            foreach (var logFile in latestLogs.AsEnumerable().Reverse())
             {
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    continue;
-                }
+                using var stream = new FileStream(logFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream, Encoding.UTF8);
 
-                var sanitized = BugReportBuilder.SanitizeLogLine(line);
-                if (tailFallback.Count >= MaxLogLines)
+                while (reader.ReadLine() is { } line)
                 {
-                    tailFallback.Dequeue();
-                }
-                tailFallback.Enqueue(sanitized);
-
-                if (line.Contains("[WRN]", StringComparison.Ordinal)
-                    || line.Contains("[ERR]", StringComparison.Ordinal)
-                    || line.Contains("[FTL]", StringComparison.Ordinal))
-                {
-                    if (warningsAndErrors.Count >= MaxLogLines)
+                    if (string.IsNullOrWhiteSpace(line))
                     {
-                        warningsAndErrors.Dequeue();
+                        continue;
                     }
-                    warningsAndErrors.Enqueue(sanitized);
+
+                    var sanitized = BugReportBuilder.SanitizeLogLine(line);
+                    if (tailFallback.Count >= MaxLogLines)
+                    {
+                        tailFallback.Dequeue();
+                    }
+                    tailFallback.Enqueue(sanitized);
+
+                    if (line.Contains("[WRN]", StringComparison.Ordinal)
+                        || line.Contains("[ERR]", StringComparison.Ordinal)
+                        || line.Contains("[FTL]", StringComparison.Ordinal))
+                    {
+                        if (warningsAndErrors.Count >= MaxLogLines)
+                        {
+                            warningsAndErrors.Dequeue();
+                        }
+                        warningsAndErrors.Enqueue(sanitized);
+                    }
                 }
             }
 
