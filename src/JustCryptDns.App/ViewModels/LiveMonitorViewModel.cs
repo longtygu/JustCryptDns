@@ -268,16 +268,35 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
         FailoverEvents.Clear();
     }
 
+    private async Task<bool> TryUpdateSettingsAsync(Action<AppSettings> mutate)
+    {
+        if (_settings is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            await _settings.UpdateAsync(mutate).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            SetFeedbackOnUi(ex.Message);
+            return false;
+        }
+    }
+
     [RelayCommand]
     private async Task BlockDomainAsync(string? domain)
     {
         var target = NormalizeActionDomain(domain ?? SelectedQuery?.Domain);
-        if (target is null || _settings is null)
+        if (target is null)
         {
             return;
         }
 
-        await _settings.UpdateAsync(s =>
+        if (!await TryUpdateSettingsAsync(s =>
         {
             s.Filtering.IsFilteringEnabled = true;
             if (!s.Filtering.CustomBlockedDomains.Contains(target, StringComparer.OrdinalIgnoreCase))
@@ -286,7 +305,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
             }
 
             s.Filtering.Allowlist.RemoveAll(a => string.Equals(a.Domain, target, StringComparison.OrdinalIgnoreCase));
-        }).ConfigureAwait(false);
+        }).ConfigureAwait(false))
+        {
+            return;
+        }
+
         await SyncFilteringMutationAsync().ConfigureAwait(false);
         SetFeedbackOnUi(string.Format(CultureInfo.CurrentCulture, LocalizationManager.Instance["Monitor_Action_Blocked"], target));
     }
@@ -295,12 +318,12 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     private async Task AllowDomainAsync(string? domain)
     {
         var target = NormalizeActionDomain(domain ?? SelectedQuery?.Domain);
-        if (target is null || _settings is null)
+        if (target is null)
         {
             return;
         }
 
-        await _settings.UpdateAsync(s =>
+        if (!await TryUpdateSettingsAsync(s =>
         {
             s.Filtering.CustomBlockedDomains.RemoveAll(d => string.Equals(d, target, StringComparison.OrdinalIgnoreCase));
             s.Filtering.Allowlist.RemoveAll(a => string.Equals(a.Domain, target, StringComparison.OrdinalIgnoreCase));
@@ -309,7 +332,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
                 Domain = target,
                 Note = "Allowed from Query Explorer",
             });
-        }).ConfigureAwait(false);
+        }).ConfigureAwait(false))
+        {
+            return;
+        }
+
         await SyncFilteringMutationAsync().ConfigureAwait(false);
         SetFeedbackOnUi(string.Format(CultureInfo.CurrentCulture, LocalizationManager.Instance["Monitor_Action_Allowed"], target));
     }
@@ -318,12 +345,12 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     private async Task AllowDomainTemp30MinAsync(string? domain)
     {
         var target = NormalizeActionDomain(domain ?? SelectedQuery?.Domain);
-        if (target is null || _settings is null)
+        if (target is null)
         {
             return;
         }
 
-        await _settings.UpdateAsync(s =>
+        if (!await TryUpdateSettingsAsync(s =>
         {
             s.Filtering.Allowlist.RemoveAll(a => string.Equals(a.Domain, target, StringComparison.OrdinalIgnoreCase));
             s.Filtering.Allowlist.Add(new DnsAllowlistEntry
@@ -332,7 +359,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
                 Note = "30m exception from Query Explorer",
                 ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30),
             });
-        }).ConfigureAwait(false);
+        }).ConfigureAwait(false))
+        {
+            return;
+        }
+
         await SyncFilteringMutationAsync().ConfigureAwait(false);
         SetFeedbackOnUi(string.Format(CultureInfo.CurrentCulture, LocalizationManager.Instance["Monitor_Action_Allowed30m"], target));
     }
@@ -342,7 +373,7 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     {
         var targetDomain = NormalizeActionDomain(SelectedQuery?.Domain);
         var rewriteTarget = InspectorRewriteTarget?.Trim();
-        if (targetDomain is null || string.IsNullOrWhiteSpace(rewriteTarget) || _settings is null)
+        if (targetDomain is null || string.IsNullOrWhiteSpace(rewriteTarget))
         {
             return;
         }
@@ -371,13 +402,17 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
             return;
         }
 
-        await _settings.UpdateAsync(s =>
+        if (!await TryUpdateSettingsAsync(s =>
         {
             s.Routing.LocalRewrites.RemoveAll(r =>
                 string.Equals(r.Pattern, targetDomain, StringComparison.OrdinalIgnoreCase)
                 && r.RecordType == recordType);
             s.Routing.LocalRewrites.Add(rule);
-        }).ConfigureAwait(false);
+        }).ConfigureAwait(false))
+        {
+            return;
+        }
+
         await SyncConfigToEngineAndServiceAsync().ConfigureAwait(false);
         SetFeedbackOnUi(string.Format(CultureInfo.CurrentCulture, LocalizationManager.Instance["Monitor_Action_Rewritten"], targetDomain, rewriteTarget));
     }
@@ -387,14 +422,14 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     {
         var targetDomain = NormalizeActionDomain(SelectedQuery?.Domain);
         var resolverId = InspectorTargetResolverId?.Trim();
-        if (targetDomain is null || string.IsNullOrWhiteSpace(resolverId) || _settings is null)
+        if (targetDomain is null || string.IsNullOrWhiteSpace(resolverId))
         {
             return;
         }
 
         var resolverName = AvailableResolvers.FirstOrDefault(r => string.Equals(r.Id, resolverId, StringComparison.OrdinalIgnoreCase))?.Name ?? resolverId;
 
-        await _settings.UpdateAsync(s =>
+        if (!await TryUpdateSettingsAsync(s =>
         {
             s.Routing.IsRoutingEnabled = true;
             s.Routing.Rules ??= [];
@@ -411,7 +446,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
                 MatchKind = RoutingMatchKind.DomainSuffix,
                 ResolverId = resolverId,
             });
-        }).ConfigureAwait(false);
+        }).ConfigureAwait(false))
+        {
+            return;
+        }
+
         await SyncConfigToEngineAndServiceAsync().ConfigureAwait(false);
         SetFeedbackOnUi(string.Format(CultureInfo.CurrentCulture, LocalizationManager.Instance["Monitor_Action_Routed"], targetDomain, resolverName));
     }
@@ -420,12 +459,12 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     private async Task AddDomainToDpiBypassAsync(string? domain)
     {
         var targetDomain = NormalizeActionDomain(domain ?? SelectedQuery?.Domain);
-        if (targetDomain is null || _settings is null)
+        if (targetDomain is null)
         {
             return;
         }
 
-        await _settings.UpdateAsync(s =>
+        if (!await TryUpdateSettingsAsync(s =>
         {
             s.Bypass.Rules ??= [];
             if (!s.Bypass.Rules.Any(r => string.Equals(r.Pattern, targetDomain, StringComparison.OrdinalIgnoreCase)))
@@ -441,9 +480,15 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
                     Enabled = true,
                 });
             }
-        }).ConfigureAwait(false);
+        }).ConfigureAwait(false))
+        {
+            return;
+        }
 
-        await _settings.FlushAsync().ConfigureAwait(false);
+        if (_settings is not null)
+        {
+            await _settings.FlushAsync().ConfigureAwait(false);
+        }
         if (_bypassEngine is not null && _bypassEngine.GetStats().State is BypassEngineState.Running or BypassEngineState.Degraded)
         {
             try

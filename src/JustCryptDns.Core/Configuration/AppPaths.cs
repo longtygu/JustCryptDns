@@ -45,6 +45,7 @@ public sealed class AppPaths : IAppPaths
 
     private readonly bool _hasRootOverride;
     private readonly string? _legacyUserDataDirectory;
+    private readonly string? _ignoredPortableDataDirectory;
 
     public AppPaths(string? rootOverride = null, string? baseDirectoryOverride = null)
     {
@@ -56,11 +57,13 @@ public sealed class AppPaths : IAppPaths
         _hasRootOverride = !string.IsNullOrWhiteSpace(rootOverride);
         if (_hasRootOverride)
         {
-            IsPortableMode = File.Exists(portableFlagPath);
+            IsPortableMode = File.Exists(portableFlagPath) && !IsProtectedSystemDirectory(effectiveBaseDir);
             DataDirectory = Path.GetFullPath(rootOverride!);
             ProxyBackupFile = Path.Combine(DataDirectory, "proxy-backup.json");
         }
-        else if (File.Exists(portableFlagPath))
+        else if (File.Exists(portableFlagPath)
+                 && !IsProtectedSystemDirectory(effectiveBaseDir)
+                 && CanWriteToPortableDataDirectory(effectiveBaseDir))
         {
             IsPortableMode = true;
             DataDirectory = Path.Combine(effectiveBaseDir, "data");
@@ -69,6 +72,12 @@ public sealed class AppPaths : IAppPaths
         else
         {
             IsPortableMode = false;
+            if (File.Exists(portableFlagPath))
+            {
+                IgnoredUnwritablePortableFlag = true;
+                _ignoredPortableDataDirectory = Path.Combine(effectiveBaseDir, "data");
+            }
+
             var commonAppData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             DataDirectory = Path.Combine(commonAppData, ProductFolderName);
@@ -84,6 +93,74 @@ public sealed class AppPaths : IAppPaths
     }
 
     public bool IsPortableMode { get; }
+
+    /// <summary>True when a portable.flag was found inside a protected or read-only directory (e.g. Program Files) and safely ignored.</summary>
+    public bool IgnoredUnwritablePortableFlag { get; }
+
+    /// <summary>
+    /// Returns true when <paramref name="directoryPath"/> resides inside Windows protected installation roots
+    /// (<c>Program Files</c>, <c>Program Files (x86)</c>, or <c>Windows</c>), where standard users lack write access.
+    /// </summary>
+    public static bool IsProtectedSystemDirectory(string? directoryPath)
+    {
+        if (string.IsNullOrWhiteSpace(directoryPath))
+        {
+            return false;
+        }
+
+        string fullPath;
+        try
+        {
+            fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directoryPath)) + Path.DirectorySeparatorChar;
+        }
+        catch
+        {
+            return false;
+        }
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        foreach (var special in new[]
+        {
+            Environment.SpecialFolder.ProgramFiles,
+            Environment.SpecialFolder.ProgramFilesX86,
+            Environment.SpecialFolder.Windows,
+        })
+        {
+            var root = Environment.GetFolderPath(special);
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                continue;
+            }
+
+            var normRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)) + Path.DirectorySeparatorChar;
+            if (fullPath.StartsWith(normRoot, comparison))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool CanWriteToPortableDataDirectory(string baseDir)
+    {
+        try
+        {
+            var dataDir = Path.Combine(baseDir, "data");
+            var probeDir = Directory.Exists(dataDir) ? dataDir : baseDir;
+            var probeFile = Path.Combine(probeDir, $".write-probe-{Guid.NewGuid():N}.tmp");
+            using (File.Create(probeFile))
+            {
+            }
+
+            File.Delete(probeFile);
+            return true;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            return false;
+        }
+    }
 
     public string DataDirectory { get; }
 
@@ -128,7 +205,11 @@ public sealed class AppPaths : IAppPaths
 
         var legacySourceDir = !string.IsNullOrWhiteSpace(legacySourceDirectoryOverride)
             ? Path.GetFullPath(legacySourceDirectoryOverride)
-            : _legacyUserDataDirectory;
+            : (!string.IsNullOrWhiteSpace(_ignoredPortableDataDirectory)
+               && File.Exists(Path.Combine(_ignoredPortableDataDirectory, "settings.json"))
+               && !File.Exists(SettingsFile)
+                ? _ignoredPortableDataDirectory
+                : _legacyUserDataDirectory);
 
         if (string.IsNullOrWhiteSpace(legacySourceDir)
             || !Directory.Exists(legacySourceDir)

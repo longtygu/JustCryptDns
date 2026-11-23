@@ -1,11 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using JustCryptDns.App.ViewModels;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Diagnostics;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
 using JustCryptDns.Core.Services;
+using JustCryptDns.DNS.DnsCrypt;
 using JustCryptDns.DNS.Proxy;
 using JustCryptDns.DNS.Resolver;
 using JustCryptDns.DNS.Wire;
@@ -264,6 +266,79 @@ public sealed class Phase19OperationModesAndAnalyticsTests
         var analytics = JsonSerializer.Deserialize<QueryAnalyticsSnapshot>(analyticsResp.Message!, SettingsJson.Options)!;
         Assert.Equal(4, analytics.TotalObservedQueries);
         Assert.Equal(1, analytics.TotalBlockedQueries);
+    }
+
+    [Fact]
+    public void AppPaths_IsProtectedSystemDirectory_RejectsProgramFilesPortableTrap()
+    {
+        var programFilesApp = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            AppPaths.ProductFolderName);
+        var programFilesX86App = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            AppPaths.ProductFolderName);
+        var windowsSubdir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+            "System32");
+        var normalPortableDir = Path.Combine(Path.GetTempPath(), "justcryptdns-portable-test");
+
+        Assert.True(AppPaths.IsProtectedSystemDirectory(programFilesApp));
+        Assert.True(AppPaths.IsProtectedSystemDirectory(programFilesX86App));
+        Assert.True(AppPaths.IsProtectedSystemDirectory(windowsSubdir));
+        Assert.False(AppPaths.IsProtectedSystemDirectory(normalPortableDir));
+    }
+
+    [Fact]
+    public async Task DnsManagerViewModel_UseAlternateLoopbackPort53_HandlesUnauthorizedAccessWithoutCrash()
+    {
+        var throwingSettings = new ThrowingSettingsService(new AppSettings().Normalize());
+        using var vm = new DnsManagerViewModel(
+            new StubDnsEngine(),
+            new StubDnsCryptProxyManager(),
+            new StubWindowsDnsManager(),
+            throwingSettings);
+
+        vm.SuggestedLoopbackIp = "127.0.0.2";
+        await vm.UseAlternateLoopbackPort53Command.ExecuteAsync(null);
+
+        Assert.False(string.IsNullOrWhiteSpace(vm.ErrorMessage));
+        Assert.Contains("Access to the path", vm.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.False(vm.IsBusy);
+    }
+
+    private sealed class ThrowingSettingsService : ISettingsService
+    {
+        public ThrowingSettingsService(AppSettings initial) => Current = initial;
+
+        public AppSettings Current { get; }
+
+        public SettingsLoadOutcome LoadOutcome => SettingsLoadOutcome.Loaded;
+
+        public event EventHandler<AppSettings>? Changed { add { } remove { } }
+
+        public event EventHandler<Exception>? SaveFailed { add { } remove { } }
+
+        public Task UpdateAsync(Action<AppSettings> mutate, CancellationToken cancellationToken = default) =>
+            throw new UnauthorizedAccessException("Access to the path 'C:\\Program Files\\JustCryptDns\\data\\settings.json' is denied.");
+
+        public void UpdateDeferred(Action<AppSettings> mutate) { }
+
+        public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<bool> ReloadFromDiskAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+    }
+
+    private sealed class StubDnsCryptProxyManager : IDnsCryptProxyManager
+    {
+        public string ExecutablePath => "dnscrypt-proxy.exe";
+        public bool IsInstalled => false;
+        public bool IsRunning => false;
+        public string? InstalledVersion => null;
+        public Task<string?> DetectInstalledVersionAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+        public Task<(bool Success, string? Version, string? Error)> InstallOrUpdateAsync(HttpClient? httpClient = null, CancellationToken cancellationToken = default) => Task.FromResult<(bool, string?, string?)>((false, null, null));
+        public Task<(bool Success, string? Error)> EnsureRunningAsync(DnsResolverEndpoint resolver, int internalPort, CancellationToken cancellationToken = default) => Task.FromResult<(bool, string?)>((false, null));
+        public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class InMemorySettingsService : ISettingsService

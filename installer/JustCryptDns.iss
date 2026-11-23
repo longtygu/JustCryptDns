@@ -2,7 +2,7 @@
 ; Builds a signed-ready installer with Windows Service registration (LocalSystem) and clean uninstall.
 
 #define MyAppName "JustCryptDns"
-#define MyAppVersion "1.8.0"
+#define MyAppVersion "1.8.1"
 #define MyAppPublisher "Longtygu (JustCryptDns)"
 #define MyAppURL "https://github.com/longtygu/JustCryptDns"
 #define MyAppExeName "JustCryptDns.exe"
@@ -46,7 +46,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "installservice"; Description: "Install and start JustCryptDns background Windows Service (recommended)"; GroupDescription: "Background Protection:"
 
 [Dirs]
-Name: "{commonappdata}\{#MyAppName}"
+Name: "{commonappdata}\{#MyAppName}"; Permissions: users-modify
+
+[InstallDelete]
+; Remove any stray portable.flag left behind from manual portable ZIP extraction into Program Files
+Type: files; Name: "{app}\portable.flag"
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

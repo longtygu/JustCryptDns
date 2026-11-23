@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Text.Json;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -509,26 +510,40 @@ public sealed partial class DashboardViewModel : PageViewModel
         var targetIp = SuggestedLoopbackIp;
         EngineError = null;
         TestProxyFeedback = null;
-        await _settings.UpdateAsync(s =>
+        string? commandError = null;
+        try
         {
-            s.Dns.ListenAddress = targetIp;
-            s.Dns.ListenPort = 53;
-            s.Dns.EnableIpv6 = false;
-            s.Dns.ConfigureWindowsAdapter = true;
-        });
+            await _settings.UpdateAsync(s =>
+            {
+                s.Dns.ListenAddress = targetIp;
+                s.Dns.ListenPort = 53;
+                s.Dns.EnableIpv6 = false;
+                s.Dns.ConfigureWindowsAdapter = true;
+            });
 
-        var (ok, err) = await _dnsEngine.RestartAsync();
-        if (ok)
-        {
-            _ = _dnsEngine.ProbeActiveResolverAsync();
-            TestProxyFeedback = Localization.LocalizationManager.Instance.Format("TrafficFix_AlternateLoopbackSuccess", targetIp);
+            var (ok, err) = await _dnsEngine.RestartAsync();
+            if (ok)
+            {
+                _ = _dnsEngine.ProbeActiveResolverAsync();
+                TestProxyFeedback = Localization.LocalizationManager.Instance.Format("TrafficFix_AlternateLoopbackSuccess", targetIp);
+            }
+            else
+            {
+                commandError = err;
+            }
         }
-        else
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
         {
-            EngineError = err;
+            _logger.LogError(ex, "Failed to save alternate loopback DNS configuration.");
+            commandError = ex.Message;
         }
 
         ApplyEngineStats(_dnsEngine.GetStats());
+        if (!string.IsNullOrWhiteSpace(commandError))
+        {
+            EngineError = commandError;
+        }
+
         await RefreshAsync();
     }
 
@@ -542,33 +557,46 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         EngineError = null;
         TestProxyFeedback = null;
-        var svcName = ConflictingServiceName;
-        var (stopped, stopErr) = await PortConflictDetector.StopConflictingServiceAsync(svcName);
-        if (!stopped)
+        string? commandError = null;
+        try
         {
-            EngineError = stopErr;
-            return;
-        }
+            var svcName = ConflictingServiceName;
+            var (stopped, stopErr) = await PortConflictDetector.StopConflictingServiceAsync(svcName);
+            if (!stopped)
+            {
+                EngineError = stopErr;
+                return;
+            }
 
-        await _settings.UpdateAsync(s =>
-        {
-            s.Dns.ListenAddress = DnsSettings.DefaultListenAddress;
-            s.Dns.ListenPort = 53;
-            s.Dns.ConfigureWindowsAdapter = true;
-        });
+            await _settings.UpdateAsync(s =>
+            {
+                s.Dns.ListenAddress = DnsSettings.DefaultListenAddress;
+                s.Dns.ListenPort = 53;
+                s.Dns.ConfigureWindowsAdapter = true;
+            });
 
-        var (ok, err) = await _dnsEngine.RestartAsync();
-        if (ok)
-        {
-            _ = _dnsEngine.ProbeActiveResolverAsync();
-            TestProxyFeedback = Localization.LocalizationManager.Instance.Format("TrafficFix_ServiceStoppedSuccess", svcName);
+            var (ok, err) = await _dnsEngine.RestartAsync();
+            if (ok)
+            {
+                _ = _dnsEngine.ProbeActiveResolverAsync();
+                TestProxyFeedback = Localization.LocalizationManager.Instance.Format("TrafficFix_ServiceStoppedSuccess", svcName);
+            }
+            else
+            {
+                commandError = err;
+            }
         }
-        else
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
         {
-            EngineError = err;
+            _logger.LogError(ex, "Failed to update settings after stopping conflicting DNS service.");
+            commandError = ex.Message;
         }
 
         ApplyEngineStats(_dnsEngine.GetStats());
+        if (!string.IsNullOrWhiteSpace(commandError))
+        {
+            EngineError = commandError;
+        }
         await RefreshAsync();
     }
 

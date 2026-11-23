@@ -314,8 +314,8 @@ public sealed class GitHubUpdateService : IUpdateService, IDisposable
                 throw new InvalidDataException("Downloaded update archive does not contain JustCryptDns.exe.");
             }
 
-            // Never carry portable.flag into an installed deployment (prevents switching %ProgramData% to %ProgramFiles%\data).
-            if (!_paths.IsPortableMode)
+            // Never carry portable.flag into an installed or protected system deployment (prevents switching %ProgramData% to %ProgramFiles%\data).
+            if (!_paths.IsPortableMode || AppPaths.IsProtectedSystemDirectory(AppContext.BaseDirectory))
             {
                 TryDeleteFile(Path.Combine(stagingRoot, "portable.flag"));
             }

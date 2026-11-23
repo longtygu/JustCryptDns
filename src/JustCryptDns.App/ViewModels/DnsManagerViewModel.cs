@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JustCryptDns.App.Localization;
@@ -291,6 +292,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         IsBusy = true;
         ErrorMessage = null;
         InfoMessage = null;
+        string? commandError = null;
         try
         {
             await _settings.UpdateAsync(s =>
@@ -316,12 +318,22 @@ public sealed partial class DnsManagerViewModel : PageViewModel
             }
             else
             {
-                ErrorMessage = err;
+                commandError = err;
             }
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            _loading = false;
+            commandError = ex.Message;
         }
         finally
         {
             ApplyStats(_dnsEngine.GetStats());
+            if (!string.IsNullOrWhiteSpace(commandError))
+            {
+                ErrorMessage = commandError;
+            }
+
             IsBusy = false;
         }
     }
@@ -338,12 +350,13 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         IsBusy = true;
         ErrorMessage = null;
         InfoMessage = null;
+        string? commandError = null;
         try
         {
             var (stopped, stopErr) = await PortConflictDetector.StopConflictingServiceAsync(svcName);
             if (!stopped)
             {
-                ErrorMessage = stopErr;
+                commandError = stopErr;
                 return;
             }
 
@@ -367,12 +380,22 @@ public sealed partial class DnsManagerViewModel : PageViewModel
             }
             else
             {
-                ErrorMessage = err;
+                commandError = err;
             }
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            _loading = false;
+            commandError = ex.Message;
         }
         finally
         {
             ApplyStats(_dnsEngine.GetStats());
+            if (!string.IsNullOrWhiteSpace(commandError))
+            {
+                ErrorMessage = commandError;
+            }
+
             IsBusy = false;
         }
     }
@@ -411,12 +434,20 @@ public sealed partial class DnsManagerViewModel : PageViewModel
             return;
         }
 
-        await _settings.UpdateAsync(s =>
+        try
         {
-            s.Dns.ListenAddress = ListenAddress.Trim();
-            s.Dns.ListenPort = port;
-            s.Dns.EnableIpv6 = EnableIpv6;
-        });
+            await _settings.UpdateAsync(s =>
+            {
+                s.Dns.ListenAddress = ListenAddress.Trim();
+                s.Dns.ListenPort = port;
+                s.Dns.EnableIpv6 = EnableIpv6;
+            });
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            ErrorMessage = ex.Message;
+            return;
+        }
 
         _loading = true;
         ListenAddress = _settings.Current.Dns.ListenAddress;

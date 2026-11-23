@@ -71,7 +71,7 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         _cache = cache;
         _dnsCryptManager = dnsCryptManager;
         _version = typeof(ServiceStateManager).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.8.0";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.8.1";
     }
 
     public async Task InitializeFromSettingsAsync(CancellationToken cancellationToken = default)

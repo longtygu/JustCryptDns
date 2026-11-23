@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using JustCryptDns.Core.Configuration;
@@ -436,6 +437,11 @@ public sealed class OperationModeService : IOperationModeService
                 autoReason,
                 validPrimary,
                 profile.MinimizeVisualEffects);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Failed to persist operation mode '{Mode}' due to storage access error.", selectedMode);
+            PublishState(_state with { IsApplying = false });
         }
         finally
         {
