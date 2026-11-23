@@ -1,5 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using JustCryptDns.App.Controls;
 using JustCryptDns.App.ViewModels;
 using JustCryptDns.Core.Configuration;
 using JustCryptDns.Core.Diagnostics;
@@ -304,6 +308,67 @@ public sealed class Phase19OperationModesAndAnalyticsTests
         Assert.False(string.IsNullOrWhiteSpace(vm.ErrorMessage));
         Assert.Contains("Access to the path", vm.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.False(vm.IsBusy);
+    }
+
+    [Fact]
+    public void DismissBannerBehavior_SuppressesPersistentWarningAcrossPolls_AndClearsTransientProperty()
+    {
+        Exception? staError = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                DismissBannerBehavior.ResetSessionDismissals();
+
+                // 1. Persistent warning banner (e.g. IPv6 leak polled every 2s)
+                var persistent = new Border { Visibility = Visibility.Collapsed };
+                DismissBannerBehavior.SetPersistKey(persistent, "TestTrafficWarn");
+                DismissBannerBehavior.SetBannerContent(persistent, "IPv6 leak detected");
+                Assert.Equal(Visibility.Visible, persistent.Visibility);
+
+                DismissBannerBehavior.DismissBanner(persistent);
+                Assert.Equal(Visibility.Collapsed, persistent.Visibility);
+                Assert.True(DismissBannerBehavior.IsSignatureDismissed("TestTrafficWarn", "IPv6 leak detected"));
+
+                // Re-instantiating banner on another page or re-polling same message stays hidden
+                var secondPageBanner = new Border { Visibility = Visibility.Collapsed };
+                DismissBannerBehavior.SetPersistKey(secondPageBanner, "TestTrafficWarn");
+                DismissBannerBehavior.SetBannerContent(secondPageBanner, "IPv6 leak detected");
+                Assert.Equal(Visibility.Collapsed, secondPageBanner.Visibility);
+
+                // A genuinely different warning text reappears cleanly
+                DismissBannerBehavior.SetBannerContent(secondPageBanner, "Captive portal detected");
+                Assert.Equal(Visibility.Visible, secondPageBanner.Visibility);
+
+                // 2. Transient one-shot feedback banner clears bound ViewModel property
+                var holder = new BannerHolder { InfoMessage = "Switched to 127.0.0.2:53" };
+                var transient = new Border { DataContext = holder, Visibility = Visibility.Collapsed };
+                transient.SetBinding(DismissBannerBehavior.BannerContentProperty, new Binding(nameof(BannerHolder.InfoMessage)));
+                Assert.Equal(Visibility.Visible, transient.Visibility);
+
+                DismissBannerBehavior.DismissBanner(transient);
+                Assert.Null(holder.InfoMessage);
+                Assert.Equal(Visibility.Collapsed, transient.Visibility);
+            }
+            catch (Exception ex)
+            {
+                staError = ex;
+            }
+            finally
+            {
+                DismissBannerBehavior.ResetSessionDismissals();
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        Assert.Null(staError);
+    }
+
+    private sealed class BannerHolder
+    {
+        public string? InfoMessage { get; set; }
     }
 
     private sealed class ThrowingSettingsService : ISettingsService

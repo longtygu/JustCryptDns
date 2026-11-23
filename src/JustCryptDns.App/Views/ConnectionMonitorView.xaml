@@ -248,16 +248,39 @@
 
                 <Border Style="{StaticResource Card}" Padding="14,9" Margin="0,0,0,6"
                         Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
-                        Visibility="{Binding IsWindowsFirewallEnabled, Converter={StaticResource InverseBoolToVisibility}}">
-                    <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextPrimary}"
-                               Text="{l:Loc Conn_Banner_FirewallDisabled}" />
+                        Visibility="Collapsed"
+                        controls:DismissBannerBehavior.BannerContent="{Binding IsWindowsFirewallEnabled}"
+                        controls:DismissBannerBehavior.InvertBool="True"
+                        controls:DismissBannerBehavior.PersistKey="ConnFirewallDisabled">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextPrimary}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Text="{l:Loc Conn_Banner_FirewallDisabled}" />
+                        <Button Grid.Column="1" Style="{StaticResource Button.DismissInline}"
+                                controls:DismissBannerBehavior.IsDismissButton="True" />
+                    </Grid>
                 </Border>
 
                 <Border Style="{StaticResource Card}" Padding="14,9" Margin="0,0,0,6"
                         Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
-                        Visibility="{Binding RequiresElevationHint, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextPrimary}"
-                               Text="{l:Loc Conn_Banner_RequiresElevation}" />
+                        Visibility="Collapsed"
+                        controls:DismissBannerBehavior.BannerContent="{Binding RequiresElevationHint}"
+                        controls:DismissBannerBehavior.PersistKey="ConnRequiresElevation">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.TextPrimary}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Text="{l:Loc Conn_Banner_RequiresElevation}" />
+                        <Button Grid.Column="1" Style="{StaticResource Button.DismissInline}"
+                                controls:DismissBannerBehavior.IsDismissButton="True" />
+                    </Grid>
                 </Border>
 
                 <Border Style="{StaticResource Card}" Padding="14,9" Margin="0,0,0,6"
@@ -278,8 +301,8 @@
             </StackPanel>
 
             <!-- Status / Feedback Banner -->
-            <Border Grid.Row="4" Padding="14,9" Margin="0,0,0,8"
-                    Visibility="{Binding StatusBannerText, Converter={StaticResource NullToVisibility}}">
+            <Border Grid.Row="4" Padding="14,9" Margin="0,0,0,8" Visibility="Collapsed"
+                    controls:DismissBannerBehavior.BannerContent="{Binding StatusBannerText}">
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource Card}">
                         <Setter Property="Background" Value="{DynamicResource Brush.SuccessSubtle}" />
@@ -300,8 +323,12 @@
                     <TextBox Style="{StaticResource TextBox.SelectableReadOnly}"
                              Text="{Binding StatusBannerText, Mode=OneWay}"
                              Margin="0,0,8,0" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}"
-                            controls:CopyTextBehavior.CopyText="{Binding StatusBannerText}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Button Style="{StaticResource Button.CopyInline}"
+                                controls:CopyTextBehavior.CopyText="{Binding StatusBannerText}" />
+                        <Button Style="{StaticResource Button.DismissInline}" Margin="4,0,0,0"
+                                controls:DismissBannerBehavior.IsDismissButton="True" />
+                    </StackPanel>
                 </Grid>
             </Border>
 

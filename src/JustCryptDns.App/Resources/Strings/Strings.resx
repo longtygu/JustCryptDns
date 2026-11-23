@@ -2241,6 +2241,9 @@
   <data name="Common_Copied" xml:space="preserve">
     <value>Copied!</value>
   </data>
+  <data name="Common_Dismiss" xml:space="preserve">
+    <value>Dismiss notice</value>
+  </data>
   <data name="BugReport_Attach_Title" xml:space="preserve">
     <value>ERROR SCREENSHOTS (OPTIONAL · UP TO 6 IMAGES)</value>
   </data>

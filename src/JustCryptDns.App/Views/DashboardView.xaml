@@ -98,8 +98,9 @@
 
             <!-- System Traffic Warning Banner (Non-53 port or Adapter DNS not pointing to local proxy) -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
-                    Padding="18,14" Margin="{DynamicResource Card.Gap}"
-                    Visibility="{Binding TrafficWarningBanner, Converter={StaticResource NullToVisibility}}"
+                    Padding="18,14" Margin="{DynamicResource Card.Gap}" Visibility="Collapsed"
+                    controls:DismissBannerBehavior.BannerContent="{Binding TrafficWarningBanner}"
+                    controls:DismissBannerBehavior.PersistKey="TrafficWarning"
                     controls:ChartHoverInfoBehavior.Title="{l:Loc Dash_Explain_TrafficWarn_Title}"
                     controls:ChartHoverInfoBehavior.Description="{l:Loc Dash_Explain_TrafficWarn_Desc}"
                     controls:ChartHoverInfoBehavior.MetricsMeaning="{l:Loc Dash_Explain_TrafficWarn_Metrics}"
@@ -114,7 +115,10 @@
                         <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" VerticalAlignment="Top" />
                         <TextBox Grid.Column="1" Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding TrafficWarningBanner, Mode=OneWay}"
                                  VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <Button Grid.Column="2" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding TrafficWarningBanner}" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                            <Button Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding TrafficWarningBanner}" />
+                            <Button Style="{StaticResource Button.DismissInline}" Margin="4,0,0,0" controls:DismissBannerBehavior.IsDismissButton="True" />
+                        </StackPanel>
                     </Grid>
                     <WrapPanel Orientation="Horizontal" Margin="32,12,0,0">
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding UseAlternateLoopbackPort53Command}" Margin="0,0,8,4"
@@ -153,16 +157,19 @@
 
             <!-- Unencrypted DNS Warning Banner -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
-                    Padding="18,14" Margin="{DynamicResource Card.Gap}"
-                    Visibility="{Binding IsUnencryptedDnsActive, Converter={StaticResource BoolToVisibility}}">
+                    Padding="18,14" Margin="{DynamicResource Card.Gap}" Visibility="Collapsed"
+                    controls:DismissBannerBehavior.BannerContent="{Binding IsUnencryptedDnsActive}"
+                    controls:DismissBannerBehavior.PersistKey="UnencryptedDns">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" FontSize="18" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,14,0" VerticalAlignment="Top" />
-                        <TextBlock Grid.Column="1" Text="{l:Loc DnsWarn_UnencryptedActive}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{l:Loc DnsWarn_UnencryptedActive}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <Button Grid.Column="2" Style="{StaticResource Button.DismissInline}" controls:DismissBannerBehavior.IsDismissButton="True" />
                     </Grid>
                     <WrapPanel Orientation="Horizontal" Margin="32,12,0,0">
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding SwitchToEncryptedDnsCommand}"
@@ -174,29 +181,35 @@
 
             <!-- Error Banner -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
-                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
-                    Visibility="{Binding EngineError, Converter={StaticResource NullToVisibility}}">
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="Collapsed"
+                    controls:DismissBannerBehavior.BannerContent="{Binding EngineError}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding EngineError, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding EngineError}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Button Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding EngineError}" />
+                        <Button Style="{StaticResource Button.DismissInline}" Margin="4,0,0,0" controls:DismissBannerBehavior.IsDismissButton="True" />
+                    </StackPanel>
                 </Grid>
             </Border>
 
             <!-- Local Proxy Test Feedback Banner -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.SuccessSubtle}" BorderBrush="{DynamicResource Brush.Success}"
-                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
-                    Visibility="{Binding TestProxyFeedback, Converter={StaticResource NullToVisibility}}">
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="Collapsed"
+                    controls:DismissBannerBehavior.BannerContent="{Binding TestProxyFeedback}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding TestProxyFeedback, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding TestProxyFeedback}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Button Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding TestProxyFeedback}" />
+                        <Button Style="{StaticResource Button.DismissInline}" Margin="4,0,0,0" controls:DismissBannerBehavior.IsDismissButton="True" />
+                    </StackPanel>
                 </Grid>
             </Border>
 

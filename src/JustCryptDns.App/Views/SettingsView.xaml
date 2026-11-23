@@ -37,14 +37,23 @@
 
             <!-- Notices -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.WarningSubtle}" BorderBrush="{DynamicResource Brush.Warning}"
-                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="{Binding ShowLoadWarning, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,12,0" />
-                    <TextBlock Style="{StaticResource Text.Body}" Text="{l:Loc Settings_LoadWarning}" />
-                </StackPanel>
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="Collapsed"
+                    controls:DismissBannerBehavior.BannerContent="{Binding ShowLoadWarning}"
+                    controls:DismissBannerBehavior.PersistKey="SettingsLoadWarning">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" Foreground="{DynamicResource Brush.Warning}" Margin="0,0,12,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Style="{StaticResource Text.Body}" Text="{l:Loc Settings_LoadWarning}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Button Grid.Column="2" Style="{StaticResource Button.DismissInline}" controls:DismissBannerBehavior.IsDismissButton="True" />
+                </Grid>
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
-                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="{Binding SaveError, Converter={StaticResource NullToVisibility}}">
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="Collapsed"
+                    controls:DismissBannerBehavior.BannerContent="{Binding SaveError}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -58,7 +67,10 @@
                             </MultiBinding>
                         </TextBox.Text>
                     </TextBox>
-                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding SaveError}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Button Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding SaveError}" />
+                        <Button Style="{StaticResource Button.DismissInline}" Margin="4,0,0,0" controls:DismissBannerBehavior.IsDismissButton="True" />
+                    </StackPanel>
                 </Grid>
             </Border>
 

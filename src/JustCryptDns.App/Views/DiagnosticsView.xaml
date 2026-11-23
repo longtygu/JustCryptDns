@@ -35,17 +35,20 @@
                 <Button Grid.Column="1" Command="{Binding RefreshLocalSnapshotCommand}" Content="{l:Loc Common_Refresh}" VerticalAlignment="Center" />
             </Grid>
 
-            <!-- Error Banner (Selectable & Copyable) -->
+            <!-- Error Banner (Selectable, Copyable & Dismissible) -->
             <Border Style="{StaticResource Card}" Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
-                    Padding="16,12" Margin="{DynamicResource Card.Gap}"
-                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}">
+                    Padding="16,12" Margin="{DynamicResource Card.Gap}" Visibility="Collapsed"
+                    controls:DismissBannerBehavior.BannerContent="{Binding ErrorMessage}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" Text="{Binding ErrorMessage, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding ErrorMessage}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Button Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding ErrorMessage}" />
+                        <Button Style="{StaticResource Button.DismissInline}" Margin="4,0,0,0" controls:DismissBannerBehavior.IsDismissButton="True" />
+                    </StackPanel>
                 </Grid>
             </Border>
 
