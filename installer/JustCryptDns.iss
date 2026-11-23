@@ -2,7 +2,7 @@
 ; Builds a signed-ready installer with Windows Service registration (LocalSystem) and clean uninstall.
 
 #define MyAppName "JustCryptDns"
-#define MyAppVersion "1.8.1"
+#define MyAppVersion "1.8.2"
 #define MyAppPublisher "Longtygu (JustCryptDns)"
 #define MyAppURL "https://github.com/longtygu/JustCryptDns"
 #define MyAppExeName "JustCryptDns.exe"
