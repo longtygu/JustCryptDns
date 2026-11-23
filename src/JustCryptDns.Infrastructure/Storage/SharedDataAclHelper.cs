@@ -42,7 +42,12 @@ public static class SharedDataAclHelper
         if (IsCurrentProcessElevatedOrSystem())
         {
             TryApplyAdminOnlyWriteAcl(paths.EngineDirectory, logger);
-            TryApplyAdminOnlyWriteAcl(paths.UpdatesDirectory, logger);
+            var updatesFull = Path.TrimEndingDirectorySeparator(Path.GetFullPath(paths.UpdatesDirectory)) + Path.DirectorySeparatorChar;
+            if (updatesFull.StartsWith(commonAppDataRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                TryApplyAdminOnlyWriteAcl(paths.UpdatesDirectory, logger);
+            }
+
             TryApplyAdminOnlyWriteFileAcl(paths.DnsBackupFile, logger);
         }
 

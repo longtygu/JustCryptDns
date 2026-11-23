@@ -293,6 +293,27 @@ public sealed class Phase19OperationModesAndAnalyticsTests
     }
 
     [Fact]
+    public void AppPaths_InstalledMode_StagesUpdatesInPerUserLocalAppData()
+    {
+        var nonPortableBase = Path.Combine(Path.GetTempPath(), $"jcd-installed-base-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(nonPortableBase);
+        try
+        {
+            var paths = new AppPaths(rootOverride: null, baseDirectoryOverride: nonPortableBase);
+            Assert.False(paths.IsPortableMode);
+            var expectedUpdatesDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                AppPaths.ProductFolderName,
+                "updates");
+            Assert.Equal(expectedUpdatesDir, paths.UpdatesDirectory);
+        }
+        finally
+        {
+            Directory.Delete(nonPortableBase, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task DnsManagerViewModel_UseAlternateLoopbackPort53_HandlesUnauthorizedAccessWithoutCrash()
     {
         var throwingSettings = new ThrowingSettingsService(new AppSettings().Normalize());

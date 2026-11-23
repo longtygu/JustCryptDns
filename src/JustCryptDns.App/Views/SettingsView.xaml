@@ -320,8 +320,8 @@
                                      Text="{Binding ChecksumStatusText, Mode=OneWay}"
                                      Visibility="{Binding ChecksumStatusText, Converter={StaticResource NullToVisibility}}" />
                             <Border Background="{DynamicResource Brush.DangerSubtle}" BorderBrush="{DynamicResource Brush.Danger}"
-                                    BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,8,0,0"
-                                    Visibility="{Binding DownloadError, Converter={StaticResource NullToVisibility}}">
+                                    BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,8,0,0" Visibility="Collapsed"
+                                    controls:DismissBannerBehavior.BannerContent="{Binding DownloadError}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -329,7 +329,10 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBox Style="{StaticResource TextBox.SelectableReadOnly}" FontSize="{DynamicResource Font.Size.Caption}"
                                              Text="{Binding DownloadError, Mode=OneWay}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                    <Button Grid.Column="1" Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding DownloadError}" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                        <Button Style="{StaticResource Button.CopyInline}" controls:CopyTextBehavior.CopyText="{Binding DownloadError}" />
+                                        <Button Style="{StaticResource Button.DismissInline}" Margin="4,0,0,0" controls:DismissBannerBehavior.IsDismissButton="True" />
+                                    </StackPanel>
                                 </Grid>
                             </Border>
                         </StackPanel>

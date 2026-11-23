@@ -60,6 +60,7 @@ public sealed class AppPaths : IAppPaths
             IsPortableMode = File.Exists(portableFlagPath) && !IsProtectedSystemDirectory(effectiveBaseDir);
             DataDirectory = Path.GetFullPath(rootOverride!);
             ProxyBackupFile = Path.Combine(DataDirectory, "proxy-backup.json");
+            UpdatesDirectory = Path.Combine(DataDirectory, "updates");
         }
         else if (File.Exists(portableFlagPath)
                  && !IsProtectedSystemDirectory(effectiveBaseDir)
@@ -68,6 +69,7 @@ public sealed class AppPaths : IAppPaths
             IsPortableMode = true;
             DataDirectory = Path.Combine(effectiveBaseDir, "data");
             ProxyBackupFile = Path.Combine(DataDirectory, "proxy-backup.json");
+            UpdatesDirectory = Path.Combine(DataDirectory, "updates");
         }
         else
         {
@@ -82,6 +84,7 @@ public sealed class AppPaths : IAppPaths
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             DataDirectory = Path.Combine(commonAppData, ProductFolderName);
             ProxyBackupFile = Path.Combine(localAppData, ProductFolderName, "proxy-backup.json");
+            UpdatesDirectory = Path.Combine(localAppData, ProductFolderName, "updates");
             _legacyUserDataDirectory = Path.Combine(localAppData, ProductFolderName);
         }
 
@@ -89,7 +92,6 @@ public sealed class AppPaths : IAppPaths
         SettingsFile = Path.Combine(DataDirectory, "settings.json");
         DnsBackupFile = Path.Combine(DataDirectory, "dns-backup.json");
         EngineDirectory = Path.Combine(DataDirectory, "engine");
-        UpdatesDirectory = Path.Combine(DataDirectory, "updates");
     }
 
     public bool IsPortableMode { get; }
