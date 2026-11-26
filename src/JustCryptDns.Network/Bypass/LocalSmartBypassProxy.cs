@@ -22,6 +22,11 @@ namespace JustCryptDns.Network.Bypass;
 public sealed class LocalSmartBypassProxy : IAsyncDisposable
 {
     private const int RelayBufferSize = 32 * 1024;
+    private static readonly TimeSpan SocketIdleTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan HalfCloseDrainTimeout = TimeSpan.FromSeconds(10);
+    private static readonly ReadOnlyMemory<byte> Http200EstablishedBytes = "HTTP/1.1 200 Connection Established\r\n\r\n"u8.ToArray();
+    private static readonly ReadOnlyMemory<byte> Http400BadRequestBytes = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray();
+    private static readonly ReadOnlyMemory<byte> Http403ForbiddenBytes = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray();
 
     private readonly IPAddress _listenAddress;
     private readonly int _requestedPort;
@@ -127,7 +132,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         {
             using (client)
             {
-                client.NoDelay = true;
+                ConfigureTcpKeepAlive(client.Client);
                 var stream = client.GetStream();
 
                 // Peek first byte to auto-detect SOCKS5 vs HTTP/HTTPS proxy.
@@ -171,75 +176,83 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
 
     private async Task HandleSocks5ClientAsync(TcpClient client, NetworkStream stream, CancellationToken ct)
     {
-        var head = new byte[2];
-        await stream.ReadExactlyAsync(head, ct).ConfigureAwait(false);
-        if (head[0] != 0x05)
-        {
-            return;
-        }
-
-        var methodCount = head[1];
-        var methods = new byte[methodCount];
-        await stream.ReadExactlyAsync(methods, ct).ConfigureAwait(false);
-        if (!methods.Contains((byte)0x00))
-        {
-            await stream.WriteAsync(new byte[] { 0x05, 0xFF }, ct).ConfigureAwait(false);
-            return;
-        }
-
-        await stream.WriteAsync(new byte[] { 0x05, 0x00 }, ct).ConfigureAwait(false);
-
-        var reqHead = new byte[4];
-        await stream.ReadExactlyAsync(reqHead, ct).ConfigureAwait(false);
-        if (reqHead[0] != 0x05 || reqHead[1] != 0x01)
-        {
-            await SendSocks5ReplyAsync(stream, 0x07, ct).ConfigureAwait(false);
-            return;
-        }
-
         string targetHost;
-        switch (reqHead[3])
+        int targetPort;
+        using (var handshakeCts = CancellationTokenSource.CreateLinkedTokenSource(ct))
         {
-            case 0x01:
+            handshakeCts.CancelAfter(4000);
+            var hCt = handshakeCts.Token;
+
+            var head = new byte[2];
+            await stream.ReadExactlyAsync(head, hCt).ConfigureAwait(false);
+            if (head[0] != 0x05)
             {
-                var ipBytes = new byte[4];
-                await stream.ReadExactlyAsync(ipBytes, ct).ConfigureAwait(false);
-                targetHost = new IPAddress(ipBytes).ToString();
-                break;
-            }
-            case 0x03:
-            {
-                var lenBuf = new byte[1];
-                await stream.ReadExactlyAsync(lenBuf, ct).ConfigureAwait(false);
-                var domainBytes = new byte[lenBuf[0]];
-                await stream.ReadExactlyAsync(domainBytes, ct).ConfigureAwait(false);
-                targetHost = Encoding.ASCII.GetString(domainBytes);
-                break;
-            }
-            case 0x04:
-            {
-                var ipBytes = new byte[16];
-                await stream.ReadExactlyAsync(ipBytes, ct).ConfigureAwait(false);
-                targetHost = new IPAddress(ipBytes).ToString();
-                break;
-            }
-            default:
-                await SendSocks5ReplyAsync(stream, 0x08, ct).ConfigureAwait(false);
                 return;
+            }
+
+            var methodCount = head[1];
+            var methods = new byte[methodCount];
+            await stream.ReadExactlyAsync(methods, hCt).ConfigureAwait(false);
+            if (!methods.Contains((byte)0x00))
+            {
+                await stream.WriteAsync(new byte[] { 0x05, 0xFF }, hCt).ConfigureAwait(false);
+                return;
+            }
+
+            await stream.WriteAsync(new byte[] { 0x05, 0x00 }, hCt).ConfigureAwait(false);
+
+            var reqHead = new byte[4];
+            await stream.ReadExactlyAsync(reqHead, hCt).ConfigureAwait(false);
+            if (reqHead[0] != 0x05 || reqHead[1] != 0x01)
+            {
+                await SendSocks5ReplyAsync(stream, 0x07, hCt).ConfigureAwait(false);
+                return;
+            }
+
+            switch (reqHead[3])
+            {
+                case 0x01:
+                {
+                    var ipBytes = new byte[4];
+                    await stream.ReadExactlyAsync(ipBytes, hCt).ConfigureAwait(false);
+                    targetHost = new IPAddress(ipBytes).ToString();
+                    break;
+                }
+                case 0x03:
+                {
+                    var lenBuf = new byte[1];
+                    await stream.ReadExactlyAsync(lenBuf, hCt).ConfigureAwait(false);
+                    var domainBytes = new byte[lenBuf[0]];
+                    await stream.ReadExactlyAsync(domainBytes, hCt).ConfigureAwait(false);
+                    targetHost = Encoding.ASCII.GetString(domainBytes);
+                    break;
+                }
+                case 0x04:
+                {
+                    var ipBytes = new byte[16];
+                    await stream.ReadExactlyAsync(ipBytes, hCt).ConfigureAwait(false);
+                    targetHost = new IPAddress(ipBytes).ToString();
+                    break;
+                }
+                default:
+                    await SendSocks5ReplyAsync(stream, 0x08, hCt).ConfigureAwait(false);
+                    return;
+            }
+
+            var portBytes = new byte[2];
+            await stream.ReadExactlyAsync(portBytes, hCt).ConfigureAwait(false);
+            targetPort = BinaryPrimitives.ReadUInt16BigEndian(portBytes);
+
+            if (IsSelfLoop(targetHost, targetPort))
+            {
+                await SendSocks5ReplyAsync(stream, 0x02, hCt).ConfigureAwait(false);
+                _recordEvent(BypassActionKind.Failed, targetHost, targetPort, "SOCKS5", "LoopPrevented", 0, "Blocked proxy self-loop.");
+                return;
+            }
+
+            await SendSocks5ReplyAsync(stream, 0x00, hCt).ConfigureAwait(false);
         }
 
-        var portBytes = new byte[2];
-        await stream.ReadExactlyAsync(portBytes, ct).ConfigureAwait(false);
-        var targetPort = BinaryPrimitives.ReadUInt16BigEndian(portBytes);
-
-        if (IsSelfLoop(targetHost, targetPort))
-        {
-            await SendSocks5ReplyAsync(stream, 0x02, ct).ConfigureAwait(false);
-            _recordEvent(BypassActionKind.Failed, targetHost, targetPort, "SOCKS5", "LoopPrevented", 0, "Blocked proxy self-loop.");
-            return;
-        }
-
-        await SendSocks5ReplyAsync(stream, 0x00, ct).ConfigureAwait(false);
         await StreamSessionAsync(client, stream, targetHost, targetPort, "SOCKS5", preBufferedPayload: null, ct).ConfigureAwait(false);
     }
 
@@ -250,7 +263,8 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
     {
         using var headerCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         headerCts.CancelAfter(4000);
-        var headerBytes = await UpstreamTunnelConnector.ReadHttpHeadersExactAsync(client.Client, stream, 8192, headerCts.Token).ConfigureAwait(false);
+        var hCt = headerCts.Token;
+        var headerBytes = await UpstreamTunnelConnector.ReadHttpHeadersExactAsync(client.Client, stream, 8192, hCt).ConfigureAwait(false);
         if (headerBytes.Length == 0)
         {
             return;
@@ -266,7 +280,7 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         var parts = lines[0].Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 3)
         {
-            await stream.WriteAsync("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray(), ct).ConfigureAwait(false);
+            await stream.WriteAsync(Http400BadRequestBytes, hCt).ConfigureAwait(false);
             return;
         }
 
@@ -278,19 +292,19 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         {
             if (!TryParseHostPort(target, defaultPort: 443, out var host, out var port))
             {
-                await stream.WriteAsync("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray(), ct).ConfigureAwait(false);
+                await stream.WriteAsync(Http400BadRequestBytes, hCt).ConfigureAwait(false);
                 return;
             }
 
             if (IsSelfLoop(host, port))
             {
-                await stream.WriteAsync("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray(), ct).ConfigureAwait(false);
+                await stream.WriteAsync(Http403ForbiddenBytes, hCt).ConfigureAwait(false);
                 _recordEvent(BypassActionKind.Failed, host, port, "HTTP CONNECT", "LoopPrevented", 0, "Blocked proxy self-loop.");
                 return;
             }
 
-            await stream.WriteAsync("HTTP/1.1 200 Connection Established\r\n\r\n"u8.ToArray(), ct).ConfigureAwait(false);
-            await stream.FlushAsync(ct).ConfigureAwait(false);
+            await stream.WriteAsync(Http200EstablishedBytes, hCt).ConfigureAwait(false);
+            await stream.FlushAsync(hCt).ConfigureAwait(false);
             await StreamSessionAsync(client, stream, host, port, "HTTP CONNECT", preBufferedPayload: null, ct).ConfigureAwait(false);
             return;
         }
@@ -741,40 +755,47 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
                 await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
             }
 
-            var firstResponseBuf = new byte[4096];
-            using var firstByteCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            firstByteCts.CancelAfter(Math.Clamp(firstByteTimeoutMs, 800, 5000));
-            var firstResponseLen = await upstreamStream.ReadAsync(firstResponseBuf, firstByteCts.Token).ConfigureAwait(false);
-            handshakeSw.Stop();
-            var handshakeWaitMs = handshakeSw.Elapsed.TotalMilliseconds;
-            if (firstResponseLen <= 0)
+            var firstResponseBuf = ArrayPool<byte>.Shared.Rent(4096);
+            try
             {
-                return new FirstFlightOutcome(false, false, false, "Remote host closed connection before handshake response.");
-            }
+                using var firstByteCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                firstByteCts.CancelAfter(Math.Clamp(firstByteTimeoutMs, 800, 5000));
+                var firstResponseLen = await upstreamStream.ReadAsync(firstResponseBuf.AsMemory(0, 4096), firstByteCts.Token).ConfigureAwait(false);
+                handshakeSw.Stop();
+                var handshakeWaitMs = handshakeSw.Elapsed.TotalMilliseconds;
+                if (firstResponseLen <= 0)
+                {
+                    return new FirstFlightOutcome(false, false, false, "Remote host closed connection before handshake response.");
+                }
 
-            // Detect TLS Fatal Alert rejecting split ClientHello when self-healing is enabled.
-            if (fragmentPayload
-                && TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload)
-                && firstResponseBuf[0] == 0x15
-                && settings.EnableSmartSelfHealing)
+                // Detect TLS Fatal Alert rejecting split ClientHello when self-healing is enabled.
+                if (fragmentPayload
+                    && TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload)
+                    && firstResponseBuf[0] == 0x15
+                    && settings.EnableSmartSelfHealing)
+                {
+                    return new FirstFlightOutcome(false, false, true, "Server sent TLS Alert in response to fragmented ClientHello.");
+                }
+
+                if (fragmentPayload
+                    && settings.EnableSmartSelfHealing
+                    && TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload)
+                    && ShouldLearnDirectForSlowFragmentedTls(tcpConnectMs, handshakeWaitMs))
+                {
+                    _matcher.RecordLearnedHost(
+                        targetHost,
+                        LearnedHostStrategy.Direct,
+                        string.Create(CultureInfo.InvariantCulture, $"Slow fragmented TLS ({handshakeWaitMs:0} ms vs TCP {tcpConnectMs:0} ms)"));
+                }
+
+                onConnectedBeforeRelay?.Invoke();
+                await clientStream.WriteAsync(firstResponseBuf.AsMemory(0, firstResponseLen), ct).ConfigureAwait(false);
+                await clientStream.FlushAsync(ct).ConfigureAwait(false);
+            }
+            finally
             {
-                return new FirstFlightOutcome(false, false, true, "Server sent TLS Alert in response to fragmented ClientHello.");
+                ArrayPool<byte>.Shared.Return(firstResponseBuf);
             }
-
-            if (fragmentPayload
-                && settings.EnableSmartSelfHealing
-                && TlsClientHelloFragmenter.IsTlsClientHelloHeader(initial.FirstPayload)
-                && ShouldLearnDirectForSlowFragmentedTls(tcpConnectMs, handshakeWaitMs))
-            {
-                _matcher.RecordLearnedHost(
-                    targetHost,
-                    LearnedHostStrategy.Direct,
-                    string.Create(CultureInfo.InvariantCulture, $"Slow fragmented TLS ({handshakeWaitMs:0} ms vs TCP {tcpConnectMs:0} ms)"));
-            }
-
-            onConnectedBeforeRelay?.Invoke();
-            await clientStream.WriteAsync(firstResponseBuf.AsMemory(0, firstResponseLen), ct).ConfigureAwait(false);
-            await clientStream.FlushAsync(ct).ConfigureAwait(false);
 
             sw.Stop();
             _recordEvent(actionKind, targetHost, targetPort, clientProtocol, strategyLabel, Math.Round(sw.Elapsed.TotalMilliseconds, 1), null);
@@ -925,6 +946,21 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         }
     }
 
+    private static void ConfigureTcpKeepAlive(Socket socket)
+    {
+        try
+        {
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 30);
+            socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 10);
+            socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 3);
+        }
+        catch
+        {
+            // Some virtual adapters or already-closing sockets reject TCP keep-alive tuning; non-fatal.
+        }
+    }
+
     private static async Task RelayBidirectionalAsync(
         TcpClient client,
         NetworkStream clientStream,
@@ -934,9 +970,39 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
     {
         using (upstream)
         {
-            var c2u = CopyOneDirectionAsync(clientStream, upstreamStream, upstream.Client, ct);
-            var u2c = CopyOneDirectionAsync(upstreamStream, clientStream, client.Client, ct);
-            await Task.WhenAll(c2u, u2c).ConfigureAwait(false);
+            ConfigureTcpKeepAlive(upstream.Client);
+
+            using var relayCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var c2u = CopyOneDirectionAsync(clientStream, upstreamStream, upstream.Client, relayCts.Token);
+            var u2c = CopyOneDirectionAsync(upstreamStream, clientStream, client.Client, relayCts.Token);
+
+            var firstCompleted = await Task.WhenAny(c2u, u2c).ConfigureAwait(false);
+            var other = ReferenceEquals(firstCompleted, c2u) ? u2c : c2u;
+
+            if (!other.IsCompleted)
+            {
+                try
+                {
+                    await other.WaitAsync(HalfCloseDrainTimeout, ct).ConfigureAwait(false);
+                }
+                catch (TimeoutException)
+                {
+                    relayCts.Cancel();
+                }
+                catch
+                {
+                    relayCts.Cancel();
+                }
+            }
+
+            try
+            {
+                await Task.WhenAll(c2u, u2c).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Individual direction exceptions are handled cleanly below.
+            }
         }
     }
 
@@ -950,21 +1016,24 @@ public sealed class LocalSmartBypassProxy : IAsyncDisposable
         {
             while (!ct.IsCancellationRequested)
             {
+                using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                idleCts.CancelAfter(SocketIdleTimeout);
+
                 // Zero-buffer wait so idle keep-alive browser sockets hold 0 KB of pooled relay memory.
-                _ = await source.ReadAsync(Memory<byte>.Empty, ct).ConfigureAwait(false);
+                _ = await source.ReadAsync(Memory<byte>.Empty, idleCts.Token).ConfigureAwait(false);
 
                 var buffer = ArrayPool<byte>.Shared.Rent(RelayBufferSize);
                 try
                 {
-                    var read = await source.ReadAsync(buffer.AsMemory(0, RelayBufferSize), ct).ConfigureAwait(false);
+                    var read = await source.ReadAsync(buffer.AsMemory(0, RelayBufferSize), idleCts.Token).ConfigureAwait(false);
                     if (read <= 0)
                     {
                         try { destinationSocket.Shutdown(SocketShutdown.Send); } catch { }
                         break;
                     }
 
-                    await destination.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
-                    await destination.FlushAsync(ct).ConfigureAwait(false);
+                    await destination.WriteAsync(buffer.AsMemory(0, read), idleCts.Token).ConfigureAwait(false);
+                    await destination.FlushAsync(idleCts.Token).ConfigureAwait(false);
                 }
                 finally
                 {

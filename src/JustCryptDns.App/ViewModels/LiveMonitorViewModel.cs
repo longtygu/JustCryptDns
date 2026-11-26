@@ -35,7 +35,9 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     private readonly List<LiveQueryMonitorEntry> _allQueries = new(MaxLocalQueryBuffer);
     private DispatcherTimer? _servicePollTimer;
     private bool _isServicePollInFlight;
+    private bool _isShellSuspended;
     private long _lastSyncedSequenceId;
+    private long _lastAnalyticsRefreshTick;
     private QueryAnalyticsSnapshot _latestAnalytics = new()
     {
         SessionStartedUtc = DateTimeOffset.UtcNow,
@@ -130,8 +132,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
 
     public override void OnNavigatedTo()
     {
+        _diagnostics.QueryObserved -= OnQueryObserved;
         _diagnostics.QueryObserved += OnQueryObserved;
+        _failover.FailoverOccurred -= OnFailoverOccurred;
         _failover.FailoverOccurred += OnFailoverOccurred;
+        _dnsEngine.StateChanged -= OnEngineStateChanged;
         _dnsEngine.StateChanged += OnEngineStateChanged;
         if (_serviceClient is not null)
         {
@@ -139,9 +144,12 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
             _serviceClient.StateChanged += OnServiceClientStateChanged;
         }
 
-        RefreshAvailableResolvers();
-        RefreshAll();
-        StartServicePolling();
+        if (!_isShellSuspended)
+        {
+            RefreshAvailableResolvers();
+            RefreshAll();
+            StartServicePolling();
+        }
     }
 
     public override void OnNavigatedFrom()
@@ -155,6 +163,20 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
         _diagnostics.QueryObserved -= OnQueryObserved;
         _failover.FailoverOccurred -= OnFailoverOccurred;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
+    }
+
+    public override void OnShellSuspended()
+    {
+        _isShellSuspended = true;
+        StopServicePolling();
+    }
+
+    public override void OnShellResumed()
+    {
+        _isShellSuspended = false;
+        RefreshAvailableResolvers();
+        RefreshAll();
+        StartServicePolling();
     }
 
     protected override void Dispose(bool disposing)
@@ -768,8 +790,18 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
 
     private void OnQueryObserved(object? sender, LiveQueryMonitorEntry entry)
     {
+        if (_isShellSuspended)
+        {
+            return;
+        }
+
         void Add()
         {
+            if (_isShellSuspended)
+            {
+                return;
+            }
+
             _allQueries.Insert(0, entry);
             if (entry.SequenceId > _lastSyncedSequenceId)
             {
@@ -791,9 +823,14 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
             }
 
             UpdateFilteredCountSummary();
-            if (ActiveTabIndex == 1 || _allQueries.Count % 10 == 0)
+            if (ActiveTabIndex == 1)
             {
-                ApplyAnalyticsSnapshot(_diagnostics.GetQueryAnalyticsSnapshot(50));
+                var now = Environment.TickCount64;
+                if (now - _lastAnalyticsRefreshTick >= 1000)
+                {
+                    _lastAnalyticsRefreshTick = now;
+                    ApplyAnalyticsSnapshot(_diagnostics.GetQueryAnalyticsSnapshot(50));
+                }
             }
         }
 
@@ -809,6 +846,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
 
     private void OnFailoverOccurred(object? sender, FailoverEventEntry ev)
     {
+        if (_isShellSuspended)
+        {
+            return;
+        }
+
         void Add()
         {
             FailoverEvents.Insert(0, ev);
@@ -830,6 +872,11 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
 
     private void OnEngineStateChanged(object? sender, DnsEngineRuntimeStats stats)
     {
+        if (_isShellSuspended)
+        {
+            return;
+        }
+
         if (Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(() => ApplyEngineStats(stats));
@@ -844,7 +891,7 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
     {
         void Sync()
         {
-            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            if (!_isShellSuspended && _serviceClient?.ConnectionState == ServiceConnectionState.Connected)
             {
                 StartServicePolling();
             }
@@ -866,7 +913,7 @@ public sealed partial class LiveMonitorViewModel : PageViewModel
 
     private void StartServicePolling()
     {
-        if (_serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        if (_isShellSuspended || _servicePollTimer is { IsEnabled: true } || _serviceClient?.ConnectionState != ServiceConnectionState.Connected)
         {
             return;
         }

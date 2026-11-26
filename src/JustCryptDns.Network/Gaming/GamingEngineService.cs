@@ -19,8 +19,8 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
     private readonly IDnsEngine _dnsEngine;
     private readonly ILogger<GamingEngineService> _logger;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
-    private readonly DohDnsUpstream _defaultDoh;
-    private readonly DotDnsUpstream _defaultDot;
+    private readonly DohDnsUpstream? _defaultDoh;
+    private readonly DotDnsUpstream? _defaultDot;
     private readonly object _resultsLock = new();
     private List<ResolverBenchmarkResult> _lastResults = [];
     private string? _pinnedResolverId;
@@ -42,18 +42,23 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
         _dnsEngine = dnsEngine;
         _logger = logger;
 
-        _defaultDoh = new DohDnsUpstream();
-        _defaultDot = new DotDnsUpstream();
-        var defaultClients = new IDnsUpstreamClient[]
-        {
-            _defaultDoh,
-            _defaultDot,
-            new UdpTcpDnsUpstream(),
-        };
-
         var list = customUpstreams?.ToList();
-        IEnumerable<IDnsUpstreamClient> active = list is { Count: > 0 } ? list : defaultClients;
-        _upstreams = active.ToDictionary(u => u.Protocol);
+        if (list is { Count: > 0 })
+        {
+            _upstreams = list.ToDictionary(u => u.Protocol);
+        }
+        else
+        {
+            _defaultDoh = new DohDnsUpstream();
+            _defaultDot = new DotDnsUpstream();
+            var defaultClients = new IDnsUpstreamClient[]
+            {
+                _defaultDoh,
+                _defaultDot,
+                new UdpTcpDnsUpstream(),
+            };
+            _upstreams = defaultClients.ToDictionary(u => u.Protocol);
+        }
 
         _dnsEngine.StateChanged += OnEngineStateChanged;
     }
@@ -553,8 +558,8 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
 
         _disposed = true;
         _dnsEngine.StateChanged -= OnEngineStateChanged;
-        _defaultDoh.Dispose();
-        _defaultDot.Dispose();
+        _defaultDoh?.Dispose();
+        _defaultDot?.Dispose();
     }
 
     private static ResolverBenchmarkResult BuildBenchmarkMetric(
@@ -622,24 +627,40 @@ public sealed class GamingEngineService : IGamingEngineService, IDisposable
         DnsResolverEndpoint resolver,
         CancellationToken cancellationToken)
     {
-        await _routing.SetRoutingEnabledAsync(true, cancellationToken).ConfigureAwait(false);
-        await _routing.SetActiveProfileAsync(BuiltInRoutingProfiles.GamingProfileId, cancellationToken).ConfigureAwait(false);
-        await _routing.SetProfileFallbackResolverAsync(BuiltInRoutingProfiles.GamingProfileId, resolver.Id, cancellationToken).ConfigureAwait(false);
-
-        foreach (var domain in gamingProfile.Domains)
+        await _settings.UpdateAsync(s =>
         {
-            await _routing.AddOrUpdateRuleAsync(new DnsRoutingRule
+            s.Routing.IsRoutingEnabled = true;
+            s.Routing.ActiveProfileId = BuiltInRoutingProfiles.GamingProfileId;
+            s.Routing.ProfileFallbackOverrides[BuiltInRoutingProfiles.GamingProfileId] = resolver.Id;
+            s.Routing.Rules ??= BuiltInRoutingProfiles.CreateDefaultRules().ToList();
+
+            foreach (var domain in gamingProfile.Domains)
             {
-                Id = $"gaming-auto-{domain.Replace('.', '-')}",
-                ProfileId = BuiltInRoutingProfiles.GamingProfileId,
-                Name = $"{gamingProfile.Name} ({domain})",
-                Pattern = domain,
-                MatchKind = RoutingMatchKind.DomainSuffix,
-                ResolverId = resolver.Id,
-                Priority = 5,
-                IsEnabled = true,
-            }, cancellationToken).ConfigureAwait(false);
-        }
+                var normPattern = RoutingMatcher.NormalizeDomain(domain);
+                var ruleId = $"gaming-auto-{domain.Replace('.', '-')}";
+                var rule = new DnsRoutingRule
+                {
+                    Id = ruleId,
+                    ProfileId = BuiltInRoutingProfiles.GamingProfileId,
+                    Name = $"{gamingProfile.Name} ({domain})",
+                    Pattern = normPattern,
+                    MatchKind = RoutingMatchKind.DomainSuffix,
+                    ResolverId = resolver.Id,
+                    Priority = 5,
+                    IsEnabled = true,
+                };
+
+                var idx = s.Routing.Rules.FindIndex(r => string.Equals(r.Id, ruleId, StringComparison.OrdinalIgnoreCase));
+                if (idx >= 0)
+                {
+                    s.Routing.Rules[idx] = rule;
+                }
+                else
+                {
+                    s.Routing.Rules.Add(rule);
+                }
+            }
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     private void OnEngineStateChanged(object? sender, DnsEngineRuntimeStats stats)

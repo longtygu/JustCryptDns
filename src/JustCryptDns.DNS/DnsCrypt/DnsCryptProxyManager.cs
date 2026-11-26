@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using JustCryptDns.Core.Configuration;
@@ -45,15 +46,20 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
 {
     public const string LatestReleaseApiUrl = "https://api.github.com/repos/DNSCrypt/dnscrypt-proxy/releases/latest";
 
+    private sealed record RunningProcessState(Process Process, string ResolverId, int Port);
+
     private readonly IAppPaths _paths;
     private readonly ILogger<DnsCryptProxyManager> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private Process? _process;
+    private RunningProcessState? _runningState;
+    private nint _jobHandle;
     private DnsResolverEndpoint? _activeResolver;
     private int _activePort;
     private bool _shouldBeRunning;
     private int _crashRestartCount;
+    private long _haltedUntilTick;
     private DateTimeOffset _lastStartUtc;
     private int _disposed;
 
@@ -266,6 +272,21 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(resolver);
+
+        // Lock-free fast path when dnscrypt-proxy is already healthy for this resolver and port.
+        if (_runningState is { } running
+            && string.Equals(running.ResolverId, resolver.Id, StringComparison.OrdinalIgnoreCase)
+            && running.Port == internalPort
+            && IsProcessAliveSafe(running.Process))
+        {
+            return (true, null);
+        }
+
+        if (Volatile.Read(ref _haltedUntilTick) > Environment.TickCount64)
+        {
+            return (false, "dnscrypt-proxy crashed repeatedly and is in crash-recovery cooldown.");
+        }
+
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -277,6 +298,11 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
             if (IsRunning && _activeResolver?.Id == resolver.Id && _activePort == internalPort)
             {
                 return (true, null);
+            }
+
+            if (Volatile.Read(ref _haltedUntilTick) > Environment.TickCount64)
+            {
+                return (false, "dnscrypt-proxy crashed repeatedly and is in crash-recovery cooldown.");
             }
 
             await StopCoreAsync().ConfigureAwait(false);
@@ -356,6 +382,9 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
             _activeResolver = resolver;
             _activePort = internalPort;
             _shouldBeRunning = true;
+            _runningState = new RunningProcessState(process, resolver.Id, internalPort);
+            Volatile.Write(ref _haltedUntilTick, 0);
+            AttachProcessToKillOnCloseJob(process);
             _logger.LogInformation("dnscrypt-proxy started for {Resolver} on 127.0.0.1:{Port}", resolver.Id, internalPort);
             return (true, null);
         }
@@ -377,6 +406,7 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
         {
             _shouldBeRunning = false;
             Interlocked.Exchange(ref _crashRestartCount, 0);
+            Volatile.Write(ref _haltedUntilTick, 0);
             await StopCoreAsync().ConfigureAwait(false);
         }
         finally
@@ -397,6 +427,7 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
         try
         {
             await StopCoreAsync().ConfigureAwait(false);
+            CloseJobHandle();
         }
         finally
         {
@@ -407,6 +438,7 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
 
     private async Task StopCoreAsync()
     {
+        _runningState = null;
         var proc = _process;
         _process = null;
         if (proc is null)
@@ -446,10 +478,12 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
             Interlocked.Exchange(ref _crashRestartCount, 0);
         }
 
+        _runningState = null;
         var attempt = Interlocked.Increment(ref _crashRestartCount);
         if (attempt > 3)
         {
-            _logger.LogError("dnscrypt-proxy crashed {Attempt} times; automatic recovery halted.", attempt);
+            Volatile.Write(ref _haltedUntilTick, Environment.TickCount64 + 30_000);
+            _logger.LogError("dnscrypt-proxy crashed {Attempt} times; entering 30s recovery cooldown.", attempt);
             return;
         }
 
@@ -497,6 +531,129 @@ public sealed class DnsCryptProxyManager : IDnsCryptProxyManager
 
         return sb.Length > 0 ? sb.ToString() : "default";
     }
+
+    private static bool IsProcessAliveSafe(Process process)
+    {
+        try
+        {
+            return !process.HasExited;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void AttachProcessToKillOnCloseJob(Process process)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        try
+        {
+            if (_jobHandle == nint.Zero)
+            {
+                var hJob = CreateJobObjectW(nint.Zero, null);
+                if (hJob != nint.Zero)
+                {
+                    var info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+                    {
+                        BasicLimitInformation = new JOBOBJECT_BASIC_LIMIT_INFORMATION
+                        {
+                            LimitFlags = 0x00002000, // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                        },
+                    };
+                    if (SetInformationJobObject(hJob, 9, ref info, (uint)Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>()))
+                    {
+                        _jobHandle = hJob;
+                    }
+                    else
+                    {
+                        _ = CloseHandle(hJob);
+                    }
+                }
+            }
+
+            if (_jobHandle != nint.Zero)
+            {
+                _ = AssignProcessToJobObject(_jobHandle, process.Handle);
+            }
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            _logger.LogDebug(ex, "Could not attach dnscrypt-proxy to kill-on-close Job Object.");
+        }
+    }
+
+    private void CloseJobHandle()
+    {
+        var hJob = Interlocked.Exchange(ref _jobHandle, nint.Zero);
+        if (hJob != nint.Zero)
+        {
+            _ = CloseHandle(hJob);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JOBOBJECT_BASIC_LIMIT_INFORMATION
+    {
+        public long PerProcessUserTimeLimit;
+        public long PerJobUserTimeLimit;
+        public uint LimitFlags;
+        public nuint MinimumWorkingSetSize;
+        public nuint MaximumWorkingSetSize;
+        public uint ActiveProcessLimit;
+        public nuint Affinity;
+        public uint PriorityClass;
+        public uint SchedulingClass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IO_COUNTERS
+    {
+        public ulong ReadOperationCount;
+        public ulong WriteOperationCount;
+        public ulong OtherOperationCount;
+        public ulong ReadTransferCount;
+        public ulong WriteTransferCount;
+        public ulong OtherTransferCount;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+    {
+        public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
+        public IO_COUNTERS IoInfo;
+        public nuint ProcessMemoryLimit;
+        public nuint JobMemoryLimit;
+        public nuint PeakProcessMemoryUsed;
+        public nuint PeakJobMemoryUsed;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern nint CreateJobObjectW(nint lpJobAttributes, string? lpName);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetInformationJobObject(
+        nint hJob,
+        int jobObjectInfoClass,
+        ref JOBOBJECT_EXTENDED_LIMIT_INFORMATION lpJobObjectInfo,
+        uint cbJobObjectInfoLength);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AssignProcessToJobObject(nint hJob, nint hProcess);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(nint hObject);
 }
 
 /// <summary>

@@ -209,7 +209,9 @@ public sealed class NetworkTelemetryWaveControl : FrameworkElement
 
         DrawAxesAndGrid(drawingContext, plotRect, pingColor, downColor, gridColor);
 
-        drawingContext.PushClip(new RectangleGeometry(plotRect));
+        var clip = new RectangleGeometry(plotRect);
+        clip.Freeze();
+        drawingContext.PushClip(clip);
         try
         {
             DrawVerticalSweepGrid(drawingContext, plotRect, gridColor);

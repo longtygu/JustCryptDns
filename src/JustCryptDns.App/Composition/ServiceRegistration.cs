@@ -7,6 +7,8 @@ using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Services;
 using JustCryptDns.DNS.Cache;
 using JustCryptDns.DNS.DnsCrypt;
+using JustCryptDns.DNS.DNSOverHTTPS;
+using JustCryptDns.DNS.DNSOverTLS;
 using JustCryptDns.DNS.Filtering;
 using JustCryptDns.DNS.Proxy;
 using JustCryptDns.DNS.Resolver;
@@ -52,6 +54,16 @@ public static class ServiceRegistration
         services.AddSingleton<IWindowsDnsManager, WindowsNetworkDnsService>();
         services.AddSingleton<IWindowsProxyManager, WindowsSystemProxyService>();
         services.AddSingleton<IDnsCryptProxyManager, DnsCryptProxyManager>();
+        services.AddSingleton<IDnsUpstreamClient, DohDnsUpstream>();
+        services.AddSingleton<IDnsUpstreamClient, DotDnsUpstream>();
+        services.AddSingleton<IDnsUpstreamClient, UdpTcpDnsUpstream>();
+        services.AddSingleton<IDnsUpstreamClient>(sp =>
+        {
+            var settings = sp.GetRequiredService<ISettingsService>();
+            return new DnsCryptUpstream(
+                sp.GetRequiredService<IDnsCryptProxyManager>(),
+                () => settings.Current.Dns.DnsCryptInternalPort);
+        });
         services.AddSingleton<IResolverLibraryService, ResolverLibraryService>();
         services.AddSingleton<IDnsRoutingService, DnsRoutingService>();
         services.AddSingleton<IDnsFilteringService, DnsFilteringService>();

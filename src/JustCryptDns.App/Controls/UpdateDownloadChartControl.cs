@@ -219,7 +219,9 @@ public sealed class UpdateDownloadChartControl : FrameworkElement
             return;
         }
 
-        dc.PushClip(new RectangleGeometry(plotRect));
+        var clip = new RectangleGeometry(plotRect);
+        clip.Freeze();
+        dc.PushClip(clip);
         try
         {
             var count = _speedSamples.Count;

@@ -44,6 +44,8 @@ public sealed class BypassEngineService : IBypassEngineService
     private bool _hasStartedOnce;
     private int _disposed;
     private long _lastStatsBroadcastTick;
+    private string? _lastPublishedPacScript;
+    private int _lastPublishedPacPort;
 
     public BypassEngineService(
         ISettingsService settings,
@@ -194,6 +196,8 @@ public sealed class BypassEngineService : IBypassEngineService
                     if (proxyResult.Success)
                     {
                         _windowsProxyApplied = true;
+                        _lastPublishedPacScript = GeneratePacScript();
+                        _lastPublishedPacPort = pacServer.BoundPort;
                     }
                     else
                     {
@@ -243,6 +247,8 @@ public sealed class BypassEngineService : IBypassEngineService
             }
 
             _windowsProxyApplied = false;
+            _lastPublishedPacScript = null;
+            _lastPublishedPacPort = 0;
             SetState(BypassEngineState.Stopped, null);
             _logger.LogInformation("Bypass engine stopped.");
         }
@@ -568,7 +574,7 @@ public sealed class BypassEngineService : IBypassEngineService
         }, cancellationToken).ConfigureAwait(false);
 
         _matcher.ClearHints();
-        await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshSystemPacCoreAsync(forceReapply: true, cancellationToken).ConfigureAwait(false);
         return (true, normalized, null);
     }
 
@@ -593,7 +599,7 @@ public sealed class BypassEngineService : IBypassEngineService
         if (removed)
         {
             _matcher.ClearHints();
-            await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+            await RefreshSystemPacCoreAsync(forceReapply: true, cancellationToken).ConfigureAwait(false);
         }
 
         return removed;
@@ -616,7 +622,7 @@ public sealed class BypassEngineService : IBypassEngineService
         }, cancellationToken).ConfigureAwait(false);
 
         _matcher.ClearHints();
-        await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshSystemPacCoreAsync(forceReapply: true, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task ResetBuiltInRulesAsync(CancellationToken cancellationToken = default)
@@ -628,7 +634,7 @@ public sealed class BypassEngineService : IBypassEngineService
         }, cancellationToken).ConfigureAwait(false);
 
         _matcher.ClearHints();
-        await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshSystemPacCoreAsync(forceReapply: true, cancellationToken).ConfigureAwait(false);
     }
 
     public IReadOnlyList<string> GetDirectExclusions() =>
@@ -654,7 +660,7 @@ public sealed class BypassEngineService : IBypassEngineService
         }, cancellationToken).ConfigureAwait(false);
 
         _matcher.ClearHints();
-        await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+        await RefreshSystemPacCoreAsync(forceReapply: true, cancellationToken).ConfigureAwait(false);
         return (true, null);
     }
 
@@ -677,7 +683,7 @@ public sealed class BypassEngineService : IBypassEngineService
         if (removed)
         {
             _matcher.ClearHints();
-            await RefreshSystemPacAsync(cancellationToken).ConfigureAwait(false);
+            await RefreshSystemPacCoreAsync(forceReapply: true, cancellationToken).ConfigureAwait(false);
         }
 
         return removed;
@@ -725,10 +731,28 @@ public sealed class BypassEngineService : IBypassEngineService
         return (ok, err);
     }
 
-    public async Task RefreshSystemPacAsync(CancellationToken cancellationToken = default)
+    public Task RefreshSystemPacAsync(CancellationToken cancellationToken = default) =>
+        RefreshSystemPacCoreAsync(forceReapply: false, cancellationToken);
+
+    private async Task RefreshSystemPacCoreAsync(bool forceReapply, CancellationToken cancellationToken = default)
     {
-        Interlocked.Increment(ref _pacRevision);
         var bypass = _settings.Current.Bypass;
+        var currentPacScript = GeneratePacScript();
+        var currentPacPort = _pacServer?.BoundPort ?? 0;
+
+        if (!forceReapply
+            && _windowsProxyApplied
+            && currentPacPort > 0
+            && _lastPublishedPacPort == currentPacPort
+            && string.Equals(_lastPublishedPacScript, currentPacScript, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Interlocked.Increment(ref _pacRevision);
+        _lastPublishedPacScript = currentPacScript;
+        _lastPublishedPacPort = currentPacPort;
+
         if (_state is BypassEngineState.Running or BypassEngineState.Degraded
             && _pacServer is { BoundPort: > 0 } pacServer
             && bypass.ApplyWindowsProxyAutomatically

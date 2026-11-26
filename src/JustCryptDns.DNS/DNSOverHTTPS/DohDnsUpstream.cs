@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Net.Sockets;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Models;
+using JustCryptDns.Core.Network;
 using JustCryptDns.DNS.Wire;
 
 namespace JustCryptDns.DNS.DNSOverHTTPS;
@@ -18,6 +19,8 @@ public sealed class DohDnsUpstream : IDnsUpstreamClient, IDisposable
 {
     private const string DnsMessageMediaType = "application/dns-message";
     private static readonly HttpRequestOptionsKey<IPAddress> BootstrapIpKey = new("JustCryptDns.BootstrapIp");
+    private static readonly MediaTypeHeaderValue DnsMessageContentType = new(DnsMessageMediaType);
+    private static readonly MediaTypeWithQualityHeaderValue DnsMessageAcceptHeader = new(DnsMessageMediaType);
 
     private readonly HttpClient _httpClient;
     private readonly bool _ownsClient;
@@ -36,6 +39,9 @@ public sealed class DohDnsUpstream : IDnsUpstreamClient, IDisposable
             PooledConnectionLifetime = TimeSpan.FromMinutes(10),
             PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
             ConnectTimeout = TimeSpan.FromSeconds(3),
+            KeepAlivePingDelay = TimeSpan.FromSeconds(15),
+            KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
+            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests,
             EnableMultipleHttp2Connections = true,
             AutomaticDecompression = DecompressionMethods.None,
             UseProxy = false,
@@ -81,8 +87,8 @@ public sealed class DohDnsUpstream : IDnsUpstreamClient, IDisposable
         {
             Content = new ByteArrayContent(payload),
         };
-        request.Content.Headers.ContentType = new MediaTypeHeaderValue(DnsMessageMediaType);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(DnsMessageMediaType));
+        request.Content.Headers.ContentType = DnsMessageContentType;
+        request.Headers.Accept.Add(DnsMessageAcceptHeader);
 
         if (IPAddress.TryParse(resolver.PrimaryIp, out var bootstrapIp))
         {
@@ -147,6 +153,7 @@ public sealed class DohDnsUpstream : IDnsUpstreamClient, IDisposable
         var socket = targetIp is not null
             ? new Socket(targetIp.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true }
             : new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+        SocketHandleGuard.DisableInheritance(socket);
         try
         {
             if (targetIp is not null)

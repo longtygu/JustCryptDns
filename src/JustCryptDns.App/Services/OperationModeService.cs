@@ -63,6 +63,8 @@ public sealed class OperationModeService : IOperationModeService
 
     private Timer? _autoTimer;
     private int _autoTickInFlight;
+    private uint _lastFgPid;
+    private string? _lastFgProcessName;
     private bool _disposed;
     private OperationModeState _state;
 
@@ -530,55 +532,85 @@ public sealed class OperationModeService : IOperationModeService
     private async Task<AutoModeSignals> CollectAutoSignalsAsync(CancellationToken cancellationToken)
     {
         var (isFullscreenD3D, fgProcess) = ProbeForegroundGameState();
+        var rules = _settings?.Current.OperationMode.AutoRules;
+
+        // Priority 1 (Gaming) short-circuit: avoid expensive threat/analytics probes when fullscreen D3D
+        // or a user-configured custom game process is already active in the foreground.
+        if (rules?.SwitchToGamingOnFullscreenGame == true && isFullscreenD3D)
+        {
+            return new AutoModeSignals(
+                IsFullscreenD3DActive: true,
+                ForegroundProcessName: fgProcess,
+                HasActiveThreatAlert: false,
+                BlockedQueriesPerMinute: 0,
+                IsUntrustedNetwork: false);
+        }
+
+        if (!string.IsNullOrWhiteSpace(fgProcess)
+            && rules?.CustomGameProcessNames is { Count: > 0 } customGames)
+        {
+            foreach (var g in customGames)
+            {
+                if (!string.IsNullOrWhiteSpace(g)
+                    && fgProcess.Contains(g.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    return new AutoModeSignals(
+                        IsFullscreenD3DActive: isFullscreenD3D,
+                        ForegroundProcessName: fgProcess,
+                        HasActiveThreatAlert: false,
+                        BlockedQueriesPerMinute: 0,
+                        IsUntrustedNetwork: false);
+                }
+            }
+        }
+
+        var checkSecurity = rules?.SwitchToSecurityOnThreatOrSpike ?? true;
         double blockedPerMin = 0;
-
-        if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
-        {
-            try
-            {
-                var resp = await _serviceClient.SendAsync(
-                    new IpcRequest(IpcRequestKind.GetQueryAnalyticsSnapshot, StringValue: "1"),
-                    cancellationToken).ConfigureAwait(false);
-                if (resp is { Success: true, Message.Length: > 0 })
-                {
-                    var analytics = JsonSerializer.Deserialize<QueryAnalyticsSnapshot>(resp.Message, SettingsJson.Options);
-                    if (analytics is not null)
-                    {
-                        blockedPerMin = analytics.BlockedQueriesPerMinute;
-                    }
-                }
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogDebug(ex, "Auto-mode analytics IPC probe skipped.");
-            }
-        }
-        else if (_diagnostics is not null)
-        {
-            blockedPerMin = _diagnostics.GetQueryAnalyticsSnapshot(topN: 1).BlockedQueriesPerMinute;
-        }
-
         var hasThreat = false;
-        if (_threatIntel is not null
-            && _connectionMonitor is not null
-            && _threatIntel.GetStatus().IndicatorCount > 0)
+
+        if (checkSecurity)
         {
-            try
+            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
             {
-                var conns = _connectionMonitor.CaptureSnapshot();
-                foreach (var c in conns)
+                try
                 {
-                    if (!string.IsNullOrWhiteSpace(c.RemoteIp)
-                        && _threatIntel.TryMatch(c.RemoteIp, protectedContext: null, out _))
+                    var snapshot = await _serviceClient.RefreshStatusAsync(cancellationToken).ConfigureAwait(false);
+                    if (snapshot is not null)
                     {
-                        hasThreat = true;
-                        break;
+                        blockedPerMin = snapshot.BlockedQueriesPerMinute;
                     }
                 }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogDebug(ex, "Auto-mode status IPC probe skipped.");
+                }
             }
-            catch
+            else if (_diagnostics is not null)
             {
-                hasThreat = false;
+                blockedPerMin = _diagnostics.GetBlockedQueriesPerMinute();
+            }
+
+            if (_threatIntel is not null
+                && _connectionMonitor is not null
+                && _threatIntel.GetStatus().IndicatorCount > 0)
+            {
+                try
+                {
+                    var conns = _connectionMonitor.CaptureSnapshot();
+                    foreach (var c in conns)
+                    {
+                        if (!string.IsNullOrWhiteSpace(c.RemoteIp)
+                            && _threatIntel.TryMatch(c.RemoteIp, protectedContext: null, out _))
+                        {
+                            hasThreat = true;
+                            break;
+                        }
+                    }
+                }
+                catch
+                {
+                    hasThreat = false;
+                }
             }
         }
 
@@ -596,7 +628,7 @@ public sealed class OperationModeService : IOperationModeService
         StateChanged?.Invoke(this, newState);
     }
 
-    private static (bool IsFullscreenD3D, string? ForegroundProcessName) ProbeForegroundGameState()
+    private (bool IsFullscreenD3D, string? ForegroundProcessName) ProbeForegroundGameState()
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -608,7 +640,12 @@ public sealed class OperationModeService : IOperationModeService
         {
             if (SHQueryUserNotificationState(out var qstate) == 0)
             {
-                // 3 = QUNS_RUNNING_D3D_FULL_SCREEN
+                // 3 = QUNS_RUNNING_D3D_FULL_SCREEN, 1 = QUNS_NOT_PRESENT (screen locked / screensaver)
+                if (qstate == 1)
+                {
+                    return (false, null);
+                }
+
                 isD3DFullscreen = qstate == 3;
             }
         }
@@ -626,8 +663,14 @@ public sealed class OperationModeService : IOperationModeService
                 _ = GetWindowThreadProcessId(hwnd, out var pid);
                 if (pid > 0)
                 {
-                    using var proc = Process.GetProcessById((int)pid);
-                    procName = proc.ProcessName;
+                    if (pid == _lastFgPid && !string.IsNullOrWhiteSpace(_lastFgProcessName))
+                    {
+                        return (isD3DFullscreen, _lastFgProcessName);
+                    }
+
+                    procName = QueryProcessNameByPid(pid);
+                    _lastFgPid = pid;
+                    _lastFgProcessName = procName;
                 }
             }
         }
@@ -637,6 +680,46 @@ public sealed class OperationModeService : IOperationModeService
         }
 
         return (isD3DFullscreen, procName);
+    }
+
+    private static string? QueryProcessNameByPid(uint pid)
+    {
+        const uint ProcessQueryLimitedInformation = 0x1000;
+        var handle = OpenProcess(ProcessQueryLimitedInformation, false, pid);
+        if (handle != nint.Zero)
+        {
+            try
+            {
+                Span<char> buffer = stackalloc char[512];
+                var len = (uint)buffer.Length;
+                if (QueryFullProcessImageNameW(handle, 0, ref buffer[0], ref len) && len > 0)
+                {
+                    var fullPath = buffer[..(int)len];
+                    var lastSlash = fullPath.LastIndexOfAny('\\', '/');
+                    var fileName = lastSlash >= 0 ? fullPath[(lastSlash + 1)..] : fullPath;
+                    if (fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fileName = fileName[..^4];
+                    }
+
+                    return fileName.ToString();
+                }
+            }
+            finally
+            {
+                _ = CloseHandle(handle);
+            }
+        }
+
+        try
+        {
+            using var proc = Process.GetProcessById((int)pid);
+            return proc.ProcessName;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public void Dispose()
@@ -663,4 +746,18 @@ public sealed class OperationModeService : IOperationModeService
     [DllImport("user32.dll", ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
+
+    [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern nint OpenProcess(uint dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, uint dwProcessId);
+
+    [DllImport("kernel32.dll", ExactSpelling = true, CharSet = CharSet.Unicode, SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryFullProcessImageNameW(nint hProcess, uint dwFlags, ref char lpExeName, ref uint lpdwSize);
+
+    [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(nint hObject);
 }

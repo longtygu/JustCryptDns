@@ -49,11 +49,15 @@ public sealed class IpEnrichmentService : IIpEnrichmentService
                 SingleReader = true,
             },
             droppedIp => _inFlight.TryRemove(droppedIp, out _));
-        _http = new HttpClient
+        _http = new HttpClient(new SocketsHttpHandler
+        {
+            UseProxy = false,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        })
         {
             Timeout = TimeSpan.FromSeconds(3),
         };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("JustCryptDns/1.7.1");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("JustCryptDns/1.8.4");
         LoadDiskCache();
     }
 
@@ -199,7 +203,7 @@ public sealed class IpEnrichmentService : IIpEnrichmentService
             dnsCts.CancelAfter(TimeSpan.FromMilliseconds(1500));
             if (IPAddress.TryParse(ip, out var addr))
             {
-                var entry = await Dns.GetHostEntryAsync(addr).WaitAsync(dnsCts.Token).ConfigureAwait(false);
+                var entry = await Dns.GetHostEntryAsync(addr.ToString(), dnsCts.Token).ConfigureAwait(false);
                 if (!string.IsNullOrWhiteSpace(entry.HostName)
                     && !string.Equals(entry.HostName, addr.ToString(), StringComparison.OrdinalIgnoreCase))
                 {

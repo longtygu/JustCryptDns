@@ -22,6 +22,8 @@ public sealed class NamedPipeServiceClient : IServiceClient
     private readonly object _stateLock = new();
     private ServiceConnectionState _connectionState = ServiceConnectionState.Unknown;
     private ServiceStatusSnapshot? _lastStatus;
+    private int _consecutiveConnectTimeouts;
+    private uint _lastTrustedServerPid;
 
     public NamedPipeServiceClient(ILogger<NamedPipeServiceClient> logger, string pipeName = IpcConstants.DefaultPipeName)
     {
@@ -71,12 +73,34 @@ public sealed class NamedPipeServiceClient : IServiceClient
                 connectCts.CancelAfter(ConnectTimeout);
                 await pipe.ConnectAsync(connectCts.Token).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is TimeoutException or (OperationCanceledException and not TaskCanceledException) || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+            catch (FileNotFoundException)
             {
-                // Connect timeout means the background service pipe is not currently listening.
+                Volatile.Write(ref _consecutiveConnectTimeouts, 0);
                 UpdateState(ServiceConnectionState.ServiceNotRunning, null);
                 return null;
             }
+            catch (Exception ex) when (ex is TimeoutException or (OperationCanceledException and not TaskCanceledException) || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+            {
+                // Distinguish a missing pipe server (ERROR_FILE_NOT_FOUND) from a busy live server.
+                if (IsPipeDefinitelyMissing(_pipeName))
+                {
+                    Volatile.Write(ref _consecutiveConnectTimeouts, 0);
+                    UpdateState(ServiceConnectionState.ServiceNotRunning, null);
+                    return null;
+                }
+
+                // Transient connect timeout while already connected (pipe busy under load) shouldn't immediately
+                // flip state to ServiceNotRunning and cause the desktop app to launch a competing engine.
+                var timeouts = Interlocked.Increment(ref _consecutiveConnectTimeouts);
+                if (ConnectionState != ServiceConnectionState.Connected || timeouts >= 2)
+                {
+                    UpdateState(ServiceConnectionState.ServiceNotRunning, null);
+                }
+
+                return null;
+            }
+
+            Volatile.Write(ref _consecutiveConnectTimeouts, 0);
 
             if (!IsTrustedPipeServer(pipe))
             {
@@ -144,7 +168,7 @@ public sealed class NamedPipeServiceClient : IServiceClient
             or IpcRequestKind.ResumeCaptivePortal
             or IpcRequestKind.InstallOrUpdateDnsCrypt;
 
-    private static bool IsTrustedPipeServer(NamedPipeClientStream pipe)
+    private bool IsTrustedPipeServer(NamedPipeClientStream pipe)
     {
         try
         {
@@ -154,7 +178,7 @@ public sealed class NamedPipeServiceClient : IServiceClient
                 return true;
             }
 
-            if (serverPid == (uint)Environment.ProcessId)
+            if (serverPid == (uint)Environment.ProcessId || serverPid == Volatile.Read(ref _lastTrustedServerPid))
             {
                 return true;
             }
@@ -163,14 +187,26 @@ public sealed class NamedPipeServiceClient : IServiceClient
             if (string.IsNullOrWhiteSpace(serverExePath))
             {
                 // If OpenProcess failed with ERROR_ACCESS_DENIED (5), the server is running in a higher privilege session (LocalSystem).
-                return Marshal.GetLastWin32Error() == 5;
+                if (Marshal.GetLastWin32Error() == 5)
+                {
+                    Volatile.Write(ref _lastTrustedServerPid, serverPid);
+                    return true;
+                }
+
+                return false;
             }
 
             var fileName = Path.GetFileName(serverExePath);
-            return string.Equals(fileName, "JustCryptDns.Service.exe", StringComparison.OrdinalIgnoreCase)
+            var trusted = string.Equals(fileName, "JustCryptDns.Service.exe", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(fileName, "JustCryptDns.exe", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(fileName, "testhost.exe", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(fileName, "dotnet.exe", StringComparison.OrdinalIgnoreCase);
+            if (trusted)
+            {
+                Volatile.Write(ref _lastTrustedServerPid, serverPid);
+            }
+
+            return trusted;
         }
         catch
         {
@@ -183,7 +219,9 @@ public sealed class NamedPipeServiceClient : IServiceClient
         bool changed;
         lock (_stateLock)
         {
-            changed = state != _connectionState || !Equals(status, _lastStatus);
+            var previousState = _connectionState;
+            var previousStatus = _lastStatus;
+            changed = state != previousState || HasMeaningfulStatusChange(previousStatus, status);
             _connectionState = state;
             if (status is not null || state != ServiceConnectionState.Connected)
             {
@@ -197,8 +235,50 @@ public sealed class NamedPipeServiceClient : IServiceClient
         }
     }
 
+    private static bool HasMeaningfulStatusChange(ServiceStatusSnapshot? prev, ServiceStatusSnapshot? next)
+    {
+        if (prev is null || next is null)
+        {
+            return prev is not null != (next is not null);
+        }
+
+        return prev.EngineState != next.EngineState
+            || prev.IsEngineEnabled != next.IsEngineEnabled
+            || prev.IsGamingModeEnabled != next.IsGamingModeEnabled
+            || !string.Equals(prev.ActiveResolverId, next.ActiveResolverId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(prev.ActiveProtocol, next.ActiveProtocol, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(prev.ListenEndpoint, next.ListenEndpoint, StringComparison.OrdinalIgnoreCase)
+            || prev.IsBypassRunning != next.IsBypassRunning
+            || !string.Equals(prev.BypassEndpoint, next.BypassEndpoint, StringComparison.OrdinalIgnoreCase)
+            || prev.HasAdapterBackup != next.HasAdapterBackup
+            || prev.IsCaptivePortalPaused != next.IsCaptivePortalPaused
+            || !string.Equals(prev.ActiveVpnAdapterName, next.ActiveVpnAdapterName, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(prev.LastError, next.LastError, StringComparison.Ordinal);
+    }
+
+    private static bool IsPipeDefinitelyMissing(string pipeName)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        if (WaitNamedPipeW($@"\\.\pipe\{pipeName}", 1))
+        {
+            return false;
+        }
+
+        // ERROR_FILE_NOT_FOUND (2) indicates no server has an active instance of this pipe.
+        return Marshal.GetLastWin32Error() == 2;
+    }
+
     [DllImport("kernel32.dll", SetLastError = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetNamedPipeServerProcessId(IntPtr Pipe, out uint ServerProcessId);
+
+    [DllImport("kernel32.dll", ExactSpelling = true, CharSet = CharSet.Unicode, SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool WaitNamedPipeW(string lpNamedPipeName, uint nTimeOut);
 }

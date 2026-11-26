@@ -29,12 +29,19 @@ public sealed class ProcessPerformanceService : IProcessPerformanceService
             uptime = TimeSpan.Zero;
         }
 
+        var threads = proc.Threads;
+        var threadCount = threads.Count;
+        foreach (ProcessThread t in threads)
+        {
+            t.Dispose();
+        }
+
         return new ProcessPerformanceSnapshot
         {
             WorkingSetMb = workingSetMb,
             PrivateMemoryMb = privateMb,
             ManagedHeapMb = managedMb,
-            ThreadCount = proc.Threads.Count,
+            ThreadCount = threadCount,
             HandleCount = proc.HandleCount,
             GcGen0Collections = GC.CollectionCount(0),
             GcGen1Collections = GC.CollectionCount(1),
@@ -57,6 +64,16 @@ public sealed class ProcessPerformanceService : IProcessPerformanceService
         }
 
         return CaptureSnapshot();
+    }
+
+    public void TrimWorkingSetOnly()
+    {
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, blocking: false, compacting: false);
+        if (OperatingSystem.IsWindows())
+        {
+            using var proc = System.Diagnostics.Process.GetCurrentProcess();
+            _ = SetProcessWorkingSetSize(proc.Handle, -1, -1);
+        }
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]

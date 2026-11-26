@@ -25,8 +25,8 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
     private readonly ILogger<NetworkTelemetryService> _logger;
     private readonly object _sync = new();
     private readonly Queue<NetworkTelemetrySample> _history = new(MaxHistorySamples);
-    private readonly Queue<bool> _pingOutcomes = new(MaxStabilityWindow);
-    private readonly Queue<double> _recentPings = new(MaxStabilityWindow);
+    private readonly List<bool> _pingOutcomes = new(MaxStabilityWindow);
+    private readonly List<double> _recentPings = new(MaxStabilityWindow);
 
     private CancellationTokenSource? _loopCts;
     private string? _primaryAdapterId;
@@ -79,7 +79,7 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
             _loopCts = ctsToStart;
         }
 
-        _ = Task.Run(() => SamplingLoopAsync(ctsToStart.Token));
+        _ = Task.Run(() => SamplingLoopAsync(ctsToStart));
     }
 
     public void Pause()
@@ -236,8 +236,9 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         }
     }
 
-    private async Task SamplingLoopAsync(CancellationToken ct)
+    private async Task SamplingLoopAsync(CancellationTokenSource ownCts)
     {
+        var ct = ownCts.Token;
         using var ping = new Ping();
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
 
@@ -249,36 +250,47 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         {
             while (!ct.IsCancellationRequested)
             {
-                var sample = await CaptureSampleAsync(
-                    ping,
-                    tickIndex,
-                    lastPingMs,
-                    lastPingAt,
-                    ct).ConfigureAwait(false);
+                try
+                {
+                    var sample = await CaptureSampleAsync(
+                        ping,
+                        tickIndex,
+                        lastPingMs,
+                        lastPingAt,
+                        ct).ConfigureAwait(false);
 
-                if (ct.IsCancellationRequested)
+                    if (ct.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    if (sample.UpdatedPingMs is { } measuredPing)
+                    {
+                        lastPingMs = measuredPing;
+                        lastPingAt = sample.Sample.Timestamp;
+                    }
+
+                    lock (_sync)
+                    {
+                        if (_history.Count >= MaxHistorySamples)
+                        {
+                            _history.Dequeue();
+                        }
+
+                        _history.Enqueue(sample.Sample);
+                    }
+
+                    SampleReceived?.Invoke(this, sample.Sample);
+                    tickIndex++;
+                }
+                catch (OperationCanceledException)
                 {
                     break;
                 }
-
-                if (sample.UpdatedPingMs is { } measuredPing)
+                catch (Exception ex) when (ex is NetworkInformationException or SocketException or InvalidOperationException)
                 {
-                    lastPingMs = measuredPing;
-                    lastPingAt = sample.Sample.Timestamp;
+                    _logger.LogDebug(ex, "Transient live telemetry sample error; continuing loop.");
                 }
-
-                lock (_sync)
-                {
-                    if (_history.Count >= MaxHistorySamples)
-                    {
-                        _history.Dequeue();
-                    }
-
-                    _history.Enqueue(sample.Sample);
-                }
-
-                SampleReceived?.Invoke(this, sample.Sample);
-                tickIndex++;
 
                 if (!await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
                 {
@@ -294,15 +306,11 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         {
             // Normal pause / shutdown race.
         }
-        catch (Exception ex) when (ex is NetworkInformationException or SocketException or InvalidOperationException)
-        {
-            _logger.LogDebug(ex, "Live telemetry sampling loop stopped due to network/state error.");
-        }
         finally
         {
             lock (_sync)
             {
-                if (_loopCts is { IsCancellationRequested: false })
+                if (ReferenceEquals(_loopCts, ownCts))
                 {
                     IsActive = false;
                     StopLoopLocked();
@@ -369,23 +377,23 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
             {
                 if (_pingOutcomes.Count >= MaxStabilityWindow)
                 {
-                    _pingOutcomes.Dequeue();
+                    _pingOutcomes.RemoveAt(0);
                 }
 
-                _pingOutcomes.Enqueue(updatedPing is not null);
+                _pingOutcomes.Add(updatedPing is not null);
 
                 if (updatedPing is { } measured)
                 {
                     if (_recentPings.Count >= MaxStabilityWindow)
                     {
-                        _recentPings.Dequeue();
+                        _recentPings.RemoveAt(0);
                     }
 
-                    _recentPings.Enqueue(measured);
+                    _recentPings.Add(measured);
                 }
             }
 
-            stability = CalculateStability([.. _pingOutcomes], [.. _recentPings]);
+            stability = CalculateStability(_pingOutcomes, _recentPings);
         }
 
         return (
@@ -422,7 +430,9 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         try
         {
             var sw = Stopwatch.StartNew();
-            var reply = await ping.SendPingAsync(host, PingTimeoutMs).WaitAsync(ct).ConfigureAwait(false);
+            var reply = IPAddress.TryParse(host, out var ipAddr)
+                ? await ping.SendPingAsync(ipAddr, TimeSpan.FromMilliseconds(PingTimeoutMs), cancellationToken: ct).ConfigureAwait(false)
+                : await ping.SendPingAsync(host, PingTimeoutMs).WaitAsync(ct).ConfigureAwait(false);
             sw.Stop();
             if (reply.Status == IPStatus.Success)
             {

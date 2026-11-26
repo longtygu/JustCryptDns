@@ -34,12 +34,14 @@ public sealed class DnsEngineService : IDnsEngine
     private readonly INetworkInfoService? _networkInfo;
     private readonly IDnsReverseLookupCache? _reverseLookupCache;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
-    private readonly DohDnsUpstream _defaultDoh;
-    private readonly DotDnsUpstream _defaultDot;
+    private readonly DohDnsUpstream? _defaultDoh;
+    private readonly DotDnsUpstream? _defaultDot;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
+    private readonly SemaphoreSlim _prefetchGate = new(8, 8);
     private readonly ConcurrentDictionary<string, byte> _inFlightPrefetches = new(StringComparer.OrdinalIgnoreCase);
 
     private LocalDnsProxy? _proxy;
+    private CancellationTokenSource? _runCts;
     private DnsEngineState _state = DnsEngineState.Stopped;
     private DnsResolverEndpoint _activeResolver;
     private string _listenEndpoint;
@@ -94,19 +96,24 @@ public sealed class DnsEngineService : IDnsEngine
         _networkInfo = networkInfo;
         _reverseLookupCache = reverseLookupCache;
 
-        _defaultDoh = new DohDnsUpstream();
-        _defaultDot = new DotDnsUpstream();
-        var defaultClients = new IDnsUpstreamClient[]
-        {
-            _defaultDoh,
-            _defaultDot,
-            new UdpTcpDnsUpstream(),
-            new DnsCryptUpstream(_dnsCryptManager, () => _settings.Current.Dns.DnsCryptInternalPort),
-        };
-
         var list = customUpstreams?.ToList();
-        IEnumerable<IDnsUpstreamClient> active = list is { Count: > 0 } ? list : defaultClients;
-        _upstreams = active.ToDictionary(u => u.Protocol);
+        if (list is { Count: > 0 })
+        {
+            _upstreams = list.ToDictionary(u => u.Protocol);
+        }
+        else
+        {
+            _defaultDoh = new DohDnsUpstream();
+            _defaultDot = new DotDnsUpstream();
+            var defaultClients = new IDnsUpstreamClient[]
+            {
+                _defaultDoh,
+                _defaultDot,
+                new UdpTcpDnsUpstream(),
+                new DnsCryptUpstream(_dnsCryptManager, () => _settings.Current.Dns.DnsCryptInternalPort),
+            };
+            _upstreams = defaultClients.ToDictionary(u => u.Protocol);
+        }
         var dns = _settings.Current.Dns;
         _activeResolver = ResolveEndpoint(dns.ActiveResolverId);
         _listenEndpoint = $"{dns.ListenAddress}:{dns.ListenPort}";
@@ -267,6 +274,8 @@ public sealed class DnsEngineService : IDnsEngine
             }
 
             _proxy = proxy;
+            _runCts?.Dispose();
+            _runCts = new CancellationTokenSource();
             _listenEndpoint = $"{listenIp}:{proxy.BoundPort}";
             Interlocked.Exchange(ref _consecutiveFailures, 0);
             _activeVpnAdapterName = null;
@@ -388,6 +397,7 @@ public sealed class DnsEngineService : IDnsEngine
 
             await _settings.UpdateAsync(s => s.Dns.ActiveResolverId = resolver.Id, cancellationToken).ConfigureAwait(false);
             _activeResolver = resolver;
+            Interlocked.Exchange(ref _consecutiveFailures, 0);
 
             if (_state is DnsEngineState.Running or DnsEngineState.Degraded)
             {
@@ -798,8 +808,10 @@ public sealed class DnsEngineService : IDnsEngine
         }
         finally
         {
-            _defaultDoh.Dispose();
-            _defaultDot.Dispose();
+            _defaultDoh?.Dispose();
+            _defaultDot?.Dispose();
+            _runCts?.Dispose();
+            _prefetchGate.Dispose();
             _lifecycleGate.Dispose();
         }
     }
@@ -906,10 +918,11 @@ public sealed class DnsEngineService : IDnsEngine
         if (_cacheService is { IsEnabled: true }
             && _cacheService.TryGetResponse(queryWire.Span, out var cachedBytes, out var shouldPrefetch))
         {
-            if (hasParsed)
-            {
-                RecordReverseDnsFromResponse(qDomain, cachedBytes);
-            }
+            var recordMonitor = _diagnosticsService is { IsMonitorPaused: false };
+            var (cachedRcode, cachedAnswer) = ProcessResponsePacket(
+                hasParsed ? qDomain : null,
+                cachedBytes,
+                extractMetadata: recordMonitor);
 
             if (shouldPrefetch && hasParsed)
             {
@@ -918,20 +931,23 @@ public sealed class DnsEngineService : IDnsEngine
 
             Interlocked.Increment(ref _totalQueries);
             Interlocked.Increment(ref _successfulQueries);
-            var (cachedRcode, cachedAnswer) = ExtractResponseMetadata(cachedBytes);
-            _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+            if (recordMonitor)
             {
-                Timestamp = DateTimeOffset.Now,
-                Domain = qDomain,
-                RecordType = queryType,
-                Outcome = "Cached",
-                ResolverName = "TTL Cache",
-                Protocol = _activeResolver.Protocol,
-                LatencyMs = 0.1,
-                ResponseCode = cachedRcode,
-                AnswerSummary = cachedAnswer,
-                MatchedRule = shouldPrefetch ? "TTL Cache (Prefetch)" : "TTL Cache",
-            });
+                _diagnosticsService!.RecordMonitorEntry(new LiveQueryMonitorEntry
+                {
+                    Timestamp = DateTimeOffset.Now,
+                    Domain = qDomain,
+                    RecordType = queryType,
+                    Outcome = "Cached",
+                    ResolverName = "TTL Cache",
+                    Protocol = _activeResolver.Protocol,
+                    LatencyMs = 0.1,
+                    ResponseCode = cachedRcode,
+                    AnswerSummary = cachedAnswer,
+                    MatchedRule = shouldPrefetch ? "TTL Cache (Prefetch)" : "TTL Cache",
+                });
+            }
+
             RaiseStateChanged();
             return cachedBytes;
         }
@@ -951,25 +967,29 @@ public sealed class DnsEngineService : IDnsEngine
             if (_cacheService is { IsEnabled: true }
                 && _cacheService.TryGetStaleResponse(queryWire.Span, out var staleBytes))
             {
-                if (hasParsed)
+                var recordStaleMonitor = _diagnosticsService is { IsMonitorPaused: false };
+                var (staleRcode, staleAnswer) = ProcessResponsePacket(
+                    hasParsed ? qDomain : null,
+                    staleBytes,
+                    extractMetadata: recordStaleMonitor);
+
+                if (recordStaleMonitor)
                 {
-                    RecordReverseDnsFromResponse(qDomain, staleBytes);
+                    _diagnosticsService!.RecordMonitorEntry(new LiveQueryMonitorEntry
+                    {
+                        Timestamp = DateTimeOffset.Now,
+                        Domain = qDomain,
+                        RecordType = queryType,
+                        Outcome = "Stale",
+                        ResolverName = "Serve-Stale Cache",
+                        Protocol = _activeResolver.Protocol,
+                        LatencyMs = 0.1,
+                        ResponseCode = staleRcode,
+                        AnswerSummary = staleAnswer,
+                        MatchedRule = "Serve-Stale Fallback",
+                    });
                 }
 
-                var (staleRcode, staleAnswer) = ExtractResponseMetadata(staleBytes);
-                _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
-                {
-                    Timestamp = DateTimeOffset.Now,
-                    Domain = qDomain,
-                    RecordType = queryType,
-                    Outcome = "Stale",
-                    ResolverName = "Serve-Stale Cache",
-                    Protocol = _activeResolver.Protocol,
-                    LatencyMs = 0.1,
-                    ResponseCode = staleRcode,
-                    AnswerSummary = staleAnswer,
-                    MatchedRule = "Serve-Stale Fallback",
-                });
                 RaiseStateChanged();
                 return staleBytes;
             }
@@ -1004,27 +1024,31 @@ public sealed class DnsEngineService : IDnsEngine
             && _cacheService is { IsEnabled: true }
             && _cacheService.TryGetStaleResponse(queryWire.Span, out var staleFallback))
         {
-            if (hasParsed)
-            {
-                RecordReverseDnsFromResponse(qDomain, staleFallback);
-            }
+            var recordFallbackMonitor = _diagnosticsService is { IsMonitorPaused: false };
+            var (staleRcode, staleAnswer) = ProcessResponsePacket(
+                hasParsed ? qDomain : null,
+                staleFallback,
+                extractMetadata: recordFallbackMonitor);
 
             Interlocked.Increment(ref _totalQueries);
             Interlocked.Increment(ref _successfulQueries);
-            var (staleRcode, staleAnswer) = ExtractResponseMetadata(staleFallback);
-            _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
+            if (recordFallbackMonitor)
             {
-                Timestamp = DateTimeOffset.Now,
-                Domain = qDomain,
-                RecordType = queryType,
-                Outcome = "Stale",
-                ResolverName = $"Serve-Stale ({resolver.Name})",
-                Protocol = resolver.Protocol,
-                LatencyMs = 0.1,
-                ResponseCode = staleRcode,
-                AnswerSummary = staleAnswer,
-                MatchedRule = "Serve-Stale Fallback",
-            });
+                _diagnosticsService!.RecordMonitorEntry(new LiveQueryMonitorEntry
+                {
+                    Timestamp = DateTimeOffset.Now,
+                    Domain = qDomain,
+                    RecordType = queryType,
+                    Outcome = "Stale",
+                    ResolverName = $"Serve-Stale ({resolver.Name})",
+                    Protocol = resolver.Protocol,
+                    LatencyMs = 0.1,
+                    ResponseCode = staleRcode,
+                    AnswerSummary = staleAnswer,
+                    MatchedRule = "Serve-Stale Fallback",
+                });
+            }
+
             RaiseStateChanged();
             return staleFallback;
         }
@@ -1036,39 +1060,116 @@ public sealed class DnsEngineService : IDnsEngine
             _routingService.RecordRoutingLog(decision, queryType, result.Success ? result.LatencyMs : null);
         }
 
-        var (respCode, respAnswer) = result.Success
-            ? ExtractResponseMetadata(result.ResponseBytes)
-            : ("Error", string.IsNullOrWhiteSpace(result.Error) ? "Upstream query failed" : result.Error);
-        var matchedRule = decision is { IsFallback: false }
-            ? (!string.IsNullOrWhiteSpace(decision.MatchedRuleName) ? decision.MatchedRuleName : (decision.MatchedPattern ?? decision.ProfileId))
-            : null;
-
-        _diagnosticsService?.RecordMonitorEntry(new LiveQueryMonitorEntry
-        {
-            Timestamp = DateTimeOffset.Now,
-            Domain = qDomain,
-            RecordType = queryType,
-            Outcome = result.Success ? (decision is { IsFallback: false } ? "Routed" : "Allowed") : "Failed",
-            ResolverName = resolver.Name,
-            Protocol = resolver.Protocol,
-            LatencyMs = result.Success ? Math.Round(result.LatencyMs, 1) : null,
-            ResponseCode = respCode,
-            AnswerSummary = respAnswer,
-            MatchedRule = matchedRule,
-        });
-
+        var recordUpstreamMonitor = _diagnosticsService is { IsMonitorPaused: false };
         if (result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize)
         {
-            if (hasParsed)
+            var (respCode, respAnswer) = ProcessResponsePacket(
+                hasParsed ? qDomain : null,
+                result.ResponseBytes,
+                extractMetadata: recordUpstreamMonitor);
+
+            if (recordUpstreamMonitor)
             {
-                RecordReverseDnsFromResponse(qDomain, result.ResponseBytes);
+                var matchedRule = decision is { IsFallback: false }
+                    ? (!string.IsNullOrWhiteSpace(decision.MatchedRuleName) ? decision.MatchedRuleName : (decision.MatchedPattern ?? decision.ProfileId))
+                    : null;
+
+                _diagnosticsService!.RecordMonitorEntry(new LiveQueryMonitorEntry
+                {
+                    Timestamp = DateTimeOffset.Now,
+                    Domain = qDomain,
+                    RecordType = queryType,
+                    Outcome = decision is { IsFallback: false } ? "Routed" : "Allowed",
+                    ResolverName = resolver.Name,
+                    Protocol = resolver.Protocol,
+                    LatencyMs = Math.Round(result.LatencyMs, 1),
+                    ResponseCode = respCode,
+                    AnswerSummary = respAnswer,
+                    MatchedRule = matchedRule,
+                });
             }
 
             _cacheService?.StoreResponse(queryWire.Span, result.ResponseBytes);
             return result.ResponseBytes;
         }
 
+        if (recordUpstreamMonitor)
+        {
+            var matchedRule = decision is { IsFallback: false }
+                ? (!string.IsNullOrWhiteSpace(decision.MatchedRuleName) ? decision.MatchedRuleName : (decision.MatchedPattern ?? decision.ProfileId))
+                : null;
+
+            _diagnosticsService!.RecordMonitorEntry(new LiveQueryMonitorEntry
+            {
+                Timestamp = DateTimeOffset.Now,
+                Domain = qDomain,
+                RecordType = queryType,
+                Outcome = "Failed",
+                ResolverName = resolver.Name,
+                Protocol = resolver.Protocol,
+                LatencyMs = null,
+                ResponseCode = "Error",
+                AnswerSummary = string.IsNullOrWhiteSpace(result.Error) ? "Upstream query failed" : result.Error,
+                MatchedRule = matchedRule,
+            });
+        }
+
         return DnsPacket.CreateErrorResponse(queryWire.Span, DnsResponseCode.ServFail);
+    }
+
+    private (string? ResponseCode, string? AnswerSummary) ProcessResponsePacket(
+        string? queryDomain,
+        ReadOnlySpan<byte> responseWire,
+        bool extractMetadata)
+    {
+        var needReverse = _reverseLookupCache is not null && !string.IsNullOrWhiteSpace(queryDomain);
+        if ((!needReverse && !extractMetadata)
+            || responseWire.Length < DnsPacket.HeaderSize
+            || !DnsPacket.TryParse(responseWire, out var parsed)
+            || parsed is null)
+        {
+            return (null, null);
+        }
+
+        if (needReverse)
+        {
+            foreach (var answer in parsed.Answers)
+            {
+                if (answer.Type is DnsRecordType.A or DnsRecordType.AAAA
+                    && IPAddress.TryParse(answer.DataSummary, out var ip))
+                {
+                    _reverseLookupCache!.Record(ip, queryDomain!, answer.Ttl);
+                }
+            }
+        }
+
+        if (!extractMetadata)
+        {
+            return (null, null);
+        }
+
+        return FormatMetadataFromPacket(parsed);
+    }
+
+    private static (string? ResponseCode, string? AnswerSummary) FormatMetadataFromPacket(DnsPacket parsed)
+    {
+        var rcode = parsed.Header.ResponseCode.ToString();
+        if (parsed.Answers.Count == 0)
+        {
+            return (rcode, parsed.Header.ResponseCode == DnsResponseCode.NoError ? "No answers" : rcode);
+        }
+
+        var shown = parsed.Answers
+            .Take(2)
+            .Select(a => string.IsNullOrWhiteSpace(a.DataSummary) ? a.Type.ToString() : a.DataSummary)
+            .ToArray();
+        var summary = string.Join(", ", shown);
+        if (parsed.Answers.Count > 2)
+        {
+            summary = $"{summary} (+{parsed.Answers.Count - 2})";
+        }
+
+        return (rcode, summary);
     }
 
     private void RecordReverseDnsFromResponse(string queryDomain, ReadOnlySpan<byte> responseWire)
@@ -1131,6 +1232,17 @@ public sealed class DnsEngineService : IDnsEngine
         Interlocked.Increment(ref _networkAdaptGeneration);
         Interlocked.Increment(ref _captiveResumeGeneration);
 
+        if (_runCts is not null)
+        {
+            try
+            {
+                await _runCts.CancelAsync().ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+
         if (_networkInfo is not null && _networkSubscribed)
         {
             _networkInfo.NetworkChanged -= OnNetworkChanged;
@@ -1161,6 +1273,12 @@ public sealed class DnsEngineService : IDnsEngine
             return;
         }
 
+        var runToken = _runCts?.Token ?? CancellationToken.None;
+        if (runToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         var key = $"{domain}|{queryType}";
         if (!_inFlightPrefetches.TryAdd(key, 0))
         {
@@ -1169,8 +1287,15 @@ public sealed class DnsEngineService : IDnsEngine
 
         _ = Task.Run(async () =>
         {
+            var acquired = false;
             try
             {
+                if (!await _prefetchGate.WaitAsync(0, runToken).ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                acquired = true;
                 if (Volatile.Read(ref _disposed) != 0 || _state is not (DnsEngineState.Running or DnsEngineState.Degraded))
                 {
                     return;
@@ -1189,7 +1314,8 @@ public sealed class DnsEngineService : IDnsEngine
                 }
 
                 var timeout = TimeSpan.FromMilliseconds(_settings.Current.Dns.QueryTimeoutMs);
-                using var cts = new CancellationTokenSource(timeout);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(runToken);
+                cts.CancelAfter(timeout);
                 var result = await upstream.QueryAsync(queryWire, resolver, timeout, cts.Token).ConfigureAwait(false);
                 if (result.Success && result.ResponseBytes.Length >= DnsPacket.HeaderSize)
                 {
@@ -1203,6 +1329,11 @@ public sealed class DnsEngineService : IDnsEngine
             }
             finally
             {
+                if (acquired)
+                {
+                    try { _prefetchGate.Release(); } catch (ObjectDisposedException) { }
+                }
+
                 _inFlightPrefetches.TryRemove(key, out _);
             }
         });
@@ -1297,6 +1428,12 @@ public sealed class DnsEngineService : IDnsEngine
             _isCaptivePortalDetected = captivePortalDetected;
             if (captivePortalDetected || _isCaptivePortalPaused)
             {
+                if (captivePortalDetected && _windowsDns.HasActiveBackup())
+                {
+                    await _windowsDns.RestoreOriginalDnsAsync(dns.TargetAdapterId).ConfigureAwait(false);
+                    _lastAppliedAdapterId = null;
+                }
+
                 RaiseStateChanged();
                 return;
             }
@@ -1387,13 +1524,17 @@ public sealed class DnsEngineService : IDnsEngine
         if (!force)
         {
             var prevTick = Volatile.Read(ref _lastQueryStatsBroadcastTick);
-            if (nowTick - prevTick < 150)
+            if (nowTick - prevTick < 250
+                || Interlocked.CompareExchange(ref _lastQueryStatsBroadcastTick, nowTick, prevTick) != prevTick)
             {
                 return;
             }
         }
+        else
+        {
+            Volatile.Write(ref _lastQueryStatsBroadcastTick, nowTick);
+        }
 
-        Volatile.Write(ref _lastQueryStatsBroadcastTick, nowTick);
         handler.Invoke(this, GetStats());
     }
 

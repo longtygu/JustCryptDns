@@ -20,6 +20,7 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
     private const int TcpStateListen = 2;
     private const uint Th32csSnapProcess = 0x00000002;
     private const uint ErrorInsufficientBuffer = 122;
+    private const long SnapshotCacheTtlMs = 1200;
 
     private readonly ILogger<WindowsConnectionTableReader> _logger;
     private readonly object _procCacheLock = new();
@@ -27,6 +28,8 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
     private readonly Dictionary<int, (string Name, string? Path)> _exePathCache = new();
     private readonly Dictionary<int, DateTimeOffset> _missingPids = new();
     private DateTimeOffset _processCacheUpdatedAt = DateTimeOffset.MinValue;
+    private IReadOnlyList<RawSocketConnection>? _cachedSnapshot;
+    private long _cachedSnapshotTick;
 
     public WindowsConnectionTableReader(ILogger<WindowsConnectionTableReader> logger)
     {
@@ -38,6 +41,13 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
         if (!OperatingSystem.IsWindows())
         {
             return [];
+        }
+
+        var nowTick = Environment.TickCount64;
+        var cached = Volatile.Read(ref _cachedSnapshot);
+        if (cached is not null && nowTick - Volatile.Read(ref _cachedSnapshotTick) < SnapshotCacheTtlMs)
+        {
+            return cached;
         }
 
         var procMap = GetProcessNameMap();
@@ -63,24 +73,45 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
         {
             // A brand-new process appeared since the last toolhelp snapshot; refresh once and backfill.
             procMap = RefreshProcessNameMap();
+            var now = DateTimeOffset.UtcNow;
             for (var i = 0; i < results.Count; i++)
             {
                 var item = results[i];
-                if (item.ProcessName.StartsWith("PID ", StringComparison.Ordinal)
-                    && TryResolveProcessName(procMap, item.ProcessId, out var resolved))
+                if (item.ProcessName.StartsWith("PID ", StringComparison.Ordinal))
                 {
-                    results[i] = item with { ProcessName = resolved };
+                    if (TryResolveProcessName(procMap, item.ProcessId, out var resolved))
+                    {
+                        results[i] = item with { ProcessName = resolved };
+                    }
+                    else
+                    {
+                        lock (_procCacheLock)
+                        {
+                            if (_missingPids.Count > 512)
+                            {
+                                _missingPids.Clear();
+                            }
+
+                            _missingPids[item.ProcessId] = now;
+                        }
+                    }
                 }
             }
         }
 
-        // Enrich executable full paths only for PIDs present in the current connection snapshot.
+        // Enrich executable full paths once per distinct PID present in the snapshot.
+        var perSnapshotPaths = new Dictionary<int, string?>();
         for (var i = 0; i < results.Count; i++)
         {
             var item = results[i];
             if (item.ProcessId > 4)
             {
-                var exePath = ResolveExecutablePathCached(item.ProcessId, item.ProcessName);
+                if (!perSnapshotPaths.TryGetValue(item.ProcessId, out var exePath))
+                {
+                    exePath = ResolveExecutablePathCached(item.ProcessId, item.ProcessName);
+                    perSnapshotPaths[item.ProcessId] = exePath;
+                }
+
                 if (exePath is not null)
                 {
                     results[i] = item with { ExecutablePath = exePath };
@@ -88,6 +119,8 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
             }
         }
 
+        Volatile.Write(ref _cachedSnapshotTick, Environment.TickCount64);
+        Volatile.Write(ref _cachedSnapshot, results);
         return results;
     }
 
@@ -233,27 +266,8 @@ public sealed class WindowsConnectionTableReader : IConnectionMonitorService
             }
         }
 
-        try
-        {
-            using var proc = Process.GetProcessById(pid);
-            name = proc.ProcessName + ".exe";
-            return true;
-        }
-        catch (Exception)
-        {
-            lock (_procCacheLock)
-            {
-                if (_missingPids.Count > 512)
-                {
-                    _missingPids.Clear();
-                }
-
-                _missingPids[pid] = now;
-            }
-
-            name = $"PID {pid}";
-            return false;
-        }
+        name = $"PID {pid}";
+        return false;
     }
 
     private void ReadTcp4(Action<ConnectionProtocol, string, int, string, int, string, int> emit)

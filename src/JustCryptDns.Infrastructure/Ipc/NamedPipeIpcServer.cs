@@ -15,6 +15,8 @@ namespace JustCryptDns.Infrastructure.Ipc;
 public sealed class NamedPipeIpcServer : IAsyncDisposable
 {
     private const int MaxConcurrentClients = 8;
+    private const int AcceptLoopCount = 2;
+    private const int MaxInboundRequestBytes = 512 * 1024;
     private const uint ProcessQueryLimitedInformation = 0x1000;
 
     private readonly string _pipeName;
@@ -23,7 +25,7 @@ public sealed class NamedPipeIpcServer : IAsyncDisposable
     private readonly SemaphoreSlim _concurrency = new(MaxConcurrentClients, MaxConcurrentClients);
     private readonly ConcurrentDictionary<Task, byte> _activeClients = new();
     private CancellationTokenSource? _cts;
-    private Task? _acceptLoop;
+    private Task[]? _acceptLoops;
     private int _disposed;
 
     public NamedPipeIpcServer(IServiceIpcHandler handler, ILogger<NamedPipeIpcServer> logger, string pipeName = IpcConstants.DefaultPipeName)
@@ -35,13 +37,19 @@ public sealed class NamedPipeIpcServer : IAsyncDisposable
 
     public void Start()
     {
-        if (_acceptLoop is not null || Volatile.Read(ref _disposed) != 0)
+        if (_acceptLoops is not null || Volatile.Read(ref _disposed) != 0)
         {
             return;
         }
 
         _cts = new CancellationTokenSource();
-        _acceptLoop = Task.Run(() => AcceptLoopAsync(_cts.Token));
+        var loops = new Task[AcceptLoopCount];
+        for (var i = 0; i < loops.Length; i++)
+        {
+            loops[i] = Task.Run(() => AcceptLoopAsync(_cts.Token));
+        }
+
+        _acceptLoops = loops;
         _logger.LogInformation("IPC server listening on pipe {PipeName}", _pipeName);
     }
 
@@ -57,11 +65,11 @@ public sealed class NamedPipeIpcServer : IAsyncDisposable
             await _cts.CancelAsync().ConfigureAwait(false);
         }
 
-        if (_acceptLoop is not null)
+        if (_acceptLoops is { Length: > 0 } loops)
         {
             try
             {
-                await _acceptLoop.ConfigureAwait(false);
+                await Task.WhenAll(loops).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -209,7 +217,7 @@ public sealed class NamedPipeIpcServer : IAsyncDisposable
                 using (var readCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
                 {
                     readCts.CancelAfter(TimeSpan.FromSeconds(3));
-                    request = await IpcFraming.ReadMessageAsync<IpcRequest>(stream, readCts.Token).ConfigureAwait(false);
+                    request = await IpcFraming.ReadMessageAsync<IpcRequest>(stream, MaxInboundRequestBytes, readCts.Token).ConfigureAwait(false);
                 }
 
                 if (request is null)

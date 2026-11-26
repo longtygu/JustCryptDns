@@ -42,8 +42,12 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
         string? Description,
         bool Enabled);
 
+    private const int StatusCacheTtlMs = 30_000;
+
     private readonly ILogger<WindowsFirewallService> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private FirewallStatusSnapshot? _cachedStatus;
+    private long _cachedStatusTick;
 
     public WindowsFirewallService(ILogger<WindowsFirewallService> logger)
     {
@@ -76,6 +80,7 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            Volatile.Write(ref _cachedStatus, null);
             return await Task.Run(() => SyncSecurityPoliciesCore(payload, protectedContext, cancellationToken), cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -94,6 +99,7 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            Volatile.Write(ref _cachedStatus, null);
             return await Task.Run(() => ClearMatchingGroupsCore(transientOnly: true, cancellationToken), cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -112,6 +118,7 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            Volatile.Write(ref _cachedStatus, null);
             return await Task.Run(() => ClearMatchingGroupsCore(transientOnly: false, cancellationToken), cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -127,10 +134,25 @@ public sealed class WindowsFirewallService : IWindowsFirewallManager, IDisposabl
             return new FirewallStatusSnapshot(0, false, false, [], "Windows Firewall is only supported on Windows.");
         }
 
+        var cached = Volatile.Read(ref _cachedStatus);
+        if (cached is not null && Environment.TickCount64 - Volatile.Read(ref _cachedStatusTick) < StatusCacheTtlMs)
+        {
+            return cached;
+        }
+
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await Task.Run(() => GetStatusCore(cancellationToken), cancellationToken).ConfigureAwait(false);
+            cached = Volatile.Read(ref _cachedStatus);
+            if (cached is not null && Environment.TickCount64 - Volatile.Read(ref _cachedStatusTick) < StatusCacheTtlMs)
+            {
+                return cached;
+            }
+
+            var snapshot = await Task.Run(() => GetStatusCore(cancellationToken), cancellationToken).ConfigureAwait(false);
+            Volatile.Write(ref _cachedStatusTick, Environment.TickCount64);
+            Volatile.Write(ref _cachedStatus, snapshot);
+            return snapshot;
         }
         finally
         {

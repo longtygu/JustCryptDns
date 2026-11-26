@@ -14,6 +14,7 @@ namespace JustCryptDns.Network.Monitoring;
 public sealed class NetworkInfoService : INetworkInfoService, IDisposable
 {
     private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(750);
+    private const long SnapshotCacheTtlMs = 2500;
 
     // Public anycast addresses used only to ask the local routing table which source address it would pick.
     // A UDP "connect" sends no packets.
@@ -25,6 +26,8 @@ public sealed class NetworkInfoService : INetworkInfoService, IDisposable
     private readonly Timer _debounce;
     private EventHandler? _networkChanged;
     private bool _hooked;
+    private NetworkSnapshot? _cachedSnapshot;
+    private long _cachedSnapshotTick;
 
     public NetworkInfoService(ILogger<NetworkInfoService> logger)
     {
@@ -63,10 +66,16 @@ public sealed class NetworkInfoService : INetworkInfoService, IDisposable
 
     public NetworkSnapshot GetSnapshot()
     {
+        var cached = Volatile.Read(ref _cachedSnapshot);
+        if (cached is not null && Environment.TickCount64 - Volatile.Read(ref _cachedSnapshotTick) < SnapshotCacheTtlMs)
+        {
+            return cached;
+        }
+
         var adapters = new List<NetworkAdapterInfo>();
         foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
         {
-            if (nic.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)
+            if (nic.NetworkInterfaceType == NetworkInterfaceType.Loopback || IsSystemPseudoTunnel(nic))
             {
                 continue;
             }
@@ -83,7 +92,28 @@ public sealed class NetworkInfoService : INetworkInfoService, IDisposable
 
         var routed = new[] { ProbeRouteSource(RouteProbeV4), ProbeRouteSource(RouteProbeV6) };
         var primary = SelectPrimary(adapters, routed.Where(a => a is not null).Cast<IPAddress>().ToList());
-        return new NetworkSnapshot(adapters, primary, ClassifyConnectivity(adapters), DateTimeOffset.Now);
+        var fresh = new NetworkSnapshot(adapters, primary, ClassifyConnectivity(adapters), DateTimeOffset.Now);
+        Volatile.Write(ref _cachedSnapshotTick, Environment.TickCount64);
+        Volatile.Write(ref _cachedSnapshot, fresh);
+        return fresh;
+    }
+
+    internal static bool IsSystemPseudoTunnel(NetworkInterface nic)
+    {
+        if (nic.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+        {
+            return false;
+        }
+
+        var desc = nic.Description ?? string.Empty;
+        var name = nic.Name ?? string.Empty;
+        return desc.Contains("Teredo", StringComparison.OrdinalIgnoreCase)
+            || desc.Contains("isatap", StringComparison.OrdinalIgnoreCase)
+            || desc.Contains("6to4", StringComparison.OrdinalIgnoreCase)
+            || desc.Contains("IPHTTPS", StringComparison.OrdinalIgnoreCase)
+            || desc.Contains("Pseudo-Interface", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("Teredo", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("isatap", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -133,6 +163,7 @@ public sealed class NetworkInfoService : INetworkInfoService, IDisposable
 
         return type switch
         {
+            NetworkInterfaceType.Tunnel => AdapterKind.Virtual,
             NetworkInterfaceType.Ethernet or NetworkInterfaceType.Ethernet3Megabit or NetworkInterfaceType.FastEthernetT
                 or NetworkInterfaceType.FastEthernetFx or NetworkInterfaceType.GigabitEthernet => AdapterKind.Ethernet,
             NetworkInterfaceType.Wireless80211 => AdapterKind.WiFi,
@@ -186,6 +217,7 @@ public sealed class NetworkInfoService : INetworkInfoService, IDisposable
 
     private void OnOsNetworkChanged(object? sender, EventArgs e)
     {
+        Volatile.Write(ref _cachedSnapshot, null);
         try
         {
             _debounce.Change(DebounceDelay, Timeout.InfiniteTimeSpan);
@@ -197,6 +229,7 @@ public sealed class NetworkInfoService : INetworkInfoService, IDisposable
 
     private void OnOsAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
     {
+        Volatile.Write(ref _cachedSnapshot, null);
         try
         {
             _debounce.Change(DebounceDelay, Timeout.InfiniteTimeSpan);

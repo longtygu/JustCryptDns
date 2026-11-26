@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -122,6 +123,8 @@ public sealed record ServiceStatusSnapshot
     public string? ActiveVpnAdapterName { get; init; }
 
     public bool IsCaptivePortalPaused { get; init; }
+
+    public double BlockedQueriesPerMinute { get; init; }
 }
 
 public sealed record ServiceFilterAndCacheSnapshot(
@@ -193,7 +196,13 @@ public static class IpcFraming
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public static async Task<T?> ReadMessageAsync<T>(Stream stream, CancellationToken cancellationToken = default)
+    public static Task<T?> ReadMessageAsync<T>(Stream stream, CancellationToken cancellationToken = default) =>
+        ReadMessageAsync<T>(stream, IpcConstants.MaxMessageBytes, cancellationToken);
+
+    public static async Task<T?> ReadMessageAsync<T>(
+        Stream stream,
+        int maxMessageBytes,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
         var header = new byte[4];
@@ -208,22 +217,30 @@ public static class IpcFraming
             throw new EndOfStreamException("Truncated IPC frame header.");
         }
 
+        var maxAllowed = Math.Clamp(maxMessageBytes, 1, IpcConstants.MaxMessageBytes);
         var length = BinaryPrimitives.ReadInt32LittleEndian(header);
-        if (length <= 0 || length > IpcConstants.MaxMessageBytes)
+        if (length <= 0 || length > maxAllowed)
         {
             throw new InvalidDataException($"Invalid IPC frame length {length}.");
         }
 
-        var payload = new byte[length];
-        await stream.ReadExactlyAsync(payload, cancellationToken).ConfigureAwait(false);
+        var payload = ArrayPool<byte>.Shared.Rent(length);
         try
         {
-            return JsonSerializer.Deserialize<T>(payload, SettingsJson.Options)
-                ?? throw new InvalidDataException("IPC frame deserialized to null.");
+            await stream.ReadExactlyAsync(payload.AsMemory(0, length), cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return JsonSerializer.Deserialize<T>(payload.AsSpan(0, length), SettingsJson.Options)
+                    ?? throw new InvalidDataException("IPC frame deserialized to null.");
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException("Malformed IPC frame JSON payload.", ex);
+            }
         }
-        catch (JsonException ex)
+        finally
         {
-            throw new InvalidDataException("Malformed IPC frame JSON payload.", ex);
+            ArrayPool<byte>.Shared.Return(payload);
         }
     }
 

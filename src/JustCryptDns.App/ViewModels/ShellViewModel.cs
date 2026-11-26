@@ -41,6 +41,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private readonly IPageFactory _pageFactory;
     private readonly ISettingsService _settings;
+    private readonly INavigationService _navigation;
     private readonly IUpdateService? _updateService;
     private readonly IAboutWindowService? _aboutWindow;
     private readonly IDnsEngine? _dnsEngine;
@@ -53,6 +54,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly ILogger<ShellViewModel> _logger;
     private readonly DispatcherTimer? _stripTimer;
     private readonly List<CommandPaletteItem> _allPaletteCommands;
+    private bool _isInteractive = true;
 
     /// <summary>Selection in the main navigation list.</summary>
     [ObservableProperty]
@@ -138,6 +140,7 @@ public sealed partial class ShellViewModel : ObservableObject
         IThreatIntelligenceService? threatIntel = null,
         IServiceClient? serviceClient = null)
     {
+        _navigation = navigation;
         _pageFactory = pageFactory;
         _settings = settings;
         _updateService = updateService;
@@ -198,17 +201,20 @@ public sealed partial class ShellViewModel : ObservableObject
 
         LocalizationManager.Instance.PropertyChanged += OnLocalizationChanged;
 
-        navigation.NavigationRequested += (_, key) => NavigateTo(key);
+        _navigation.NavigationRequested += OnNavigationRequested;
         SelectedNavItem = NavItems[0];
 
         RefreshSecurityStripState(checkFirewallAndAlerts: false);
 
         if (Application.Current is not null && _firewall is not null)
         {
-            _ = RefreshFirewallAndAlertsAsync();
             _stripTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _stripTimer.Tick += (_, _) => _ = RefreshFirewallAndAlertsAsync();
-            _stripTimer.Start();
+            if (_isInteractive)
+            {
+                _ = RefreshFirewallAndAlertsAsync();
+                _stripTimer.Start();
+            }
         }
     }
 
@@ -230,9 +236,34 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>When true, the next window close exits the application regardless of <see cref="CloseBehavior"/>.</summary>
     public bool IsExplicitExit { get; set; }
 
+    public void SetInteractive(bool interactive)
+    {
+        if (_isInteractive == interactive)
+        {
+            return;
+        }
+
+        _isInteractive = interactive;
+        if (interactive)
+        {
+            RefreshSecurityStripState(checkFirewallAndAlerts: false);
+            _ = RefreshFirewallAndAlertsAsync();
+            _stripTimer?.Start();
+            CurrentPage?.OnShellResumed();
+        }
+        else
+        {
+            _stripTimer?.Stop();
+            CurrentPage?.OnShellSuspended();
+        }
+    }
+
+    private void OnNavigationRequested(object? sender, string key) => NavigateTo(key);
+
     public void StopTimers()
     {
         _stripTimer?.Stop();
+        _navigation.NavigationRequested -= OnNavigationRequested;
         if (_dnsEngine is not null)
         {
             _dnsEngine.StateChanged -= OnDnsStateChanged;
@@ -249,6 +280,8 @@ public sealed partial class ShellViewModel : ObservableObject
         }
 
         LocalizationManager.Instance.PropertyChanged -= OnLocalizationChanged;
+        CurrentPage?.OnNavigatedFrom();
+        CurrentPage?.Dispose();
     }
 
     public WindowCloseAction HandleWindowClosing()
@@ -511,6 +544,10 @@ public sealed partial class ShellViewModel : ObservableObject
         CurrentPageKey = key;
         CurrentPage = next;
         next.OnNavigatedTo();
+        if (!_isInteractive)
+        {
+            next.OnShellSuspended();
+        }
         previous?.Dispose();
         _logger.LogDebug("Navigated to {Page}", key);
     }
@@ -567,6 +604,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private void OnEngineOrSecurityChanged(object? sender, EventArgs e)
     {
+        if (!_isInteractive)
+        {
+            return;
+        }
+
         if (Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(() => RefreshSecurityStripState(checkFirewallAndAlerts: false));
@@ -675,7 +717,10 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private int CountActiveThreats()
     {
-        if (_connectionMonitor is null || _threatIntel is null || !_settings.Current.Connections.EnableThreatIntelligence)
+        if (_connectionMonitor is null
+            || _threatIntel is null
+            || !_settings.Current.Connections.EnableThreatIntelligence
+            || _threatIntel.GetStatus().IndicatorCount == 0)
         {
             return 0;
         }

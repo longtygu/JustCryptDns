@@ -4,6 +4,8 @@ using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Services;
 using JustCryptDns.DNS.Cache;
 using JustCryptDns.DNS.DnsCrypt;
+using JustCryptDns.DNS.DNSOverHTTPS;
+using JustCryptDns.DNS.DNSOverTLS;
 using JustCryptDns.DNS.Filtering;
 using JustCryptDns.DNS.Proxy;
 using JustCryptDns.DNS.Resolver;
@@ -58,9 +60,20 @@ public static class Program
             builder.Services.AddSingleton<ISettingsService>(sp =>
                 new SettingsService(sp.GetRequiredService<ISettingsStore>(), sp.GetRequiredService<ILogger<SettingsService>>(), initial));
             builder.Services.AddSingleton<INetworkInfoService, NetworkInfoService>();
+            builder.Services.AddSingleton<IBootRecoveryRegistrar, RegistryBootRecoveryRegistrar>();
             builder.Services.AddSingleton<IWindowsDnsManager, WindowsNetworkDnsService>();
             builder.Services.AddSingleton<IWindowsProxyManager, WindowsSystemProxyService>();
             builder.Services.AddSingleton<IDnsCryptProxyManager, DnsCryptProxyManager>();
+            builder.Services.AddSingleton<IDnsUpstreamClient, DohDnsUpstream>();
+            builder.Services.AddSingleton<IDnsUpstreamClient, DotDnsUpstream>();
+            builder.Services.AddSingleton<IDnsUpstreamClient, UdpTcpDnsUpstream>();
+            builder.Services.AddSingleton<IDnsUpstreamClient>(sp =>
+            {
+                var settings = sp.GetRequiredService<ISettingsService>();
+                return new DnsCryptUpstream(
+                    sp.GetRequiredService<IDnsCryptProxyManager>(),
+                    () => settings.Current.Dns.DnsCryptInternalPort);
+            });
             builder.Services.AddSingleton<IResolverLibraryService, ResolverLibraryService>();
             builder.Services.AddSingleton<IDnsRoutingService, DnsRoutingService>();
             builder.Services.AddSingleton<IDnsFilteringService, DnsFilteringService>();

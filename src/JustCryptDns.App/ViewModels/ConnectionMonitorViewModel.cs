@@ -265,6 +265,9 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     public override void OnNavigatedTo()
     {
         _isNavigatedActive = true;
+        _settings.Changed -= OnSettingsChanged;
+        _settings.Changed += OnSettingsChanged;
+        LoadPreferencesFromSettings();
         UpdateTimerAndEnrichmentState();
         _ = RefreshFirewallStatusAsync();
         _ = PollOnceAsync();
@@ -273,7 +276,26 @@ public sealed partial class ConnectionMonitorViewModel : PageViewModel
     public override void OnNavigatedFrom()
     {
         _isNavigatedActive = false;
+        _settings.Changed -= OnSettingsChanged;
         UpdateTimerAndEnrichmentState();
+    }
+
+    public override void OnShellSuspended() => SetWindowActive(false);
+
+    public override void OnShellResumed() => SetWindowActive(true);
+
+    private void OnSettingsChanged(object? sender, AppSettings settings)
+    {
+        _ = RunOnUiAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            LoadPreferencesFromSettings();
+            RebuildCompiledRules();
+        });
     }
 
     public void SetWindowActive(bool isActive)

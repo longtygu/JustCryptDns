@@ -59,6 +59,49 @@ public partial class TrayControlCenterWindow : Window
             }
         };
         SizeChanged += (_, _) => PositionNearTray();
+        IsVisibleChanged += OnWindowVisibilityChanged;
+        Closed += (_, _) => DetachServiceEvents();
+    }
+
+    private void OnWindowVisibilityChanged(object? sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (IsVisible)
+        {
+            if (_serviceClient is not null)
+            {
+                _serviceClient.StateChanged -= OnServiceClientStateChanged;
+                _serviceClient.StateChanged += OnServiceClientStateChanged;
+            }
+        }
+        else
+        {
+            DetachServiceEvents();
+        }
+    }
+
+    private void DetachServiceEvents()
+    {
+        if (_serviceClient is not null)
+        {
+            _serviceClient.StateChanged -= OnServiceClientStateChanged;
+        }
+    }
+
+    private void OnServiceClientStateChanged(object? sender, EventArgs e)
+    {
+        if (!IsVisible)
+        {
+            return;
+        }
+
+        if (Dispatcher.CheckAccess())
+        {
+            RefreshState();
+        }
+        else
+        {
+            Dispatcher.BeginInvoke(RefreshState);
+        }
     }
 
     public void ShowNearTray()

@@ -32,24 +32,25 @@ public sealed partial class WinInetSystemProxyConfigurator : ISystemProxyConfigu
     private const int InternetOptionRefresh = 37;
     private const int InternetOptionSettingsChanged = 39;
 
-    public bool CanModifyCurrentUserProxy
-    {
-        get
-        {
-            if (!OperatingSystem.IsWindows())
-            {
-                return false;
-            }
+    private static readonly Lazy<bool> CachedCanModifyCurrentUserProxy = new(ComputeCanModifyCurrentUserProxy);
 
-            try
-            {
-                using var identity = WindowsIdentity.GetCurrent();
-                return !identity.IsSystem;
-            }
-            catch
-            {
-                return Environment.UserInteractive;
-            }
+    public bool CanModifyCurrentUserProxy => CachedCanModifyCurrentUserProxy.Value;
+
+    private static bool ComputeCanModifyCurrentUserProxy()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            return !identity.IsSystem;
+        }
+        catch
+        {
+            return Environment.UserInteractive;
         }
     }
 
@@ -163,6 +164,12 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
     private readonly ILogger<WindowsSystemProxyService> _logger;
     private readonly IBootRecoveryRegistrar? _bootRecovery;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly object _backupCacheLock = new();
+    private bool _backupCacheInitialized;
+    private bool _cachedHasFile;
+    private long _cachedWriteTicks;
+    private long _cachedFileLength;
+    private bool _cachedIsActiveBackup;
 
     public WindowsSystemProxyService(
         IAppPaths paths,
@@ -180,8 +187,46 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
 
     public bool HasActiveBackup()
     {
-        var doc = ReadBackup();
-        return doc is { IsActive: true } && doc.VerifyIntegrity();
+        var path = _paths.ProxyBackupFile;
+        var exists = File.Exists(path);
+        long writeTicks = 0;
+        long length = 0;
+        if (exists)
+        {
+            try
+            {
+                var fi = new FileInfo(path);
+                writeTicks = fi.LastWriteTimeUtc.Ticks;
+                length = fi.Length;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                exists = false;
+            }
+        }
+
+        lock (_backupCacheLock)
+        {
+            if (_backupCacheInitialized
+                && _cachedHasFile == exists
+                && _cachedWriteTicks == writeTicks
+                && _cachedFileLength == length)
+            {
+                return _cachedIsActiveBackup;
+            }
+        }
+
+        var isActive = exists && ReadBackup() is { IsActive: true };
+        lock (_backupCacheLock)
+        {
+            _backupCacheInitialized = true;
+            _cachedHasFile = exists;
+            _cachedWriteTicks = writeTicks;
+            _cachedFileLength = length;
+            _cachedIsActiveBackup = isActive;
+        }
+
+        return isActive;
     }
 
     public WindowsProxyBackup? ReadBackup()
@@ -402,6 +447,10 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
         {
             await File.WriteAllTextAsync(temp, json, Encoding.UTF8, ct).ConfigureAwait(false);
             File.Move(temp, _paths.ProxyBackupFile, overwrite: true);
+            lock (_backupCacheLock)
+            {
+                _backupCacheInitialized = false;
+            }
         }
         finally
         {
@@ -419,6 +468,11 @@ public sealed class WindowsSystemProxyService : IWindowsProxyManager, IDisposabl
             if (File.Exists(_paths.ProxyBackupFile))
             {
                 File.Delete(_paths.ProxyBackupFile);
+            }
+
+            lock (_backupCacheLock)
+            {
+                _backupCacheInitialized = false;
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

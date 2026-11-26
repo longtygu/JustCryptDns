@@ -51,6 +51,8 @@ public sealed partial class RoutingViewModel : PageViewModel
     private readonly IDnsRoutingService _routing;
     private readonly IResolverLibraryService _resolvers;
     private bool _loading;
+    private bool _isShellSuspended;
+    private bool _needsRefreshOnResume;
 
     [ObservableProperty] private bool _isRoutingEnabled = true;
     [ObservableProperty] private DnsRoutingProfile _selectedProfile;
@@ -119,10 +121,32 @@ public sealed partial class RoutingViewModel : PageViewModel
 
     public override void OnNavigatedTo()
     {
+        _routing.RoutingChanged -= OnRoutingChanged;
         _routing.RoutingChanged += OnRoutingChanged;
+        _routing.LogAdded -= OnLogAdded;
         _routing.LogAdded += OnLogAdded;
+        _resolvers.LibraryChanged -= OnRoutingChanged;
         _resolvers.LibraryChanged += OnRoutingChanged;
-        RefreshAll();
+        if (!_isShellSuspended)
+        {
+            RefreshAll();
+            _needsRefreshOnResume = false;
+        }
+    }
+
+    public override void OnShellSuspended()
+    {
+        _isShellSuspended = true;
+    }
+
+    public override void OnShellResumed()
+    {
+        _isShellSuspended = false;
+        if (_needsRefreshOnResume)
+        {
+            _needsRefreshOnResume = false;
+            RefreshAll();
+        }
     }
 
     public override void OnNavigatedFrom()
@@ -458,9 +482,24 @@ public sealed partial class RoutingViewModel : PageViewModel
 
     private void OnRoutingChanged(object? sender, EventArgs e)
     {
+        if (_isShellSuspended)
+        {
+            _needsRefreshOnResume = true;
+            return;
+        }
+
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
-            dispatcher.BeginInvoke(RefreshAll);
+            dispatcher.BeginInvoke(() =>
+            {
+                if (_isShellSuspended)
+                {
+                    _needsRefreshOnResume = true;
+                    return;
+                }
+
+                RefreshAll();
+            });
         }
         else
         {
@@ -470,9 +509,24 @@ public sealed partial class RoutingViewModel : PageViewModel
 
     private void OnLogAdded(object? sender, RoutingLogEntry entry)
     {
+        if (_isShellSuspended)
+        {
+            _needsRefreshOnResume = true;
+            return;
+        }
+
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
-            dispatcher.BeginInvoke(RefreshLogs);
+            dispatcher.BeginInvoke(() =>
+            {
+                if (_isShellSuspended)
+                {
+                    _needsRefreshOnResume = true;
+                    return;
+                }
+
+                RefreshLogs();
+            });
         }
         else
         {

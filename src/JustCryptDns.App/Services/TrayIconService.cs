@@ -282,10 +282,18 @@ public sealed class TrayIconService : ITrayIconService
     private void ShowContextMenu(IntPtr hwnd)
     {
         _ = _serviceClient.RefreshStatusAsync();
-        _contextMenu = BuildContextMenu(hwnd);
+        var menu = BuildContextMenu(hwnd);
+        menu.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_contextMenu, menu))
+            {
+                _contextMenu = null;
+            }
+        };
+        _contextMenu = menu;
         SetForegroundWindow(hwnd);
-        _contextMenu.Placement = PlacementMode.MousePoint;
-        _contextMenu.IsOpen = true;
+        menu.Placement = PlacementMode.MousePoint;
+        menu.IsOpen = true;
     }
 
     internal ContextMenu BuildContextMenu(IntPtr hwnd = default)

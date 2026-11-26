@@ -28,6 +28,14 @@ public abstract class PageViewModel : ObservableObject, IDisposable
     {
     }
 
+    public virtual void OnShellSuspended()
+    {
+    }
+
+    public virtual void OnShellResumed()
+    {
+    }
+
     public void Dispose()
     {
         Dispose(true);

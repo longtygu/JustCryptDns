@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -11,14 +12,19 @@ namespace JustCryptDns.Network.Bypass;
 /// </summary>
 public sealed class LocalPacHttpServer : IAsyncDisposable
 {
+    private static readonly byte[] NotFoundResponse = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray();
+
     private readonly IPAddress _listenAddress;
     private readonly int _requestedPort;
     private readonly Func<string> _getPacScript;
     private readonly ILogger _logger;
     private readonly CancellationTokenSource _cts = new();
+    private readonly object _cacheLock = new();
 
     private TcpListener? _listener;
     private Task? _acceptTask;
+    private string? _cachedPacScript;
+    private byte[]? _cachedHttpResponse;
     private int _disposed;
 
     public LocalPacHttpServer(
@@ -94,11 +100,19 @@ public sealed class LocalPacHttpServer : IAsyncDisposable
                 using var readCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 readCts.CancelAfter(2000);
 
-                var buffer = new byte[2048];
-                var read = await stream.ReadAsync(buffer, readCts.Token).ConfigureAwait(false);
-                if (read <= 0)
+                var buffer = ArrayPool<byte>.Shared.Rent(2048);
+                int read;
+                try
                 {
-                    return;
+                    read = await stream.ReadAsync(buffer.AsMemory(0, 2048), readCts.Token).ConfigureAwait(false);
+                    if (read <= 0)
+                    {
+                        return;
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
                 }
 
                 var requestLine = Encoding.ASCII.GetString(buffer, 0, Math.Min(read, 256));
@@ -115,24 +129,11 @@ public sealed class LocalPacHttpServer : IAsyncDisposable
                 byte[] response;
                 if (isPacPath)
                 {
-                    var body = _getPacScript();
-                    var bodyBytes = Encoding.UTF8.GetBytes(body);
-                    var header =
-                        $"HTTP/1.1 200 OK\r\n" +
-                        $"Content-Type: application/x-ns-proxy-autoconfig; charset=utf-8\r\n" +
-                        $"X-Content-Type-Options: nosniff\r\n" +
-                        $"Cross-Origin-Resource-Policy: same-origin\r\n" +
-                        $"Cache-Control: no-cache, no-store, must-revalidate\r\n" +
-                        $"Content-Length: {bodyBytes.Length}\r\n" +
-                        $"Connection: close\r\n\r\n";
-                    var headerBytes = Encoding.ASCII.GetBytes(header);
-                    response = new byte[headerBytes.Length + bodyBytes.Length];
-                    headerBytes.CopyTo(response, 0);
-                    bodyBytes.CopyTo(response, headerBytes.Length);
+                    response = GetOrBuildPacHttpResponse();
                 }
                 else
                 {
-                    response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray();
+                    response = NotFoundResponse;
                 }
 
                 using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -144,6 +145,35 @@ public sealed class LocalPacHttpServer : IAsyncDisposable
             {
                 // Ignore client abort / malformed PAC request.
             }
+        }
+    }
+
+    private byte[] GetOrBuildPacHttpResponse()
+    {
+        var body = _getPacScript();
+        lock (_cacheLock)
+        {
+            if (_cachedHttpResponse is not null && string.Equals(_cachedPacScript, body, StringComparison.Ordinal))
+            {
+                return _cachedHttpResponse;
+            }
+
+            var bodyBytes = Encoding.UTF8.GetBytes(body);
+            var header =
+                $"HTTP/1.1 200 OK\r\n" +
+                $"Content-Type: application/x-ns-proxy-autoconfig; charset=utf-8\r\n" +
+                $"X-Content-Type-Options: nosniff\r\n" +
+                $"Cross-Origin-Resource-Policy: same-origin\r\n" +
+                $"Cache-Control: no-cache, no-store, must-revalidate\r\n" +
+                $"Content-Length: {bodyBytes.Length}\r\n" +
+                $"Connection: close\r\n\r\n";
+            var headerBytes = Encoding.ASCII.GetBytes(header);
+            var built = new byte[headerBytes.Length + bodyBytes.Length];
+            headerBytes.CopyTo(built, 0);
+            bodyBytes.CopyTo(built, headerBytes.Length);
+            _cachedPacScript = body;
+            _cachedHttpResponse = built;
+            return built;
         }
     }
 

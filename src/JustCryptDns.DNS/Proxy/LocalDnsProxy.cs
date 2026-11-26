@@ -643,6 +643,13 @@ public sealed class LocalDnsProxy : IAsyncDisposable
         {
             udp = new Socket(address.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             SocketHandleGuard.DisableInheritance(udp);
+            if (OperatingSystem.IsWindows())
+            {
+                // Disable WSAECONNRESET (10054) UDP ICMP port-unreachable errors on Windows.
+                const int sioUdpConnReset = -1744830452;
+                try { udp.IOControl((IOControlCode)sioUdpConnReset, [0], null); } catch { }
+            }
+
             try
             {
                 udp.Bind(new IPEndPoint(address, port));

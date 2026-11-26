@@ -13,6 +13,7 @@ public sealed class SettingsService : ISettingsService, IDisposable
 
     private readonly ISettingsStore _store;
     private readonly ILogger<SettingsService> _logger;
+    private readonly object _stateLock = new();
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly Timer _deferredTimer;
     private int _pendingDeferred;
@@ -55,15 +56,31 @@ public sealed class SettingsService : ISettingsService, IDisposable
         AppSettings copy;
         try
         {
-            // Mutate a copy so a failed save never leaves the live instance half-updated.
-            copy = Mutate(mutate);
+            AppSettings baseCurrent;
+            lock (_stateLock)
+            {
+                baseCurrent = Current;
+                copy = Mutate(baseCurrent, mutate);
+            }
+
             if (CanPersist)
             {
                 await _store.SaveAsync(copy, cancellationToken).ConfigureAwait(false);
             }
 
-            Current = copy;
-            Interlocked.Exchange(ref _pendingDeferred, 0);
+            lock (_stateLock)
+            {
+                if (ReferenceEquals(Current, baseCurrent))
+                {
+                    Current = copy;
+                    Interlocked.Exchange(ref _pendingDeferred, 0);
+                }
+                else
+                {
+                    copy = Mutate(Current, mutate);
+                    Current = copy;
+                }
+            }
         }
         finally
         {
@@ -82,28 +99,23 @@ public sealed class SettingsService : ISettingsService, IDisposable
         }
 
         AppSettings updated;
-        var acquired = false;
-        try
+        lock (_stateLock)
         {
-            _gate.Wait();
-            acquired = true;
-            updated = Mutate(mutate);
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
+            updated = Mutate(Current, mutate);
             Current = updated;
             Interlocked.Exchange(ref _pendingDeferred, 1);
-            if (Volatile.Read(ref _disposed) == 0)
+            try
             {
                 _deferredTimer.Change(DeferredSaveDelay, Timeout.InfiniteTimeSpan);
             }
-        }
-        catch (ObjectDisposedException)
-        {
-            return;
-        }
-        finally
-        {
-            if (acquired)
+            catch (ObjectDisposedException)
             {
-                ReleaseGateSafe();
+                return;
             }
         }
 
@@ -159,7 +171,12 @@ public sealed class SettingsService : ISettingsService, IDisposable
 
             LoadOutcome = result.Outcome;
             result.Settings.Normalize();
-            Current = result.Settings;
+            lock (_stateLock)
+            {
+                Current = result.Settings;
+                Interlocked.Exchange(ref _pendingDeferred, 0);
+            }
+
             reloaded = result.Settings;
         }
         finally
@@ -207,9 +224,9 @@ public sealed class SettingsService : ISettingsService, IDisposable
         }
     }
 
-    private AppSettings Mutate(Action<AppSettings> mutate)
+    private static AppSettings Mutate(AppSettings source, Action<AppSettings> mutate)
     {
-        var copy = Current.Clone();
+        var copy = source.Clone();
         mutate(copy);
         copy.Normalize();
         copy.SchemaVersion = AppSettings.CurrentSchemaVersion;
@@ -230,7 +247,13 @@ public sealed class SettingsService : ISettingsService, IDisposable
             acquired = true;
             if (CanPersist)
             {
-                await _store.SaveAsync(Current, cancellationToken).ConfigureAwait(false);
+                AppSettings snapshot;
+                lock (_stateLock)
+                {
+                    snapshot = Current;
+                }
+
+                await _store.SaveAsync(snapshot, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (ObjectDisposedException)

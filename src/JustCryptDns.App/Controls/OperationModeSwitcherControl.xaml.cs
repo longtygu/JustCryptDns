@@ -169,15 +169,41 @@ public partial class OperationModeSwitcherControl : UserControl
         ActiveThumbTransform.BeginAnimation(TranslateTransform.XProperty, anim);
     }
 
+    private sealed record ModeBrushSet(SolidColorBrush Accent, SolidColorBrush ThumbBg, SolidColorBrush ThumbBorder);
+
+    private static readonly Dictionary<AppOperationMode, ModeBrushSet> FrozenBrushSets = new()
+    {
+        [AppOperationMode.HighSpeed] = CreateModeBrushSet(ColorHighSpeed),
+        [AppOperationMode.Gaming] = CreateModeBrushSet(ColorGaming),
+        [AppOperationMode.Balanced] = CreateModeBrushSet(ColorBalanced),
+        [AppOperationMode.Auto] = CreateModeBrushSet(ColorAuto),
+        [AppOperationMode.Security] = CreateModeBrushSet(ColorSecurity),
+    };
+
+    private static ModeBrushSet CreateModeBrushSet(Color accent)
+    {
+        var accentBrush = new SolidColorBrush(accent);
+        accentBrush.Freeze();
+        var thumbBg = new SolidColorBrush(Color.FromArgb(0x2A, accent.R, accent.G, accent.B));
+        thumbBg.Freeze();
+        var thumbBorder = new SolidColorBrush(Color.FromArgb(0xDD, accent.R, accent.G, accent.B));
+        thumbBorder.Freeze();
+        return new ModeBrushSet(accentBrush, thumbBg, thumbBorder);
+    }
+
+    private static ModeBrushSet GetBrushSet(AppOperationMode mode) =>
+        FrozenBrushSets.TryGetValue(mode, out var set) ? set : FrozenBrushSets[AppOperationMode.Balanced];
+
     private void UpdateVisuals()
     {
         var activeMode = SelectedMode;
         var accent = GetModeColor(activeMode);
+        var activeBrushes = GetBrushSet(activeMode);
 
-        ActiveThumb.Background = new SolidColorBrush(Color.FromArgb(0x2A, accent.R, accent.G, accent.B));
-        ActiveThumb.BorderBrush = new SolidColorBrush(Color.FromArgb(0xDD, accent.R, accent.G, accent.B));
-        ActivePulseOverlay.Background = new SolidColorBrush(accent);
-        ActiveTopLed.Background = new SolidColorBrush(accent);
+        ActiveThumb.Background = activeBrushes.ThumbBg;
+        ActiveThumb.BorderBrush = activeBrushes.ThumbBorder;
+        ActivePulseOverlay.Background = activeBrushes.Accent;
+        ActiveTopLed.Background = activeBrushes.Accent;
 
         // In Gaming / MinimizeVisualEffects mode, skip GPU DropShadowEffect shader passes
         // and rely strictly on lightweight opacity & border pulsing for zero FPS impact.
@@ -190,7 +216,7 @@ public partial class OperationModeSwitcherControl : UserControl
             _thumbGlow ??= new DropShadowEffect
             {
                 ShadowDepth = 0,
-                BlurRadius = 16,
+                BlurRadius = 14,
                 Opacity = 0.45,
             };
             _thumbGlow.Color = accent;
@@ -223,15 +249,14 @@ public partial class OperationModeSwitcherControl : UserControl
 
         if (isActive)
         {
-            var modeBrush = new SolidColorBrush(GetModeColor(segmentMode));
-            icon.Foreground = modeBrush;
+            icon.Foreground = GetBrushSet(segmentMode).Accent;
             label.Foreground = primaryText;
             label.FontWeight = FontWeights.Bold;
             dot.Opacity = 1.0;
         }
         else if (isAutoTarget)
         {
-            icon.Foreground = new SolidColorBrush(GetModeColor(segmentMode));
+            icon.Foreground = GetBrushSet(segmentMode).Accent;
             label.Foreground = primaryText;
             label.FontWeight = FontWeights.SemiBold;
             dot.Opacity = 0.75;
@@ -263,7 +288,6 @@ public partial class OperationModeSwitcherControl : UserControl
         if (_thumbGlow is not null && !MinimizeVisualEffects)
         {
             _thumbGlow.Opacity = 0.20 + (0.55 * wave);
-            _thumbGlow.BlurRadius = 10 + (10 * wave);
         }
 
         var activeDot = SelectedMode switch

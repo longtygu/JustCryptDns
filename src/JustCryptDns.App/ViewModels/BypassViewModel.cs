@@ -80,6 +80,7 @@ public sealed partial class BypassViewModel : PageViewModel
     private readonly IServiceClient? _serviceClient;
     private DispatcherTimer? _servicePollTimer;
     private bool _isServicePollInFlight;
+    private bool _isShellSuspended;
     private bool _loading;
     private long _lastStatsUiTick;
     private BypassRuntimeStats? _pendingStats;
@@ -746,8 +747,26 @@ public sealed partial class BypassViewModel : PageViewModel
         }
     }
 
+    public override void OnShellSuspended()
+    {
+        _isShellSuspended = true;
+        StopServicePolling();
+    }
+
+    public override void OnShellResumed()
+    {
+        _isShellSuspended = false;
+        LoadFromSettingsAndEngine();
+        StartServicePolling();
+    }
+
     private void OnConnectionProcessed(object? sender, BypassConnectionEvent entry)
     {
+        if (_isShellSuspended)
+        {
+            return;
+        }
+
         void InsertEntry()
         {
             RecentEvents.Insert(0, entry);
@@ -798,7 +817,7 @@ public sealed partial class BypassViewModel : PageViewModel
     {
         void Sync()
         {
-            if (_serviceClient?.ConnectionState == ServiceConnectionState.Connected)
+            if (!_isShellSuspended && _serviceClient?.ConnectionState == ServiceConnectionState.Connected)
             {
                 StartServicePolling();
             }
@@ -820,7 +839,7 @@ public sealed partial class BypassViewModel : PageViewModel
 
     private void StartServicePolling()
     {
-        if (_serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        if (_isShellSuspended || _servicePollTimer is { IsEnabled: true } || _serviceClient?.ConnectionState != ServiceConnectionState.Connected)
         {
             return;
         }
@@ -852,7 +871,7 @@ public sealed partial class BypassViewModel : PageViewModel
 
     private async Task PollServiceStateAsync()
     {
-        if (_isServicePollInFlight || _serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        if (_isShellSuspended || _isServicePollInFlight || _serviceClient?.ConnectionState != ServiceConnectionState.Connected)
         {
             return;
         }
@@ -862,7 +881,7 @@ public sealed partial class BypassViewModel : PageViewModel
         {
             if (_bypassEngine is HybridBypassEngineProxy hybridBypass)
             {
-                await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
+                await hybridBypass.RefreshFromServiceAsync(includeEvents: true).ConfigureAwait(false);
             }
 
             List<LearnedHostEntry>? serviceLearned = null;

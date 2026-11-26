@@ -83,8 +83,12 @@ public sealed class HybridDnsEngineProxy : IDnsEngine
         }
 
         var resolved = parsed ?? BuildFallbackStatsFromSnapshot(response.Status, _local.GetStats());
-        Volatile.Write(ref _cachedServiceStats, resolved);
-        StateChanged?.Invoke(this, resolved);
+        var previous = Interlocked.Exchange(ref _cachedServiceStats, resolved);
+        if (!Equals(previous, resolved))
+        {
+            StateChanged?.Invoke(this, resolved);
+        }
+
         return resolved;
     }
 

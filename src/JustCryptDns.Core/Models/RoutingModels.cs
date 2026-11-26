@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json.Serialization;
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 namespace JustCryptDns.Core.Models;
@@ -91,6 +92,9 @@ public sealed record RoutingLogEntry
 
 public static class RoutingMatcher
 {
+    private const int MaxCompiledWildcardCache = 512;
+    private static readonly ConcurrentDictionary<string, Regex> WildcardRegexCache = new(StringComparer.Ordinal);
+
     public static string NormalizeDomain(string? domain)
     {
         if (string.IsNullOrWhiteSpace(domain))
@@ -179,14 +183,10 @@ public static class RoutingMatcher
                         || normalizedDomain.EndsWith("." + suffix, StringComparison.OrdinalIgnoreCase);
                 }
 
-                var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
                 try
                 {
-                    return Regex.IsMatch(
-                        normalizedDomain,
-                        regexPattern,
-                        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-                        TimeSpan.FromMilliseconds(50));
+                    var regex = GetOrCreateWildcardRegex(pattern);
+                    return regex.IsMatch(normalizedDomain);
                 }
                 catch (RegexMatchTimeoutException)
                 {
@@ -196,6 +196,26 @@ public static class RoutingMatcher
             default:
                 return false;
         }
+    }
+
+    private static Regex GetOrCreateWildcardRegex(string normalizedPattern)
+    {
+        if (WildcardRegexCache.TryGetValue(normalizedPattern, out var existing))
+        {
+            return existing;
+        }
+
+        if (WildcardRegexCache.Count >= MaxCompiledWildcardCache)
+        {
+            WildcardRegexCache.Clear();
+        }
+
+        var regexPattern = "^" + Regex.Escape(normalizedPattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
+        var created = new Regex(
+            regexPattern,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled,
+            TimeSpan.FromMilliseconds(50));
+        return WildcardRegexCache.GetOrAdd(normalizedPattern, created);
     }
 }
 

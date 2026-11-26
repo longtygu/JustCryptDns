@@ -9,11 +9,20 @@ public sealed class DnsRoutingService : IDnsRoutingService
 {
     public const int MaxLogEntries = 200;
 
+    private sealed record CompiledRoutingSnapshot(
+        RoutingSettings SourceSettings,
+        IReadOnlyDictionary<string, DnsRoutingProfile> ProfilesById,
+        DnsRoutingProfile DefaultProfile,
+        IReadOnlyDictionary<string, IReadOnlyList<DnsRoutingRule>> RulesByProfile,
+        IReadOnlyList<LocalDnsRewriteRule> Rewrites);
+
     private readonly ISettingsService _settings;
     private readonly IResolverLibraryService? _resolverLibrary;
     private readonly ILogger<DnsRoutingService> _logger;
     private readonly LinkedList<RoutingLogEntry> _logs = new();
     private readonly object _logLock = new();
+    private readonly object _cacheLock = new();
+    private CompiledRoutingSnapshot? _compiledCache;
 
     public DnsRoutingService(
         ISettingsService settings,
@@ -286,11 +295,18 @@ public sealed class DnsRoutingService : IDnsRoutingService
     public RoutingDecision ResolveForDomain(string domain, string? profileIdOverride = null)
     {
         var normalizedDomain = RoutingMatcher.NormalizeDomain(domain);
-        var profile = string.IsNullOrWhiteSpace(profileIdOverride)
-            ? GetActiveProfile()
-            : GetProfiles().FirstOrDefault(p => string.Equals(p.Id, profileIdOverride, StringComparison.OrdinalIgnoreCase)) ?? GetActiveProfile();
+        var snapshot = GetCompiledRoutingSnapshot();
+        var lookupProfileId = string.IsNullOrWhiteSpace(profileIdOverride)
+            ? snapshot.SourceSettings.ActiveProfileId
+            : profileIdOverride;
+        var profile = !string.IsNullOrWhiteSpace(lookupProfileId)
+            && snapshot.ProfilesById.TryGetValue(lookupProfileId, out var foundProfile)
+            ? foundProfile
+            : snapshot.DefaultProfile;
 
-        var rules = GetRulesForProfile(profile.Id);
+        var rules = snapshot.RulesByProfile.TryGetValue(profile.Id, out var profileRules)
+            ? profileRules
+            : [];
         foreach (var rule in rules)
         {
             if (!rule.IsEnabled)
@@ -496,7 +512,7 @@ public sealed class DnsRoutingService : IDnsRoutingService
             return null;
         }
 
-        var rewrites = GetLocalRewrites();
+        var rewrites = GetCompiledRoutingSnapshot().Rewrites;
         foreach (var rule in rewrites)
         {
             if (!rule.IsEnabled || rule.RecordType != targetType)
@@ -528,6 +544,54 @@ public sealed class DnsRoutingService : IDnsRoutingService
         }
 
         return null;
+    }
+
+    private CompiledRoutingSnapshot GetCompiledRoutingSnapshot()
+    {
+        var routing = _settings.Current.Routing;
+        var cached = Volatile.Read(ref _compiledCache);
+        if (cached is not null && ReferenceEquals(cached.SourceSettings, routing))
+        {
+            return cached;
+        }
+
+        lock (_cacheLock)
+        {
+            cached = _compiledCache;
+            if (cached is not null && ReferenceEquals(cached.SourceSettings, routing))
+            {
+                return cached;
+            }
+
+            var profiles = GetProfiles();
+            var profilesById = profiles.ToDictionary(p => p.Id, StringComparer.OrdinalIgnoreCase);
+            var defaultProfile = !string.IsNullOrWhiteSpace(routing.ActiveProfileId)
+                && profilesById.TryGetValue(routing.ActiveProfileId, out var activeProf)
+                ? activeProf
+                : profiles[0];
+
+            var allRules = (routing.Rules ?? BuiltInRoutingProfiles.CreateDefaultRules())
+                .OrderBy(r => r.Priority)
+                .ThenBy(r => r.MatchKind)
+                .ThenByDescending(r => r.Pattern.Length)
+                .ToList();
+
+            var rulesByProfile = new Dictionary<string, IReadOnlyList<DnsRoutingRule>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var group in allRules.GroupBy(r => r.ProfileId, StringComparer.OrdinalIgnoreCase))
+            {
+                rulesByProfile[group.Key] = group.ToList();
+            }
+
+            var rewrites = (routing.LocalRewrites ?? [])
+                .OrderBy(r => r.MatchKind)
+                .ThenByDescending(r => r.Pattern.Length)
+                .ThenBy(r => r.Pattern, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var rebuilt = new CompiledRoutingSnapshot(routing, profilesById, defaultProfile, rulesByProfile, rewrites);
+            Volatile.Write(ref _compiledCache, rebuilt);
+            return rebuilt;
+        }
     }
 
     private DnsResolverEndpoint ResolveEndpoint(string? resolverId) =>

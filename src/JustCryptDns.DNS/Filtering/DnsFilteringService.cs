@@ -133,12 +133,20 @@ public sealed class DnsFilteringService : IDnsFilteringService
     private static readonly Dictionary<string, DnsBlocklistSource> BuiltInSeedsById =
         BuiltInBlocklists.All.ToDictionary(b => b.Id, StringComparer.OrdinalIgnoreCase);
 
+    private sealed record CompiledFilteringSnapshot(
+        FilteringSettings SourceSettings,
+        long BlocklistVersion,
+        IReadOnlyList<(string Id, string Name, BlocklistCategory Category, HashSet<string> Domains)> EnabledBlocklists);
+
     private readonly ISettingsService _settings;
     private readonly IAppPaths? _paths;
     private readonly ILogger<DnsFilteringService> _logger;
     private readonly ConcurrentDictionary<string, HashSet<string>> _listDomains = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<FilterLogEntry> _logs = new();
     private readonly object _logLock = new();
+    private readonly object _snapshotLock = new();
+    private CompiledFilteringSnapshot? _compiledSnapshot;
+    private long _blocklistVersion;
     private long _blockedQueries;
 
     public DnsFilteringService(
@@ -252,6 +260,7 @@ public sealed class DnsFilteringService : IDnsFilteringService
             }
 
             _listDomains[list.Id] = domains;
+            Interlocked.Increment(ref _blocklistVersion);
             SaveCachedBlocklistToDisk(list.Id, domains);
 
             var now = DateTimeOffset.UtcNow;
@@ -319,6 +328,7 @@ public sealed class DnsFilteringService : IDnsFilteringService
         var id = $"custom-hosts-{Guid.NewGuid().ToString("N")[..6]}";
         var name = string.IsNullOrWhiteSpace(listName) ? $"Imported Hosts ({DateTime.Now:yyyy-MM-dd})" : listName.Trim();
         _listDomains[id] = domains;
+        Interlocked.Increment(ref _blocklistVersion);
         SaveCachedBlocklistToDisk(id, domains);
 
         var source = new DnsBlocklistSource
@@ -512,15 +522,10 @@ public sealed class DnsFilteringService : IDnsFilteringService
             }
         }
 
-        // 4. Enabled blocklists (check exact domain and parent domain suffixes)
-        var blocklists = GetBlocklists();
-        foreach (var list in blocklists)
+        // 4. Enabled blocklists (use cached snapshot to avoid cloning lists on every DNS query)
+        var snapshot = GetCompiledSnapshot();
+        foreach (var (id, name, category, set) in snapshot.EnabledBlocklists)
         {
-            if (!list.IsEnabled || !_listDomains.TryGetValue(list.Id, out var set))
-            {
-                continue;
-            }
-
             if (MatchesDomainOrParentInSet(norm, set))
             {
                 return FinalizeDecision(new FilterDecision
@@ -528,10 +533,10 @@ public sealed class DnsFilteringService : IDnsFilteringService
                     Domain = norm,
                     IsBlocked = true,
                     Action = FilterAction.BlockedByBlocklist,
-                    MatchedRuleOrListId = list.Id,
-                    MatchedRuleOrListName = list.Name,
-                    Category = list.Category,
-                    Reason = $"Blocked by '{list.Name}' ({list.Category}).",
+                    MatchedRuleOrListId = id,
+                    MatchedRuleOrListName = name,
+                    Category = category,
+                    Reason = $"Blocked by '{name}' ({category}).",
                 }, recordStats);
             }
         }
@@ -566,7 +571,47 @@ public sealed class DnsFilteringService : IDnsFilteringService
     public void ReloadBlocklistsFromDisk()
     {
         InitializeListsInMemory(forceReloadFromDisk: true);
+        Interlocked.Increment(ref _blocklistVersion);
         RaiseFilteringChanged();
+    }
+
+    private CompiledFilteringSnapshot GetCompiledSnapshot()
+    {
+        var cfg = _settings.Current.Filtering;
+        var version = Interlocked.Read(ref _blocklistVersion);
+        var current = Volatile.Read(ref _compiledSnapshot);
+        if (current is not null
+            && ReferenceEquals(current.SourceSettings, cfg)
+            && current.BlocklistVersion == version)
+        {
+            return current;
+        }
+
+        lock (_snapshotLock)
+        {
+            current = _compiledSnapshot;
+            version = Interlocked.Read(ref _blocklistVersion);
+            if (current is not null
+                && ReferenceEquals(current.SourceSettings, cfg)
+                && current.BlocklistVersion == version)
+            {
+                return current;
+            }
+
+            var configured = cfg.Blocklists ?? BuiltInBlocklists.All.ToList();
+            var enabledLists = new List<(string Id, string Name, BlocklistCategory Category, HashSet<string> Domains)>(configured.Count);
+            foreach (var item in configured)
+            {
+                if (item.IsEnabled && _listDomains.TryGetValue(item.Id, out var set))
+                {
+                    enabledLists.Add((item.Id, item.Name, item.Category, set));
+                }
+            }
+
+            var rebuilt = new CompiledFilteringSnapshot(cfg, version, enabledLists);
+            Volatile.Write(ref _compiledSnapshot, rebuilt);
+            return rebuilt;
+        }
     }
 
     private static bool MatchesDomainOrParentInSet(string normalizedDomain, HashSet<string> domainSet)

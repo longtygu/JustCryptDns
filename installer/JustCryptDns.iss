@@ -2,7 +2,7 @@
 ; Builds a signed-ready installer with Windows Service registration (LocalSystem) and clean uninstall.
 
 #define MyAppName "JustCryptDns"
-#define MyAppVersion "1.8.3"
+#define MyAppVersion "1.8.4"
 #define MyAppPublisher "Longtygu (JustCryptDns)"
 #define MyAppURL "https://github.com/longtygu/JustCryptDns"
 #define MyAppExeName "JustCryptDns.exe"
@@ -66,10 +66,10 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-; Register JustCryptDnsService under LocalSystem with delayed auto-start and crash recovery
+; Register JustCryptDnsService under LocalSystem with automatic startup and crash recovery
 Filename: "{sys}\sc.exe"; Parameters: "stop {#MyServiceName}"; Flags: runhidden; Tasks: installservice
 Filename: "{sys}\sc.exe"; Parameters: "delete {#MyServiceName}"; Flags: runhidden; Tasks: installservice
-Filename: "{sys}\sc.exe"; Parameters: "create {#MyServiceName} binPath= ""\""{app}\{#MyServiceExeName}\"""" start= delayed-auto DisplayName= ""JustCryptDns Background Service"""; Flags: runhidden; Tasks: installservice
+Filename: "{sys}\sc.exe"; Parameters: "create {#MyServiceName} binPath= ""\""{app}\{#MyServiceExeName}\"""" start= auto DisplayName= ""JustCryptDns Background Service"""; Flags: runhidden; Tasks: installservice
 Filename: "{sys}\sc.exe"; Parameters: "description {#MyServiceName} ""Encrypted DNS proxy, routing, filtering and failover service for JustCryptDns."""; Flags: runhidden; Tasks: installservice
 Filename: "{sys}\sc.exe"; Parameters: "failure {#MyServiceName} reset= 86400 actions= restart/5000/restart/15000/restart/30000"; Flags: runhidden; Tasks: installservice
 Filename: "{sys}\sc.exe"; Parameters: "start {#MyServiceName}"; Flags: runhidden; Tasks: installservice

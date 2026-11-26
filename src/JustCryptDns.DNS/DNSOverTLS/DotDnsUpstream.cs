@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using JustCryptDns.Core.Interfaces;
 using JustCryptDns.Core.Models;
+using JustCryptDns.Core.Network;
 using JustCryptDns.DNS.Wire;
 
 namespace JustCryptDns.DNS.DNSOverTLS;
@@ -79,7 +80,7 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
         var sw = Stopwatch.StartNew();
         try
         {
-            var response = await pool.ExecuteQueryAsync(queryWire, timeout, cts.Token).ConfigureAwait(false);
+            var response = await pool.ExecuteQueryAsync(queryWire, timeout, cts.Token, cancellationToken).ConfigureAwait(false);
             sw.Stop();
 
             DnsPacket.WriteTransactionId(response, callerId);
@@ -149,16 +150,17 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
         public async Task<byte[]> ExecuteQueryAsync(
             ReadOnlyMemory<byte> queryWire,
             TimeSpan timeout,
-            CancellationToken ct)
+            CancellationToken ct,
+            CancellationToken callerCt = default)
         {
             try
             {
-                return await SendOnceAsync(queryWire, timeout, forceReconnect: false, ct).ConfigureAwait(false);
+                return await SendOnceAsync(queryWire, timeout, forceReconnect: false, ct, callerCt).ConfigureAwait(false);
             }
             catch (Exception ex) when (!ct.IsCancellationRequested
                 && ex is IOException or SocketException or ObjectDisposedException)
             {
-                return await SendOnceAsync(queryWire, timeout, forceReconnect: true, ct).ConfigureAwait(false);
+                return await SendOnceAsync(queryWire, timeout, forceReconnect: true, ct, callerCt).ConfigureAwait(false);
             }
         }
 
@@ -166,7 +168,8 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
             ReadOnlyMemory<byte> queryWire,
             TimeSpan timeout,
             bool forceReconnect,
-            CancellationToken ct)
+            CancellationToken ct,
+            CancellationToken callerCt)
         {
             var (ssl, pending, reused) = await EnsureConnectedAsync(timeout, forceReconnect, ct).ConfigureAwait(false);
             if (reused)
@@ -227,6 +230,12 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                 Volatile.Write(ref _lastUsedTick, Environment.TickCount64);
                 return response;
             }
+            catch (OperationCanceledException) when (!callerCt.IsCancellationRequested)
+            {
+                // Query-level timeout indicates the pooled TLS stream may be blackholed (e.g. after sleep/wake).
+                InvalidateIfCurrent(ssl);
+                throw;
+            }
             catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException)
             {
                 InvalidateIfCurrent(ssl);
@@ -265,6 +274,7 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
                 CloseCurrentLocked();
 
                 var tcp = new TcpClient(_ip.AddressFamily) { NoDelay = true };
+                SocketHandleGuard.DisableInheritance(tcp.Client);
                 SslStream? ssl = null;
                 CancellationTokenSource? connCts = null;
                 try
@@ -374,10 +384,40 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
 
         private void InvalidateIfCurrent(SslStream expected)
         {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
             try
             {
                 if (!_connectGate.Wait(0))
                 {
+                    if (ReferenceEquals(_ssl, expected))
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await _connectGate.WaitAsync().ConfigureAwait(false);
+                                try
+                                {
+                                    if (Volatile.Read(ref _disposed) == 0 && ReferenceEquals(_ssl, expected))
+                                    {
+                                        CloseCurrentLocked();
+                                    }
+                                }
+                                finally
+                                {
+                                    try { _connectGate.Release(); } catch (ObjectDisposedException) { }
+                                }
+                            }
+                            catch (ObjectDisposedException)
+                            {
+                            }
+                        });
+                    }
+
                     return;
                 }
             }

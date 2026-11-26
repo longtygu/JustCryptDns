@@ -14,6 +14,7 @@ namespace JustCryptDns.Infrastructure.Windows;
 public sealed class ProcessTrustInspector : IProcessTrustInspector
 {
     private const int MaxCacheEntries = 1024;
+    private const long TrustCacheMetadataTtlMs = 30_000;
     private static readonly Guid ActionGenericVerifyV2 = new("00AAC56B-CD44-11d0-8CC2-00C04FC295EE");
 
     private static readonly HashSet<string> CoreWindowsBinaries = new(StringComparer.OrdinalIgnoreCase)
@@ -36,7 +37,7 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
     private static readonly string System32Directory = NormalizeDir(Environment.GetFolderPath(Environment.SpecialFolder.System));
     private static readonly string SysWow64Directory = NormalizeDir(Environment.GetFolderPath(Environment.SpecialFolder.SystemX86));
 
-    private readonly ConcurrentDictionary<string, (long LastWriteUtcTicks, ProcessTrustInfo Info)> _cache =
+    private readonly ConcurrentDictionary<string, (long LastWriteUtcTicks, long VerifiedAtTick, ProcessTrustInfo Info)> _cache =
         new(StringComparer.OrdinalIgnoreCase);
 
     public ProcessTrustInfo Inspect(string? executablePath, string? processName = null)
@@ -63,6 +64,12 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
             return new ProcessTrustInfo(executablePath, ProcessTrustLevel.Unknown, null, false, false, null);
         }
 
+        var nowTick = Environment.TickCount64;
+        if (_cache.TryGetValue(normalized, out var cached) && nowTick - cached.VerifiedAtTick < TrustCacheMetadataTtlMs)
+        {
+            return cached.Info;
+        }
+
         long stampTicks = 0;
         if (File.Exists(normalized))
         {
@@ -76,18 +83,27 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
             }
         }
 
-        if (_cache.TryGetValue(normalized, out var cached) && cached.LastWriteUtcTicks == stampTicks)
+        if (cached.Info is not null && cached.LastWriteUtcTicks == stampTicks)
         {
+            _cache[normalized] = (stampTicks, nowTick, cached.Info);
             return cached.Info;
         }
 
         var evaluated = EvaluateCore(normalized);
         if (_cache.Count >= MaxCacheEntries)
         {
-            _cache.Clear();
+            var victimCount = MaxCacheEntries / 5;
+            foreach (var key in _cache
+                .OrderBy(kvp => kvp.Value.VerifiedAtTick)
+                .Take(victimCount)
+                .Select(kvp => kvp.Key)
+                .ToList())
+            {
+                _cache.TryRemove(key, out _);
+            }
         }
 
-        _cache[normalized] = (stampTicks, evaluated);
+        _cache[normalized] = (stampTicks, nowTick, evaluated);
         return evaluated;
     }
 
@@ -186,7 +202,8 @@ public sealed class ProcessTrustInspector : IProcessTrustInspector
     {
         try
         {
-            using var cert = new X509Certificate2(X509Certificate.CreateFromSignedFile(fullPath));
+            using var rawCert = X509Certificate.CreateFromSignedFile(fullPath);
+            using var cert = new X509Certificate2(rawCert);
             var name = cert.GetNameInfo(X509NameType.SimpleName, false);
             return string.IsNullOrWhiteSpace(name) ? null : name.Trim();
         }

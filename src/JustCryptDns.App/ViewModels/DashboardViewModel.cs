@@ -50,6 +50,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     private CancellationTokenSource? _cts;
     private DispatcherTimer? _servicePollTimer;
     private bool _isServicePollInFlight;
+    private bool _isShellSuspended;
     private string _activeResolverId = string.Empty;
     private long _lastBypassUiTick;
     private BypassRuntimeStats? _pendingBypassStats;
@@ -97,7 +98,7 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTelemetryActive))]
-    private bool _isTelemetryPaused;
+    private bool _isTelemetryPaused = true;
 
     [ObservableProperty] private bool _isQueryLogPaused;
     [ObservableProperty] private StatusPulseStyle _statusPulseStyle = StatusPulseStyle.Breathing;
@@ -325,6 +326,30 @@ public sealed partial class DashboardViewModel : PageViewModel
         }
 
         RefreshModeResolvers();
+        ApplyEngineStats(_dnsEngine.GetStats());
+        if (!_isShellSuspended)
+        {
+            StartServicePolling();
+            _ = RefreshCommand.ExecuteAsync(null);
+        }
+    }
+
+    public override void OnShellSuspended()
+    {
+        _isShellSuspended = true;
+        StopServicePolling();
+        _telemetry?.Pause();
+    }
+
+    public override void OnShellResumed()
+    {
+        _isShellSuspended = false;
+        if (IsTelemetryActive && _telemetry is not null)
+        {
+            UpdateTelemetryTargets();
+            _telemetry.Resume();
+        }
+
         ApplyEngineStats(_dnsEngine.GetStats());
         StartServicePolling();
         _ = RefreshCommand.ExecuteAsync(null);
@@ -1004,7 +1029,7 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     private void StartServicePolling()
     {
-        if (_serviceClient?.ConnectionState != ServiceConnectionState.Connected)
+        if (_isShellSuspended || _servicePollTimer is { IsEnabled: true } || _serviceClient?.ConnectionState != ServiceConnectionState.Connected)
         {
             return;
         }

@@ -25,6 +25,8 @@ namespace JustCryptDns.App;
 
 public partial class App : Application
 {
+    private static readonly long StartupTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+
     private SingleInstanceGuard? _instanceGuard;
     private ServiceProvider? _services;
     private ILoggerFactory? _recoveryLoggerFactory;
@@ -35,6 +37,7 @@ public partial class App : Application
     private string? _lastAppearanceJson;
     private string? _lastLanguage;
     private LogLevelSetting? _lastLogLevel;
+    private string? _lastServiceSyncFingerprint;
     private int _serviceReloadGeneration;
 
     public static bool ShouldStartMinimized(IReadOnlyList<string> args, GeneralSettings general)
@@ -73,7 +76,7 @@ public partial class App : Application
         var store = new JsonSettingsStore(paths, NullLogger<JsonSettingsStore>.Instance);
         var initial = store.Load();
         var loggerFactory = LoggingSetup.CreateLoggerFactory(
-            paths, "ui", initial.Settings.Performance.LogLevel, initial.Settings.Performance.LogRetentionDays);
+            paths, isRecoveryMode ? "recovery" : "ui", initial.Settings.Performance.LogLevel, initial.Settings.Performance.LogRetentionDays);
         _logger = loggerFactory.CreateLogger<App>();
 
         if (isRecoveryMode)
@@ -115,6 +118,7 @@ public partial class App : Application
         _services = ServiceRegistration.Build(paths, loggerFactory, runtimeStore, initial);
 
         var settings = _services.GetRequiredService<ISettingsService>();
+        _lastServiceSyncFingerprint = ComputeServiceSyncFingerprint(settings.Current);
         ApplyPresentation(settings.Current);
         settings.Changed += (_, current) =>
         {
@@ -127,16 +131,24 @@ public partial class App : Application
                 Dispatcher.BeginInvoke(() => ApplyPresentation(current));
             }
 
-            ScheduleServiceConfigSync();
+            var fingerprint = ComputeServiceSyncFingerprint(current);
+            if (!string.Equals(fingerprint, _lastServiceSyncFingerprint, StringComparison.Ordinal))
+            {
+                _lastServiceSyncFingerprint = fingerprint;
+                ScheduleServiceConfigSync();
+            }
         };
 
-        // Initialize system tray icon.
-        var shell = _services.GetRequiredService<ShellViewModel>();
+        // Initialize system tray icon before creating MainWindow so --minimized launches have near-zero UI/memory footprint.
         var tray = _services.GetRequiredService<ITrayIconService>();
         tray.OpenRequested += (_, _) => Dispatcher.BeginInvoke(ActivateMainWindow);
         tray.ExitRequested += (_, _) => Dispatcher.BeginInvoke(() =>
         {
-            shell.IsExplicitExit = true;
+            if (MainWindow?.DataContext is ShellViewModel shell)
+            {
+                shell.IsExplicitExit = true;
+            }
+
             Shutdown(0);
         });
         tray.Initialize();
@@ -146,30 +158,21 @@ public partial class App : Application
         _services.GetRequiredService<IOperationModeService>().Start();
         _ = CheckForUpdatesInBackgroundAsync(_services, _logger);
 
-        var window = _services.GetRequiredService<MainWindow>();
-        _logger.LogDebug("Main window constructed.");
-        MainWindow = window;
-        window.Closed += (_, _) => Shutdown(0);
-        window.ContentRendered += (_, _) => _logger.LogInformation(
-            "First frame rendered {Elapsed} ms after process start.",
-            (int)(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds);
-        var dnsEngine = _services.GetRequiredService<Core.Interfaces.IDnsEngine>();
-        Diagnostics.DevSnapshot.TryAttach(window, shell, dnsEngine, _logger);
-
         var startMinimized = ShouldStartMinimized(e.Args, settings.Current.General)
             && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JUSTCRYPTDNS_SNAPSHOT_DIR"));
         if (startMinimized)
         {
-            _logger.LogInformation("Started minimized to system tray.");
+            _logger.LogInformation("Started minimized to system tray (MainWindow deferred for zero-idle overhead).");
         }
         else
         {
+            var window = EnsureMainWindowCreated();
             window.Show();
             _logger.LogInformation(
-                "Main window shown {Width}x{Height} in {Elapsed} ms since process start.",
+                "Main window shown {Width}x{Height} in {Elapsed:0} ms since process start.",
                 window.ActualWidth,
                 window.ActualHeight,
-                (int)(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds);
+                System.Diagnostics.Stopwatch.GetElapsedTime(StartupTimestamp).TotalMilliseconds);
         }
 
         _instanceGuard?.ListenForActivation(() => Dispatcher.BeginInvoke(ActivateMainWindow));
@@ -342,30 +345,66 @@ public partial class App : Application
                 {
                     if (services.GetService<IBypassEngineService>() is HybridBypassEngineProxy hybridBypass)
                     {
-                        await hybridBypass.StopLocalFallbackOnlyAsync(cts.Token).ConfigureAwait(false);
+                        try
+                        {
+                            await hybridBypass.StopLocalFallbackOnlyAsync(cts.Token).ConfigureAwait(false);
+                        }
+                        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or OperationCanceledException or ObjectDisposedException)
+                        {
+                            _logger.LogDebug(ex, "Hybrid bypass fallback stop skipped during shutdown.");
+                        }
                     }
 
                     if (services.GetService<IDnsEngine>() is HybridDnsEngineProxy hybridDns)
                     {
-                        await hybridDns.StopLocalFallbackOnlyAsync(cts.Token).ConfigureAwait(false);
+                        try
+                        {
+                            await hybridDns.StopLocalFallbackOnlyAsync(cts.Token).ConfigureAwait(false);
+                        }
+                        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or OperationCanceledException or ObjectDisposedException)
+                        {
+                            _logger.LogDebug(ex, "Hybrid DNS fallback stop skipped during shutdown.");
+                        }
                     }
                 }
                 else
                 {
                     if (services.GetService<IBypassEngineService>() is { } bypassEngine)
                     {
-                        await bypassEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                        try
+                        {
+                            await bypassEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                        }
+                        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or OperationCanceledException or ObjectDisposedException)
+                        {
+                            _logger.LogDebug(ex, "Standalone bypass stop skipped during shutdown.");
+                        }
                     }
 
-                    if (services.GetService<IDnsEngine>() is { } dnsEngine)
+                    if (services.GetService<IDnsEngine>() is { } dnsEngine
+                        && (dnsEngine.GetStats().State != DnsEngineState.Stopped || !IsWindowsServiceInstalledAndAutoStart()))
                     {
-                        await dnsEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                        try
+                        {
+                            await dnsEngine.StopAsync(cts.Token).ConfigureAwait(false);
+                        }
+                        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or OperationCanceledException or ObjectDisposedException)
+                        {
+                            _logger.LogDebug(ex, "Standalone DNS stop skipped during shutdown.");
+                        }
                     }
                 }
 
                 if (services.GetService<ISettingsService>() is { } settings)
                 {
-                    await settings.FlushAsync(cts.Token).ConfigureAwait(false);
+                    try
+                    {
+                        await settings.FlushAsync(cts.Token).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or OperationCanceledException or ObjectDisposedException)
+                    {
+                        _logger.LogDebug(ex, "Settings flush skipped during shutdown.");
+                    }
                 }
 
                 // Always lift transient Emergency Lockdown (and standalone DNS Leak Guard when service is not keeping DNS alive).
@@ -373,23 +412,37 @@ public partial class App : Application
                 {
                     if (services.GetService<IWindowsFirewallManager>() is { } fw)
                     {
-                        await fw.ClearLockdownAndLeakGuardAsync(cts.Token).ConfigureAwait(false);
+                        try
+                        {
+                            await fw.ClearLockdownAndLeakGuardAsync(cts.Token).ConfigureAwait(false);
+                        }
+                        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or OperationCanceledException or ObjectDisposedException)
+                        {
+                            _logger.LogDebug(ex, "Firewall cleanup skipped during shutdown.");
+                        }
                     }
                 }
                 else if (services.GetService<IFirewallBlocklistCoordinator>() is { } coordinator
                     && services.GetService<ISettingsService>() is { } appSettings)
                 {
-                    var conn = appSettings.Current.Connections;
-                    var fwStatus = await coordinator.GetStatusAsync(cts.Token).ConfigureAwait(false);
-                    if (fwStatus.IsLockdownActive)
+                    try
                     {
-                        await coordinator.SyncSecurityAsync(
-                            new Core.Models.FirewallSyncRequestPayload(
-                                conn.BlockedRules,
-                                conn.BlockedApps,
-                                conn.EnableDnsLeakGuard,
-                                EnableEmergencyLockdown: false),
-                            cts.Token).ConfigureAwait(false);
+                        var conn = appSettings.Current.Connections;
+                        var fwStatus = await coordinator.GetStatusAsync(cts.Token).ConfigureAwait(false);
+                        if (fwStatus.IsLockdownActive)
+                        {
+                            await coordinator.SyncSecurityAsync(
+                                new Core.Models.FirewallSyncRequestPayload(
+                                    conn.BlockedRules,
+                                    conn.BlockedApps,
+                                    conn.EnableDnsLeakGuard,
+                                    EnableEmergencyLockdown: false),
+                                cts.Token).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or OperationCanceledException or ObjectDisposedException)
+                    {
+                        _logger.LogDebug(ex, "Lockdown release skipped during shutdown.");
                     }
                 }
 
@@ -440,13 +493,22 @@ public partial class App : Application
             var bypassEngine = services.GetRequiredService<IBypassEngineService>();
 
             await serviceClient.RefreshStatusAsync().ConfigureAwait(false);
-            if (serviceClient.ConnectionState != ServiceConnectionState.Connected && IsWindowsServiceRunningOrStarting())
+            var isServiceProcessPresent = IsWindowsServiceRunningOrStarting();
+            var isBootWindowAutoStart = IsWindowsServiceInstalledAndAutoStart() && Environment.TickCount64 < 180_000;
+            if (serviceClient.ConnectionState != ServiceConnectionState.Connected
+                && (isServiceProcessPresent || isBootWindowAutoStart))
             {
-                for (var retry = 0; retry < 4 && serviceClient.ConnectionState != ServiceConnectionState.Connected; retry++)
+                for (var retry = 0; retry < 24 && serviceClient.ConnectionState != ServiceConnectionState.Connected; retry++)
                 {
                     await Task.Delay(500).ConfigureAwait(false);
                     await serviceClient.RefreshStatusAsync().ConfigureAwait(false);
                 }
+            }
+
+            if (serviceClient.ConnectionState != ServiceConnectionState.Connected && isBootWindowAutoStart)
+            {
+                logger.LogWarning("JustCryptDnsService is configured for Automatic startup but did not respond during boot window; deferring standalone engine startup to avoid port conflicts.");
+                return;
             }
 
             var serviceConnected = serviceClient.ConnectionState == ServiceConnectionState.Connected;
@@ -566,6 +628,26 @@ public partial class App : Application
         }
     }
 
+    private static bool IsWindowsServiceInstalledAndAutoStart()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                @"SYSTEM\CurrentControlSet\Services\JustCryptDnsService",
+                writable: false);
+            return key?.GetValue("Start") is int startMode && startMode == 2;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static async Task CheckForUpdatesInBackgroundAsync(ServiceProvider services, ILogger<App> logger)
     {
         try
@@ -644,7 +726,6 @@ public partial class App : Application
             if (services.GetService<IBypassEngineService>() is HybridBypassEngineProxy hybridBypass)
             {
                 await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
-                await hybridBypass.EnsureUserProxySynchronizedAsync().ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or InvalidOperationException)
@@ -652,6 +733,21 @@ public partial class App : Application
             _logger.LogDebug(ex, "Debounced UI-to-service settings sync skipped during shutdown.");
         }
     }
+
+    private static string ComputeServiceSyncFingerprint(AppSettings settings) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            settings.Dns,
+            settings.Cache,
+            settings.Filtering,
+            settings.Routing,
+            settings.Resilience,
+            settings.Gaming,
+            settings.Bypass,
+            settings.Performance.LogLevel,
+            settings.General.AutoStartDnsEngine,
+            settings.Connections.EnableDnsLeakGuard,
+        }, SettingsJson.Options);
 
     private void ApplyPresentation(AppSettings settings)
     {
@@ -675,27 +771,49 @@ public partial class App : Application
         }
     }
 
+    private MainWindow EnsureMainWindowCreated()
+    {
+        if (MainWindow is MainWindow existing)
+        {
+            return existing;
+        }
+
+        var services = _services ?? throw new InvalidOperationException("Services are not initialized.");
+        var shell = services.GetRequiredService<ShellViewModel>();
+        var window = services.GetRequiredService<MainWindow>();
+        _logger.LogDebug("Main window constructed.");
+        MainWindow = window;
+        window.Closed += (_, _) => Shutdown(0);
+        window.ContentRendered += (_, _) => _logger.LogInformation(
+            "First frame rendered {Elapsed:0} ms after process start.",
+            System.Diagnostics.Stopwatch.GetElapsedTime(StartupTimestamp).TotalMilliseconds);
+        var dnsEngine = services.GetRequiredService<Core.Interfaces.IDnsEngine>();
+        Diagnostics.DevSnapshot.TryAttach(window, shell, dnsEngine, _logger);
+        return window;
+    }
+
     private void ActivateMainWindow()
     {
-        if (MainWindow is null)
+        if (Volatile.Read(ref _servicesDisposed) || _services is null)
         {
             return;
         }
 
-        if (!MainWindow.IsVisible)
+        var mainWindow = MainWindow ?? EnsureMainWindowCreated();
+        if (!mainWindow.IsVisible)
         {
-            MainWindow.Show();
+            mainWindow.Show();
         }
 
-        if (MainWindow.WindowState == WindowState.Minimized)
+        if (mainWindow.WindowState == WindowState.Minimized)
         {
-            MainWindow.WindowState = WindowState.Normal;
+            mainWindow.WindowState = WindowState.Normal;
         }
 
-        MainWindow.Activate();
-        MainWindow.Topmost = true;
-        MainWindow.Topmost = false;
-        MainWindow.Focus();
+        mainWindow.Activate();
+        mainWindow.Topmost = true;
+        mainWindow.Topmost = false;
+        mainWindow.Focus();
     }
 
     private void RegisterExceptionHandlers()

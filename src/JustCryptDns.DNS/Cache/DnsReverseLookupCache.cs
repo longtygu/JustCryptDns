@@ -12,13 +12,19 @@ public sealed class DnsReverseLookupCache : IDnsReverseLookupCache
 {
     private sealed class Entry
     {
+        private long _lastAccessTick;
+
         public required string Ip { get; init; }
 
-        public required string Domain { get; set; }
+        public required string Domain { get; init; }
 
-        public required DateTimeOffset ExpiresAtUtc { get; set; }
+        public required DateTimeOffset ExpiresAtUtc { get; init; }
 
-        public long LastAccessTick { get; set; }
+        public long LastAccessTick => Volatile.Read(ref _lastAccessTick);
+
+        public void SetInitialTick(long tick) => _lastAccessTick = tick;
+
+        public void Touch(long tick) => Volatile.Write(ref _lastAccessTick, tick);
     }
 
     private readonly int _maxEntries;
@@ -27,6 +33,7 @@ public sealed class DnsReverseLookupCache : IDnsReverseLookupCache
     private readonly int _maxTtlSeconds;
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _evictLock = new();
+    private DateTimeOffset _lastPurgeUtc = DateTimeOffset.MinValue;
     private long _accessTick;
 
     public DnsReverseLookupCache(
@@ -45,7 +52,22 @@ public sealed class DnsReverseLookupCache : IDnsReverseLookupCache
     {
         get
         {
-            PurgeExpired(_timeProvider.GetUtcNow());
+            var now = _timeProvider.GetUtcNow();
+            var shouldPurge = false;
+            lock (_evictLock)
+            {
+                if (now < _lastPurgeUtc || (now - _lastPurgeUtc).TotalSeconds >= 2.0)
+                {
+                    _lastPurgeUtc = now;
+                    shouldPurge = true;
+                }
+            }
+
+            if (shouldPurge)
+            {
+                PurgeExpired(now);
+            }
+
             return _entries.Count;
         }
     }
@@ -70,11 +92,11 @@ public sealed class DnsReverseLookupCache : IDnsReverseLookupCache
         var expiresAt = now.AddSeconds(effectiveTtl);
         var tick = Interlocked.Increment(ref _accessTick);
 
-        if (_entries.TryGetValue(ipKey, out var existing))
+        if (_entries.TryGetValue(ipKey, out var existing)
+            && string.Equals(existing.Domain, normalizedDomain, StringComparison.OrdinalIgnoreCase)
+            && expiresAt <= existing.ExpiresAtUtc.AddSeconds(5))
         {
-            existing.Domain = normalizedDomain;
-            existing.ExpiresAtUtc = expiresAt;
-            existing.LastAccessTick = tick;
+            existing.Touch(tick);
             return;
         }
 
@@ -83,8 +105,8 @@ public sealed class DnsReverseLookupCache : IDnsReverseLookupCache
             Ip = ipKey,
             Domain = normalizedDomain,
             ExpiresAtUtc = expiresAt,
-            LastAccessTick = tick,
         };
+        newEntry.SetInitialTick(tick);
 
         if (_entries.Count >= _maxEntries)
         {
@@ -144,7 +166,7 @@ public sealed class DnsReverseLookupCache : IDnsReverseLookupCache
             return false;
         }
 
-        entry.LastAccessTick = Interlocked.Increment(ref _accessTick);
+        entry.Touch(Interlocked.Increment(ref _accessTick));
         domain = entry.Domain;
         return true;
     }

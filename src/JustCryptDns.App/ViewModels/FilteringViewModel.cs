@@ -46,6 +46,8 @@ public sealed partial class FilteringViewModel : PageViewModel
     private readonly ISettingsService? _settings;
     private readonly IServiceClient? _serviceClient;
     private bool _loading;
+    private bool _isShellSuspended;
+    private bool _needsRefreshOnResume;
 
     [ObservableProperty] private bool _isFilteringEnabled = true;
     [ObservableProperty] private int _totalBlockedDomains;
@@ -98,11 +100,34 @@ public sealed partial class FilteringViewModel : PageViewModel
 
     public override void OnNavigatedTo()
     {
+        _filtering.FilteringChanged -= OnFilteringChanged;
         _filtering.FilteringChanged += OnFilteringChanged;
+        _filtering.DecisionLogged -= OnDecisionLogged;
         _filtering.DecisionLogged += OnDecisionLogged;
+        _cache.StatsChanged -= OnCacheStatsChanged;
         _cache.StatsChanged += OnCacheStatsChanged;
-        RefreshAll();
-        _ = SyncServiceStatsAsync();
+        if (!_isShellSuspended)
+        {
+            RefreshAll();
+            _needsRefreshOnResume = false;
+            _ = SyncServiceStatsAsync();
+        }
+    }
+
+    public override void OnShellSuspended()
+    {
+        _isShellSuspended = true;
+    }
+
+    public override void OnShellResumed()
+    {
+        _isShellSuspended = false;
+        if (_needsRefreshOnResume)
+        {
+            _needsRefreshOnResume = false;
+            RefreshAll();
+            _ = SyncServiceStatsAsync();
+        }
     }
 
     public override void OnNavigatedFrom()
@@ -493,9 +518,24 @@ public sealed partial class FilteringViewModel : PageViewModel
 
     private void OnFilteringChanged(object? sender, EventArgs e)
     {
+        if (_isShellSuspended)
+        {
+            _needsRefreshOnResume = true;
+            return;
+        }
+
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
-            dispatcher.BeginInvoke(RefreshAll);
+            dispatcher.BeginInvoke(() =>
+            {
+                if (_isShellSuspended)
+                {
+                    _needsRefreshOnResume = true;
+                    return;
+                }
+
+                RefreshAll();
+            });
         }
         else
         {
@@ -505,10 +545,22 @@ public sealed partial class FilteringViewModel : PageViewModel
 
     private void OnDecisionLogged(object? sender, FilterLogEntry e)
     {
+        if (_isShellSuspended)
+        {
+            _needsRefreshOnResume = true;
+            return;
+        }
+
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
             dispatcher.BeginInvoke(() =>
             {
+                if (_isShellSuspended)
+                {
+                    _needsRefreshOnResume = true;
+                    return;
+                }
+
                 BlockedQueryCount = _filtering.BlockedQueryCount;
                 RefreshLogs();
             });
@@ -522,9 +574,24 @@ public sealed partial class FilteringViewModel : PageViewModel
 
     private void OnCacheStatsChanged(object? sender, DnsCacheStats stats)
     {
+        if (_isShellSuspended)
+        {
+            _needsRefreshOnResume = true;
+            return;
+        }
+
         if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
         {
-            dispatcher.BeginInvoke(() => ApplyCacheStats(stats));
+            dispatcher.BeginInvoke(() =>
+            {
+                if (_isShellSuspended)
+                {
+                    _needsRefreshOnResume = true;
+                    return;
+                }
+
+                ApplyCacheStats(stats);
+            });
         }
         else
         {

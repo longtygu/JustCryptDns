@@ -30,12 +30,17 @@ public sealed class DnsCacheService : IDnsCacheService
         DateTimeOffset StaleUntil);
 
     private const uint ServeStaleResponseTtlSeconds = 30;
+    private const long StatsBroadcastIntervalMs = 250;
 
     private readonly ISettingsService _settings;
     private readonly Func<DateTimeOffset> _clock;
     private readonly ConcurrentDictionary<string, CacheEntry> _entries = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, StaleEntry> _staleEntries = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _evictLock = new();
+    private DateTimeOffset _lastEvictUtc = DateTimeOffset.MinValue;
+    private long _lastStatsBroadcastTick;
+    private long _positiveEntries;
+    private long _negativeEntries;
     private long _hits;
     private long _misses;
     private long _expiredEvictions;
@@ -54,14 +59,18 @@ public sealed class DnsCacheService : IDnsCacheService
 
     public DnsCacheStats GetStats()
     {
-        EvictExpiredInternal(_clock());
-        var snapshot = _entries.Values.ToArray();
-        var positive = snapshot.LongCount(e => !e.IsNegative);
-        var negative = snapshot.Length - positive;
+        var now = _clock();
+        if (ShouldRunPeriodicEviction(now))
+        {
+            EvictExpiredInternal(now);
+        }
+
+        var positive = Math.Max(0, Interlocked.Read(ref _positiveEntries));
+        var negative = Math.Max(0, Interlocked.Read(ref _negativeEntries));
         return new DnsCacheStats
         {
             IsEnabled = IsEnabled,
-            CurrentEntries = snapshot.Length,
+            CurrentEntries = (int)Math.Min(int.MaxValue, positive + negative),
             MaxEntries = _settings.Current.Cache.MaxEntries,
             CacheHits = Interlocked.Read(ref _hits),
             CacheMisses = Interlocked.Read(ref _misses),
@@ -83,7 +92,7 @@ public sealed class DnsCacheService : IDnsCacheService
         }
         else
         {
-            RaiseStatsChanged();
+            RaiseStatsChanged(force: true);
         }
     }
 
@@ -115,6 +124,12 @@ public sealed class DnsCacheService : IDnsCacheService
             {
                 var clone = (byte[])entry.WireBytes.Clone();
                 DnsPacket.WriteTransactionId(clone, query.Header.Id);
+                if (!entry.IsNegative)
+                {
+                    var remainingSeconds = (uint)Math.Max(1, Math.Floor((entry.ExpiresAt - now).TotalSeconds));
+                    DnsPacket.RewriteAnswerTtls(clone, remainingSeconds);
+                }
+
                 responseBytes = clone;
 
                 var entryHits = Interlocked.Increment(ref entry.HitCount);
@@ -139,10 +154,11 @@ public sealed class DnsCacheService : IDnsCacheService
                 return true;
             }
 
-            if (_entries.TryRemove(key, out var removed))
+            if (_entries.TryRemove(new KeyValuePair<string, CacheEntry>(key, entry)))
             {
+                DecrementCounter(entry.IsNegative);
                 Interlocked.Increment(ref _expiredEvictions);
-                MoveToStaleIfEligible(removed, now);
+                MoveToStaleIfEligible(entry, now);
             }
         }
 
@@ -252,16 +268,39 @@ public sealed class DnsCacheService : IDnsCacheService
 
         var key = BuildCacheKey(response.PrimaryQuestionName, response.PrimaryQuestionType);
         var entry = new CacheEntry(key, responseWire.ToArray(), now, now.Add(ttl), isNegative);
-        _entries[key] = entry;
+        _entries.AddOrUpdate(
+            key,
+            _ =>
+            {
+                IncrementCounter(entry.IsNegative);
+                return entry;
+            },
+            (_, existing) =>
+            {
+                if (existing.IsNegative != entry.IsNegative)
+                {
+                    IncrementCounter(entry.IsNegative);
+                    DecrementCounter(existing.IsNegative);
+                }
+
+                return entry;
+            });
         _staleEntries.TryRemove(key, out _);
         RaiseStatsChanged();
     }
 
     public void Clear()
     {
-        _entries.Clear();
-        _staleEntries.Clear();
-        RaiseStatsChanged();
+        lock (_evictLock)
+        {
+            _entries.Clear();
+            _staleEntries.Clear();
+            Interlocked.Exchange(ref _positiveEntries, 0);
+            Interlocked.Exchange(ref _negativeEntries, 0);
+            _lastEvictUtc = _clock();
+        }
+
+        RaiseStatsChanged(force: true);
     }
 
     public int EvictExpired()
@@ -269,10 +308,48 @@ public sealed class DnsCacheService : IDnsCacheService
         var count = EvictExpiredInternal(_clock());
         if (count > 0)
         {
-            RaiseStatsChanged();
+            RaiseStatsChanged(force: true);
         }
 
         return count;
+    }
+
+    private bool ShouldRunPeriodicEviction(DateTimeOffset now)
+    {
+        lock (_evictLock)
+        {
+            if (now >= _lastEvictUtc && (now - _lastEvictUtc).TotalSeconds < 2.0)
+            {
+                return false;
+            }
+
+            _lastEvictUtc = now;
+            return true;
+        }
+    }
+
+    private void IncrementCounter(bool isNegative)
+    {
+        if (isNegative)
+        {
+            Interlocked.Increment(ref _negativeEntries);
+        }
+        else
+        {
+            Interlocked.Increment(ref _positiveEntries);
+        }
+    }
+
+    private void DecrementCounter(bool isNegative)
+    {
+        if (isNegative)
+        {
+            Interlocked.Decrement(ref _negativeEntries);
+        }
+        else
+        {
+            Interlocked.Decrement(ref _positiveEntries);
+        }
     }
 
     private static string BuildCacheKey(string domain, DnsRecordType type) =>
@@ -298,14 +375,20 @@ public sealed class DnsCacheService : IDnsCacheService
 
     private int EvictExpiredInternal(DateTimeOffset now)
     {
+        lock (_evictLock)
+        {
+            _lastEvictUtc = now;
+        }
+
         var evicted = 0;
         foreach (var (key, entry) in _entries)
         {
-            if (now >= entry.ExpiresAt && _entries.TryRemove(key, out var removed))
+            if (now >= entry.ExpiresAt && _entries.TryRemove(new KeyValuePair<string, CacheEntry>(key, entry)))
             {
+                DecrementCounter(entry.IsNegative);
                 evicted++;
                 Interlocked.Increment(ref _expiredEvictions);
-                MoveToStaleIfEligible(removed, now);
+                MoveToStaleIfEligible(entry, now);
             }
         }
 
@@ -313,7 +396,7 @@ public sealed class DnsCacheService : IDnsCacheService
         {
             if (now >= stale.StaleUntil)
             {
-                _staleEntries.TryRemove(key, out _);
+                _staleEntries.TryRemove(new KeyValuePair<string, StaleEntry>(key, stale));
             }
         }
 
@@ -322,7 +405,8 @@ public sealed class DnsCacheService : IDnsCacheService
 
     private void EnforceCapacity(DateTimeOffset now, int maxEntries)
     {
-        if (_entries.Count < maxEntries && _staleEntries.Count <= maxEntries)
+        var total = Interlocked.Read(ref _positiveEntries) + Interlocked.Read(ref _negativeEntries);
+        if (total < maxEntries && _staleEntries.Count <= maxEntries)
         {
             return;
         }
@@ -330,17 +414,21 @@ public sealed class DnsCacheService : IDnsCacheService
         lock (_evictLock)
         {
             EvictExpiredInternal(now);
-            if (_entries.Count >= maxEntries)
+            total = Interlocked.Read(ref _positiveEntries) + Interlocked.Read(ref _negativeEntries);
+            if (total >= maxEntries)
             {
+                var toRemoveCount = (int)Math.Max(1, total - maxEntries + 1);
                 var toRemove = _entries.Values
                     .OrderBy(e => e.ExpiresAt)
-                    .Take(Math.Max(1, _entries.Count - maxEntries + 1))
-                    .Select(e => e.Key)
+                    .Take(toRemoveCount)
                     .ToList();
 
-                foreach (var key in toRemove)
+                foreach (var victim in toRemove)
                 {
-                    _entries.TryRemove(key, out _);
+                    if (_entries.TryRemove(new KeyValuePair<string, CacheEntry>(victim.Key, victim)))
+                    {
+                        DecrementCounter(victim.IsNegative);
+                    }
                 }
             }
 
@@ -351,18 +439,35 @@ public sealed class DnsCacheService : IDnsCacheService
                     .Take(_staleEntries.Count - maxEntries)
                     .ToList())
                 {
-                    _staleEntries.TryRemove(oldStale.Key, out _);
+                    _staleEntries.TryRemove(new KeyValuePair<string, StaleEntry>(oldStale.Key, oldStale));
                 }
             }
         }
     }
 
-    private void RaiseStatsChanged()
+    private void RaiseStatsChanged(bool force = false)
     {
         var handler = StatsChanged;
-        if (handler is not null)
+        if (handler is null)
         {
-            handler.Invoke(this, GetStats());
+            return;
         }
+
+        var nowTick = Environment.TickCount64;
+        if (!force)
+        {
+            var prev = Volatile.Read(ref _lastStatsBroadcastTick);
+            if (nowTick - prev < StatsBroadcastIntervalMs
+                || Interlocked.CompareExchange(ref _lastStatsBroadcastTick, nowTick, prev) != prev)
+            {
+                return;
+            }
+        }
+        else
+        {
+            Volatile.Write(ref _lastStatsBroadcastTick, nowTick);
+        }
+
+        handler.Invoke(this, GetStats());
     }
 }

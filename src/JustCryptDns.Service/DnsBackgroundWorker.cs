@@ -37,12 +37,24 @@ public sealed class DnsBackgroundWorker : BackgroundService
     {
         _logger.LogInformation("JustCryptDns background service starting.");
         _ipcServer.Start();
-        await _state.InitializeFromSettingsAsync(cancellationToken).ConfigureAwait(false);
         await base.StartAsync(cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        try
+        {
+            await _state.InitializeFromSettingsAsync(stoppingToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Service initialization encountered an unexpected error.");
+        }
+
         try
         {
             await Task.Delay(Timeout.Infinite, stoppingToken).ConfigureAwait(false);

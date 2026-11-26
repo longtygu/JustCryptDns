@@ -1,3 +1,4 @@
+using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using JustCryptDns.Core.Configuration;
@@ -6,6 +7,7 @@ using JustCryptDns.Core.Ipc;
 using JustCryptDns.Core.Models;
 using JustCryptDns.Core.Security;
 using JustCryptDns.DNS.DnsCrypt;
+using JustCryptDns.DNS.Proxy;
 using JustCryptDns.Infrastructure.Logging;
 using Microsoft.Extensions.Logging;
 
@@ -71,7 +73,7 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         _cache = cache;
         _dnsCryptManager = dnsCryptManager;
         _version = typeof(ServiceStateManager).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.8.3";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "1.8.4";
     }
 
     public async Task InitializeFromSettingsAsync(CancellationToken cancellationToken = default)
@@ -99,6 +101,22 @@ public sealed class ServiceStateManager : IServiceIpcHandler
 
         if (current.General.AutoStartDnsEngine)
         {
+            var dns = current.Dns;
+            if (string.Equals(dns.ListenAddress, DnsSettings.DefaultListenAddress, StringComparison.OrdinalIgnoreCase)
+                && dns.ListenPort == DnsSettings.DefaultListenPort
+                && PortConflictDetector.CheckConflict(IPAddress.Loopback, 53) is not null
+                && PortConflictDetector.FindAvailableLoopbackForPort53(IPAddress.Loopback) is { } altIp)
+            {
+                _logger.LogInformation("Service startup: Port 53 on 127.0.0.1 is busy; auto-selecting alternate loopback {AltIp}:53.", altIp);
+                await _settings.UpdateAsync(s =>
+                {
+                    s.Dns.ListenAddress = altIp;
+                    s.Dns.EnableIpv6 = false;
+                    s.Dns.ConfigureWindowsAdapter = true;
+                }, cancellationToken).ConfigureAwait(false);
+                current = _settings.Current;
+            }
+
             var (ok, err) = await _dnsEngine.StartAsync(cancellationToken).ConfigureAwait(false);
             if (!ok)
             {
@@ -171,10 +189,11 @@ public sealed class ServiceStateManager : IServiceIpcHandler
         return ips;
     }
 
-    public ServiceStatusSnapshot GetSnapshot()
+    public ServiceStatusSnapshot GetSnapshot() =>
+        BuildSnapshot(_dnsEngine.GetStats(), _bypassEngine?.GetStats());
+
+    private ServiceStatusSnapshot BuildSnapshot(DnsEngineRuntimeStats stats, BypassRuntimeStats? bypassStats)
     {
-        var stats = _dnsEngine.GetStats();
-        var bypassStats = _bypassEngine?.GetStats();
         bool gaming;
         lock (_sync)
         {
@@ -211,6 +230,7 @@ public sealed class ServiceStateManager : IServiceIpcHandler
             PrefetchCount = stats.PrefetchCount,
             ActiveVpnAdapterName = stats.ActiveVpnAdapterName,
             IsCaptivePortalPaused = stats.IsCaptivePortalPaused,
+            BlockedQueriesPerMinute = _diagnostics?.GetBlockedQueriesPerMinute() ?? 0,
         };
     }
 
@@ -407,7 +427,7 @@ public sealed class ServiceStateManager : IServiceIpcHandler
             {
                 var stats = _dnsEngine.GetStats();
                 var json = JsonSerializer.Serialize(stats, SettingsJson.Options);
-                return new IpcResponse(true, GetSnapshot(), Message: json);
+                return new IpcResponse(true, BuildSnapshot(stats, _bypassEngine?.GetStats()), Message: json);
             }
 
             case IpcRequestKind.GetBypassDetailedStats:

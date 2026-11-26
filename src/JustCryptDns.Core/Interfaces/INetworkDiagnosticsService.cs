@@ -29,6 +29,8 @@ public interface INetworkDiagnosticsService
         TopFailed = [],
     };
 
+    double GetBlockedQueriesPerMinute() => 0;
+
     void RecordMonitorEntry(LiveQueryMonitorEntry entry);
 
     void ClearMonitorEntries();

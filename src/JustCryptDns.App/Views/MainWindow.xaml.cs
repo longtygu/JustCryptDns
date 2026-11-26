@@ -19,6 +19,8 @@ public partial class MainWindow : Window
 
     private readonly IAppearanceService _appearance;
     private readonly IProcessPerformanceService _performance;
+    private bool _isSessionLocked;
+    private bool _isSessionHooked;
 
     public MainWindow(ShellViewModel viewModel, IAppearanceService appearance, IProcessPerformanceService performance)
     {
@@ -26,17 +28,39 @@ public partial class MainWindow : Window
         _performance = performance;
         InitializeComponent();
         DataContext = viewModel;
-        StateChanged += (_, _) => UpdateMaximizedState();
+        Loaded += (_, _) => UpdateShellInteractivity();
+        StateChanged += (_, _) =>
+        {
+            UpdateMaximizedState();
+            UpdateShellInteractivity();
+        };
         IsVisibleChanged += (_, _) =>
         {
             if (IsVisible)
             {
                 HideNativeCaptionButtons();
             }
+
+            UpdateShellInteractivity();
         };
         PreviewKeyDown += OnWindowPreviewKeyDown;
         Closing += OnWindowClosing;
-        Closed += (_, _) => viewModel.StopTimers();
+        Closed += (_, _) =>
+        {
+            if (_isSessionHooked)
+            {
+                Microsoft.Win32.SystemEvents.SessionSwitch -= OnSessionSwitch;
+                _isSessionHooked = false;
+            }
+
+            viewModel.StopTimers();
+        };
+
+        if (OperatingSystem.IsWindows())
+        {
+            Microsoft.Win32.SystemEvents.SessionSwitch += OnSessionSwitch;
+            _isSessionHooked = true;
+        }
         viewModel.HideToTrayRequested += (_, _) => HideToTray();
         viewModel.ExitRequested += (_, _) => Close();
         viewModel.PropertyChanged += (_, args) =>
@@ -187,7 +211,47 @@ public partial class MainWindow : Window
     private void HideToTray()
     {
         Hide();
-        _ = Task.Run(() => _performance.TrimWorkingSet());
+        UpdateShellInteractivity();
+        var trimDispatcher = Dispatcher;
+        _ = Task.Run(() =>
+        {
+            if (trimDispatcher is not null && !trimDispatcher.HasShutdownStarted)
+            {
+                _ = trimDispatcher.BeginInvoke(
+                    System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                    new Action(() => _ = Task.Run(() => _performance.TrimWorkingSetOnly())));
+            }
+            else
+            {
+                _performance.TrimWorkingSetOnly();
+            }
+        });
+    }
+
+    private void OnSessionSwitch(object? sender, Microsoft.Win32.SessionSwitchEventArgs e)
+    {
+        if (e.Reason is Microsoft.Win32.SessionSwitchReason.SessionLock
+            or Microsoft.Win32.SessionSwitchReason.ConsoleDisconnect
+            or Microsoft.Win32.SessionSwitchReason.RemoteDisconnect)
+        {
+            _isSessionLocked = true;
+            Dispatcher.BeginInvoke(UpdateShellInteractivity);
+        }
+        else if (e.Reason is Microsoft.Win32.SessionSwitchReason.SessionUnlock
+            or Microsoft.Win32.SessionSwitchReason.ConsoleConnect
+            or Microsoft.Win32.SessionSwitchReason.RemoteConnect)
+        {
+            _isSessionLocked = false;
+            Dispatcher.BeginInvoke(UpdateShellInteractivity);
+        }
+    }
+
+    private void UpdateShellInteractivity()
+    {
+        if (DataContext is ShellViewModel vm)
+        {
+            vm.SetInteractive(IsVisible && WindowState != WindowState.Minimized && !_isSessionLocked);
+        }
     }
 
     private void OnNavListMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)

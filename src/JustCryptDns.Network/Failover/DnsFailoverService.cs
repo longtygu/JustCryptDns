@@ -15,15 +15,19 @@ namespace JustCryptDns.Network.Failover;
 public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
 {
     public const int MaxHistoryEntries = 100;
+    private const long CooldownDurationMs = 30_000;
+
+    private readonly record struct ResolverFailureState(int ConsecutiveFailures, long CooldownUntilTick);
 
     private readonly ISettingsService _settings;
     private readonly IResolverLibraryService _resolverLibrary;
     private readonly INetworkInfoService? _networkInfo;
     private readonly ILogger<DnsFailoverService> _logger;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
-    private readonly DohDnsUpstream _defaultDoh;
-    private readonly DotDnsUpstream _defaultDot;
-    private readonly ConcurrentDictionary<string, int> _consecutiveFailures = new(StringComparer.OrdinalIgnoreCase);
+    private readonly DohDnsUpstream? _defaultDoh;
+    private readonly DotDnsUpstream? _defaultDot;
+    private readonly ConcurrentDictionary<string, ResolverFailureState> _failureStates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, long> _recentFailoverLogTick = new(StringComparer.OrdinalIgnoreCase);
     private readonly LinkedList<FailoverEventEntry> _history = new();
     private readonly object _historyLock = new();
     private bool _disposed;
@@ -40,18 +44,23 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
         _logger = logger;
         _networkInfo = networkInfo;
 
-        _defaultDoh = new DohDnsUpstream();
-        _defaultDot = new DotDnsUpstream();
-        var defaultClients = new IDnsUpstreamClient[]
-        {
-            _defaultDoh,
-            _defaultDot,
-            new UdpTcpDnsUpstream(),
-        };
-
         var list = customUpstreams?.ToList();
-        IEnumerable<IDnsUpstreamClient> active = list is { Count: > 0 } ? list : defaultClients;
-        _upstreams = active.ToDictionary(u => u.Protocol);
+        if (list is { Count: > 0 })
+        {
+            _upstreams = list.ToDictionary(u => u.Protocol);
+        }
+        else
+        {
+            _defaultDoh = new DohDnsUpstream();
+            _defaultDot = new DotDnsUpstream();
+            var defaultClients = new IDnsUpstreamClient[]
+            {
+                _defaultDoh,
+                _defaultDot,
+                new UdpTcpDnsUpstream(),
+            };
+            _upstreams = defaultClients.ToDictionary(u => u.Protocol);
+        }
     }
 
     public event EventHandler<FailoverEventEntry>? FailoverOccurred;
@@ -159,25 +168,28 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
         var maxAttemptsPerResolver = Math.Max(1, resilience.MaxRetriesPerQuery + 1);
         var retryDelay = TimeSpan.FromMilliseconds(resilience.RetryDelayMs);
 
-        var candidates = IsAutoFailoverEnabled
+        var rawCandidates = IsAutoFailoverEnabled
             ? GetFailoverChain(preferredResolver)
             : [preferredResolver];
-        var maxCandidates = Math.Min(candidates.Count, 4);
+
+        var nowTick = Environment.TickCount64;
+        var ordered = OrderCandidatesByHealth(rawCandidates, nowTick);
+        var maxCandidates = Math.Min(ordered.Count, 4);
 
         DnsQueryResult? lastFailure = null;
         DnsFailureCategory firstFailureCat = DnsFailureCategory.None;
 
         for (var cIdx = 0; cIdx < maxCandidates; cIdx++)
         {
-            var candidate = candidates[cIdx];
+            var candidate = ordered[cIdx];
             for (var attempt = 1; attempt <= maxAttemptsPerResolver; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var result = await queryExecutor(candidate, cancellationToken).ConfigureAwait(false);
                 if (result.Success)
                 {
-                    _consecutiveFailures.TryRemove(candidate.Id, out _);
-                    if (cIdx > 0)
+                    _failureStates.TryRemove(candidate.Id, out _);
+                    if (cIdx > 0 && !string.Equals(candidate.Id, preferredResolver.Id, StringComparison.OrdinalIgnoreCase))
                     {
                         RecordFailoverEvent(preferredResolver, candidate, firstFailureCat, lastFailure?.Error);
                     }
@@ -192,8 +204,21 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
                     firstFailureCat = cat;
                 }
 
-                var failCount = _consecutiveFailures.AddOrUpdate(candidate.Id, 1, (_, prev) => prev + 1);
-                if (failCount >= resilience.FailureThresholdBeforeSwitch)
+                var failState = _failureStates.AddOrUpdate(
+                    candidate.Id,
+                    _ =>
+                    {
+                        var until = 1 >= resilience.FailureThresholdBeforeSwitch ? Environment.TickCount64 + CooldownDurationMs : 0L;
+                        return new ResolverFailureState(1, until);
+                    },
+                    (_, prev) =>
+                    {
+                        var next = prev.ConsecutiveFailures + 1;
+                        var until = next >= resilience.FailureThresholdBeforeSwitch ? Environment.TickCount64 + CooldownDurationMs : prev.CooldownUntilTick;
+                        return new ResolverFailureState(next, until);
+                    });
+
+                if (failState.ConsecutiveFailures >= resilience.FailureThresholdBeforeSwitch)
                 {
                     break;
                 }
@@ -333,8 +358,46 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
         }
 
         _disposed = true;
-        _defaultDoh.Dispose();
-        _defaultDot.Dispose();
+        _defaultDoh?.Dispose();
+        _defaultDot?.Dispose();
+    }
+
+    private IReadOnlyList<DnsResolverEndpoint> OrderCandidatesByHealth(IReadOnlyList<DnsResolverEndpoint> candidates, long nowTick)
+    {
+        if (candidates.Count <= 1)
+        {
+            return candidates;
+        }
+
+        List<DnsResolverEndpoint>? healthy = null;
+        List<DnsResolverEndpoint>? cooled = null;
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            var cand = candidates[i];
+            if (_failureStates.TryGetValue(cand.Id, out var state) && state.CooldownUntilTick > nowTick)
+            {
+                cooled ??= [];
+                cooled.Add(cand);
+            }
+            else if (cooled is not null)
+            {
+                healthy ??= candidates.Take(i).Where(c => !cooled.Contains(c)).ToList();
+                healthy.Add(cand);
+            }
+        }
+
+        if (cooled is null)
+        {
+            return candidates;
+        }
+
+        if (healthy is null)
+        {
+            return candidates; // All candidates are cooled down; preserve fallback order.
+        }
+
+        healthy.AddRange(cooled);
+        return healthy;
     }
 
     private void RecordFailoverEvent(
@@ -343,6 +406,15 @@ public sealed class DnsFailoverService : IDnsFailoverService, IDisposable
         DnsFailureCategory category,
         string? error)
     {
+        var pairKey = $"{failed.Id}->{activated.Id}";
+        var nowTick = Environment.TickCount64;
+        if (_recentFailoverLogTick.TryGetValue(pairKey, out var prevTick) && nowTick - prevTick < CooldownDurationMs)
+        {
+            return;
+        }
+
+        _recentFailoverLogTick[pairKey] = nowTick;
+
         var entry = new FailoverEventEntry
         {
             Timestamp = DateTimeOffset.Now,

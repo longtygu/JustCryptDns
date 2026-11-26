@@ -22,8 +22,8 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
     private readonly INetworkInfoService _networkInfo;
     private readonly IBrowserPolicyInspector? _browserPolicy;
     private readonly Dictionary<DnsProtocol, IDnsUpstreamClient> _upstreams;
-    private readonly DohDnsUpstream _defaultDoh;
-    private readonly DotDnsUpstream _defaultDot;
+    private readonly DohDnsUpstream? _defaultDoh;
+    private readonly DotDnsUpstream? _defaultDot;
     private readonly LinkedList<LiveQueryMonitorEntry> _monitorEntries = new();
     private readonly Dictionary<string, DomainAggregateState> _domainStats = new(StringComparer.OrdinalIgnoreCase);
     private readonly Queue<DateTimeOffset> _globalQueryWindow = new();
@@ -68,18 +68,23 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         _networkInfo = networkInfo;
         _browserPolicy = browserPolicy;
 
-        _defaultDoh = new DohDnsUpstream();
-        _defaultDot = new DotDnsUpstream();
-        var defaultClients = new IDnsUpstreamClient[]
-        {
-            _defaultDoh,
-            _defaultDot,
-            new UdpTcpDnsUpstream(),
-        };
-
         var list = customUpstreams?.ToList();
-        IEnumerable<IDnsUpstreamClient> active = list is { Count: > 0 } ? list : defaultClients;
-        _upstreams = active.ToDictionary(u => u.Protocol);
+        if (list is { Count: > 0 })
+        {
+            _upstreams = list.ToDictionary(u => u.Protocol);
+        }
+        else
+        {
+            _defaultDoh = new DohDnsUpstream();
+            _defaultDot = new DotDnsUpstream();
+            var defaultClients = new IDnsUpstreamClient[]
+            {
+                _defaultDoh,
+                _defaultDot,
+                new UdpTcpDnsUpstream(),
+            };
+            _upstreams = defaultClients.ToDictionary(u => u.Protocol);
+        }
     }
 
     public event EventHandler<LiveQueryMonitorEntry>? QueryObserved;
@@ -115,6 +120,16 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
             }
 
             return result;
+        }
+    }
+
+    public double GetBlockedQueriesPerMinute()
+    {
+        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-60);
+        lock (_monitorLock)
+        {
+            PruneWindow(_globalBlockedWindow, cutoff);
+            return _globalBlockedWindow.Count;
         }
     }
 
@@ -297,22 +312,19 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
 
     private void EvictColdestDomainLocked()
     {
-        string? victimKey = null;
-        long lowestCount = long.MaxValue;
-        var oldestSeen = DateTimeOffset.MaxValue;
-
-        foreach (var (key, state) in _domainStats)
+        var batchCount = Math.Max(1, MaxTrackedDomains / 10);
+        if (_domainStats.Count <= batchCount)
         {
-            if (state.TotalCount < lowestCount
-                || (state.TotalCount == lowestCount && state.LastSeenUtc < oldestSeen))
-            {
-                lowestCount = state.TotalCount;
-                oldestSeen = state.LastSeenUtc;
-                victimKey = key;
-            }
+            _domainStats.Clear();
+            return;
         }
 
-        if (victimKey is not null)
+        foreach (var victimKey in _domainStats
+            .OrderBy(kvp => kvp.Value.TotalCount)
+            .ThenBy(kvp => kvp.Value.LastSeenUtc)
+            .Take(batchCount)
+            .Select(kvp => kvp.Key)
+            .ToList())
         {
             _domainStats.Remove(victimKey);
         }
@@ -664,8 +676,8 @@ public sealed class NetworkDiagnosticsService : INetworkDiagnosticsService, IDis
         }
 
         _disposed = true;
-        _defaultDoh.Dispose();
-        _defaultDot.Dispose();
+        _defaultDoh?.Dispose();
+        _defaultDot?.Dispose();
     }
 
     private async Task<IReadOnlyList<ResolverComparisonEntry>> QueryMultipleResolversCoreAsync(

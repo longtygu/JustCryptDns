@@ -71,7 +71,12 @@ public sealed class HybridBypassEngineProxy : IBypassEngineService
         };
     }
 
-    public async Task<BypassRuntimeStats?> RefreshFromServiceAsync(CancellationToken cancellationToken = default)
+    public Task<BypassRuntimeStats?> RefreshFromServiceAsync(CancellationToken cancellationToken = default) =>
+        RefreshFromServiceAsync(includeEvents: false, cancellationToken);
+
+    public async Task<BypassRuntimeStats?> RefreshFromServiceAsync(
+        bool includeEvents,
+        CancellationToken cancellationToken = default)
     {
         if (!IsDelegatingToService)
         {
@@ -99,31 +104,38 @@ public sealed class HybridBypassEngineProxy : IBypassEngineService
             }
         }
 
-        var eventsResponse = await _serviceClient
-            .SendAsync(new IpcRequest(IpcRequestKind.GetBypassEventsSnapshot), cancellationToken)
-            .ConfigureAwait(false);
-        if (eventsResponse is { Success: true, Message: not null })
+        if (includeEvents)
         {
-            try
+            var eventsResponse = await _serviceClient
+                .SendAsync(new IpcRequest(IpcRequestKind.GetBypassEventsSnapshot), cancellationToken)
+                .ConfigureAwait(false);
+            if (eventsResponse is { Success: true, Message: not null })
             {
-                var parsedEvents = JsonSerializer.Deserialize<List<BypassConnectionEvent>>(eventsResponse.Message, SettingsJson.Options);
-                if (parsedEvents is not null)
+                try
                 {
-                    Volatile.Write(ref _cachedServiceEvents, parsedEvents);
+                    var parsedEvents = JsonSerializer.Deserialize<List<BypassConnectionEvent>>(eventsResponse.Message, SettingsJson.Options);
+                    if (parsedEvents is not null)
+                    {
+                        Volatile.Write(ref _cachedServiceEvents, parsedEvents);
+                    }
                 }
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogDebug(ex, "Could not deserialize bypass events snapshot from service.");
+                catch (JsonException ex)
+                {
+                    _logger.LogDebug(ex, "Could not deserialize bypass events snapshot from service.");
+                }
             }
         }
 
         var resolved = parsedStats ?? BuildFallbackStatsFromSnapshot(statsResponse.Status, _local.GetStats());
-        Volatile.Write(ref _cachedServiceStats, resolved);
+        var previous = Interlocked.Exchange(ref _cachedServiceStats, resolved);
         await EnsureUserProxySynchronizedAsync(cancellationToken).ConfigureAwait(false);
 
         var merged = GetStats();
-        StateChanged?.Invoke(this, merged);
+        if (!Equals(previous, resolved))
+        {
+            StateChanged?.Invoke(this, merged);
+        }
+
         return merged;
     }
 

@@ -227,13 +227,24 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
 
     public void StepFrame(double dtSeconds)
     {
+        var target = GaugeMath.ComputeNormalized(Value, Minimum, Maximum);
+        if (!IsActive && !_isSweeping && _pulseBoost <= 0.0 && Math.Abs(_displayedNormalized - target) < 0.0005)
+        {
+            if (_displayedNormalized != target)
+            {
+                _displayedNormalized = target;
+                InvalidateVisual();
+            }
+
+            return;
+        }
+
         _animTime += dtSeconds;
         if (_pulseBoost > 0.0)
         {
             _pulseBoost = Math.Max(0.0, _pulseBoost - (dtSeconds * 0.08));
         }
 
-        var target = GaugeMath.ComputeNormalized(Value, Minimum, Maximum);
         if (_isSweeping)
         {
             _sweepElapsed += dtSeconds;
@@ -347,6 +358,15 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
         Color dangerColor,
         Color secColor)
     {
+        var majorLitAccentPen = CreateFrozenTickPen(accentColor, 1.7);
+        var minorLitAccentPen = CreateFrozenTickPen(accentColor, 1.0);
+        var majorLitDangerPen = CreateFrozenTickPen(dangerColor, 1.7);
+        var minorLitDangerPen = CreateFrozenTickPen(dangerColor, 1.0);
+        var majorDimDangerPen = CreateFrozenTickPen(WithAlpha(dangerColor, 0.45), 1.7);
+        var minorDimDangerPen = CreateFrozenTickPen(WithAlpha(dangerColor, 0.45), 1.0);
+        var majorDimPen = CreateFrozenTickPen(WithAlpha(secColor, 0.58), 1.7);
+        var minorDimPen = CreateFrozenTickPen(WithAlpha(secColor, 0.34), 1.0);
+
         var outerR = radius - (arcThickness * 0.85);
         for (var i = 0; i <= TickIntervals; i++)
         {
@@ -360,24 +380,33 @@ public sealed class SpeedometerGaugeControl : FrameworkElement
             var p2 = PolarPoint(cx, cy, outerR, angleRad);
 
             var lit = visualNormalized > 0.005 && fraction <= visualNormalized + 0.015;
-            Color tickColor;
+            Pen pen;
             if (ShowRedlineZone && fraction >= 0.75)
             {
-                tickColor = lit ? dangerColor : WithAlpha(dangerColor, 0.45);
+                pen = lit
+                    ? (isMajor ? majorLitDangerPen : minorLitDangerPen)
+                    : (isMajor ? majorDimDangerPen : minorDimDangerPen);
             }
             else
             {
-                tickColor = lit ? accentColor : WithAlpha(secColor, isMajor ? 0.58 : 0.34);
+                pen = lit
+                    ? (isMajor ? majorLitAccentPen : minorLitAccentPen)
+                    : (isMajor ? majorDimPen : minorDimPen);
             }
 
-            var pen = new Pen(FrozenBrush(tickColor), isMajor ? 1.7 : 1.0)
-            {
-                StartLineCap = PenLineCap.Round,
-                EndLineCap = PenLineCap.Round,
-            };
-            pen.Freeze();
             dc.DrawLine(pen, p1, p2);
         }
+    }
+
+    private static Pen CreateFrozenTickPen(Color color, double thickness)
+    {
+        var pen = new Pen(FrozenBrush(color), thickness)
+        {
+            StartLineCap = PenLineCap.Round,
+            EndLineCap = PenLineCap.Round,
+        };
+        pen.Freeze();
+        return pen;
     }
 
     private void DrawActiveArc(

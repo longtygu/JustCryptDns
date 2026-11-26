@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -64,6 +65,11 @@ public sealed class UpstreamTunnelConnector
                 {
                     throw;
                 }
+            }
+            catch
+            {
+                client.Dispose();
+                throw;
             }
         }
 
@@ -423,30 +429,37 @@ public sealed class UpstreamTunnelConnector
         int maxBytes,
         CancellationToken ct)
     {
-        var peekBuf = new byte[maxBytes];
-        while (true)
+        var peekBuf = ArrayPool<byte>.Shared.Rent(maxBytes);
+        try
         {
-            var peeked = await socket.ReceiveAsync(peekBuf.AsMemory(), SocketFlags.Peek, ct).ConfigureAwait(false);
-            if (peeked == 0)
+            while (true)
             {
-                return [];
-            }
+                var peeked = await socket.ReceiveAsync(peekBuf.AsMemory(0, maxBytes), SocketFlags.Peek, ct).ConfigureAwait(false);
+                if (peeked == 0)
+                {
+                    return [];
+                }
 
-            var endIdx = peekBuf.AsSpan(0, peeked).IndexOf("\r\n\r\n"u8);
-            if (endIdx >= 0)
-            {
-                var exactLen = endIdx + 4;
-                var exact = new byte[exactLen];
-                await stream.ReadExactlyAsync(exact, ct).ConfigureAwait(false);
-                return exact;
-            }
+                var endIdx = peekBuf.AsSpan(0, peeked).IndexOf("\r\n\r\n"u8);
+                if (endIdx >= 0)
+                {
+                    var exactLen = endIdx + 4;
+                    var exact = new byte[exactLen];
+                    await stream.ReadExactlyAsync(exact, ct).ConfigureAwait(false);
+                    return exact;
+                }
 
-            if (peeked >= maxBytes)
-            {
-                throw new IOException("HTTP proxy header block exceeded maximum buffer size.");
-            }
+                if (peeked >= maxBytes)
+                {
+                    throw new IOException("HTTP proxy header block exceeded maximum buffer size.");
+                }
 
-            await Task.Delay(5, ct).ConfigureAwait(false);
+                await Task.Delay(5, ct).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(peekBuf);
         }
     }
 }
