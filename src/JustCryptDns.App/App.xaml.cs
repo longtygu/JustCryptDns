@@ -1,5 +1,6 @@
 using System.IO;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -27,8 +28,11 @@ public partial class App : Application
 {
     private static readonly long StartupTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
 
+    private const int SwRestore = 9;
+
     private SingleInstanceGuard? _instanceGuard;
     private ServiceProvider? _services;
+    private MainWindow? _mainWindow;
     private ILoggerFactory? _recoveryLoggerFactory;
     private ILogger<App> _logger = NullLogger<App>.Instance;
     private readonly object _shutdownSync = new();
@@ -144,7 +148,7 @@ public partial class App : Application
         tray.OpenRequested += (_, _) => Dispatcher.BeginInvoke(ActivateMainWindow);
         tray.ExitRequested += (_, _) => Dispatcher.BeginInvoke(() =>
         {
-            if (MainWindow?.DataContext is ShellViewModel shell)
+            if (_mainWindow?.DataContext is ShellViewModel shell)
             {
                 shell.IsExplicitExit = true;
             }
@@ -184,7 +188,7 @@ public partial class App : Application
         _logger.LogWarning("Windows session ending ({Reason}); restoring original DNS and proxy settings.", e.ReasonSessionEnding);
 
         nint hwnd = 0;
-        if (MainWindow is { } mainWindow)
+        if (_mainWindow is { } mainWindow)
         {
             try
             {
@@ -830,26 +834,63 @@ public partial class App : Application
         }
     }
 
-    private MainWindow EnsureMainWindowCreated()
+    internal static MainWindow ResolveOrCreateMainWindow(
+        ref MainWindow? trackedMainWindow,
+        Window? currentAppMainWindow,
+        Action<Window?> setAppMainWindow,
+        Func<MainWindow> createMainWindow)
     {
-        if (MainWindow is MainWindow existing)
+        if (trackedMainWindow is { } existing)
         {
+            if (!ReferenceEquals(currentAppMainWindow, existing))
+            {
+                setAppMainWindow(existing);
+            }
+
             return existing;
         }
 
-        var services = _services ?? throw new InvalidOperationException("Services are not initialized.");
-        var shell = services.GetRequiredService<ShellViewModel>();
-        var window = services.GetRequiredService<MainWindow>();
-        _logger.LogDebug("Main window constructed.");
-        MainWindow = window;
-        window.Closed += (_, _) => Shutdown(0);
-        window.ContentRendered += (_, _) => _logger.LogInformation(
-            "First frame rendered {Elapsed:0} ms after process start.",
-            System.Diagnostics.Stopwatch.GetElapsedTime(StartupTimestamp).TotalMilliseconds);
-        var dnsEngine = services.GetRequiredService<Core.Interfaces.IDnsEngine>();
-        Diagnostics.DevSnapshot.TryAttach(window, shell, dnsEngine, _logger);
-        return window;
+        if (currentAppMainWindow is MainWindow typedExisting)
+        {
+            trackedMainWindow = typedExisting;
+            return typedExisting;
+        }
+
+        // Ignore any auxiliary Window (e.g., TrayControlCenterWindow or AboutWindow) that WPF
+        // auto-assigned to Application.MainWindow while MainWindow creation was deferred.
+        var created = createMainWindow();
+        trackedMainWindow = created;
+        setAppMainWindow(created);
+        return created;
     }
+
+    private MainWindow EnsureMainWindowCreated() =>
+        ResolveOrCreateMainWindow(
+            ref _mainWindow,
+            MainWindow,
+            window => MainWindow = window,
+            () =>
+            {
+                var services = _services ?? throw new InvalidOperationException("Services are not initialized.");
+                var shell = services.GetRequiredService<ShellViewModel>();
+                var window = services.GetRequiredService<MainWindow>();
+                _logger.LogDebug("Main window constructed.");
+                window.Closed += (_, _) =>
+                {
+                    if (ReferenceEquals(_mainWindow, window))
+                    {
+                        _mainWindow = null;
+                    }
+
+                    Shutdown(0);
+                };
+                window.ContentRendered += (_, _) => _logger.LogInformation(
+                    "First frame rendered {Elapsed:0} ms after process start.",
+                    System.Diagnostics.Stopwatch.GetElapsedTime(StartupTimestamp).TotalMilliseconds);
+                var dnsEngine = services.GetRequiredService<Core.Interfaces.IDnsEngine>();
+                Diagnostics.DevSnapshot.TryAttach(window, shell, dnsEngine, _logger);
+                return window;
+            });
 
     private void ActivateMainWindow()
     {
@@ -887,7 +928,7 @@ public partial class App : Application
             });
         }
 
-        var mainWindow = MainWindow ?? EnsureMainWindowCreated();
+        var mainWindow = EnsureMainWindowCreated();
         if (!mainWindow.IsVisible)
         {
             mainWindow.Show();
@@ -896,6 +937,17 @@ public partial class App : Application
         if (mainWindow.WindowState == WindowState.Minimized)
         {
             mainWindow.WindowState = WindowState.Normal;
+        }
+
+        var hwnd = new WindowInteropHelper(mainWindow).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            if (IsIconic(hwnd))
+            {
+                _ = ShowWindow(hwnd, SwRestore);
+            }
+
+            _ = SetForegroundWindow(hwnd);
         }
 
         mainWindow.Activate();
@@ -923,4 +975,16 @@ public partial class App : Application
         _logger.LogCritical(e.Exception, "Unhandled UI exception.");
         LoggingSetup.Shutdown();
     }
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr hWnd);
 }

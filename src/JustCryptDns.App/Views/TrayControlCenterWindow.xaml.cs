@@ -49,6 +49,12 @@ public partial class TrayControlCenterWindow : Window
 
         InitializeComponent();
 
+        // Auxiliary flyout windows must never claim Application.MainWindow while MainWindow creation is deferred.
+        if (Application.Current is { } app && app.CheckAccess() && ReferenceEquals(app.MainWindow, this))
+        {
+            app.MainWindow = null;
+        }
+
         Deactivated += (_, _) => SafeHide();
         PreviewKeyDown += (_, e) =>
         {

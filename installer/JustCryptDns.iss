@@ -2,7 +2,7 @@
 ; Builds a signed-ready installer with Windows Service registration (LocalSystem) and clean uninstall.
 
 #define MyAppName "JustCryptDns"
-#define MyAppVersion "1.8.5"
+#define MyAppVersion "1.8.6"
 #define MyAppPublisher "Longtygu (JustCryptDns)"
 #define MyAppURL "https://github.com/longtygu/JustCryptDns"
 #define MyAppExeName "JustCryptDns.exe"
@@ -74,7 +74,7 @@ Filename: "{sys}\sc.exe"; Parameters: "config {#MyServiceName} start= auto"; Fla
 Filename: "{sys}\sc.exe"; Parameters: "description {#MyServiceName} ""Encrypted DNS proxy, routing, filtering and failover service for JustCryptDns."""; Flags: runhidden; Tasks: installservice
 Filename: "{sys}\sc.exe"; Parameters: "failure {#MyServiceName} reset= 86400 actions= restart/5000/restart/15000/restart/30000"; Flags: runhidden; Tasks: installservice
 Filename: "{sys}\sc.exe"; Parameters: "start {#MyServiceName}"; Flags: runhidden; Tasks: installservice
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--show"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#MyAppExeName}"; Flags: runhidden; RunOnceId: "KillApp"

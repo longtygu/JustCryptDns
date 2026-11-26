@@ -34,7 +34,7 @@
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{l:Loc TrayPopup_Title}" />
                     <TextBlock x:Name="ResolverSummaryText" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
-                <Button Grid.Column="1" Style="{StaticResource Button.Subtle}" Height="28" Padding="8,0"
+                <Button x:Name="OpenHeaderButton" Grid.Column="1" Style="{StaticResource Button.Subtle}" Height="28" Padding="8,0"
                         VerticalAlignment="Top" Click="OnOpenDashboardClick" ToolTip="{l:Loc TrayPopup_OpenApp}">
                     <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8A7;" FontSize="13" />
                 </Button>
@@ -98,7 +98,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Style="{StaticResource Button.Primary}" Content="{l:Loc TrayPopup_OpenApp}"
+                <Button x:Name="OpenFooterButton" Grid.Column="0" Style="{StaticResource Button.Primary}" Content="{l:Loc TrayPopup_OpenApp}"
                         Click="OnOpenDashboardClick" Margin="0,0,8,0" />
                 <Button Grid.Column="1" Content="{l:Loc TrayPopup_Quit}" Click="OnQuitClick" />
             </Grid>

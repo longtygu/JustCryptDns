@@ -71,7 +71,12 @@ public sealed class AboutWindowService : IAboutWindowService
         vm.SelectTab(initialTab);
 
         var window = new AboutWindow(vm, _appearance);
-        if (app.MainWindow is { IsVisible: true } owner)
+        if (app.CheckAccess() && ReferenceEquals(app.MainWindow, window))
+        {
+            app.MainWindow = null;
+        }
+
+        if (app.CheckAccess() && app.MainWindow is MainWindow { IsVisible: true } owner)
         {
             window.Owner = owner;
         }

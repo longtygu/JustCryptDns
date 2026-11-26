@@ -736,7 +736,7 @@ if ($restartService) {
 
 $targetExe = Join-Path $TargetDir $ExeName
 if (Test-Path -LiteralPath $targetExe) {
-    Start-Process -FilePath $targetExe -WorkingDirectory $TargetDir
+    Start-Process -FilePath $targetExe -ArgumentList '--show' -WorkingDirectory $TargetDir
 }
 
 if ($CleanupDir -and (Test-Path -LiteralPath $CleanupDir)) {

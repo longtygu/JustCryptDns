@@ -15,7 +15,7 @@
         Foreground="{DynamicResource Brush.TextPrimary}"
         FontFamily="{StaticResource Font.UI}" FontSize="{DynamicResource Font.Size.Body}"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
-        Icon="/Resources/AppIcon.ico">
+        Icon="pack://application:,,,/JustCryptDns;component/Resources/AppIcon.ico">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0"

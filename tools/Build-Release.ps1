@@ -5,7 +5,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = "1.8.5",
+    [string]$Version = "1.8.6",
     [switch]$SkipTests
 )
 

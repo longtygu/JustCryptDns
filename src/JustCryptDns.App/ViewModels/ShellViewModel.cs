@@ -202,7 +202,18 @@ public sealed partial class ShellViewModel : ObservableObject
         LocalizationManager.Instance.PropertyChanged += OnLocalizationChanged;
 
         _navigation.NavigationRequested += OnNavigationRequested;
-        SelectedNavItem = NavItems[0];
+        if (_navigation.ConsumePendingPageKey() is { Length: > 0 } pendingPageKey)
+        {
+            NavigateTo(pendingPageKey);
+            if (CurrentPage is null)
+            {
+                SelectedNavItem = NavItems[0];
+            }
+        }
+        else
+        {
+            SelectedNavItem = NavItems[0];
+        }
 
         RefreshSecurityStripState(checkFirewallAndAlerts: false);
 
