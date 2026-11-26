@@ -67,6 +67,7 @@ public sealed class DnsEngineService : IDnsEngine
     private string? _cachedPort53Service;
     private string? _cachedSuggestedLoopback;
     private long _lastQueryStatsBroadcastTick;
+    private long _lastAdapterSelfHealTick;
 
     public DnsEngineService(
         ISettingsService settings,
@@ -163,6 +164,10 @@ public sealed class DnsEngineService : IDnsEngine
                 if (trafficStatus == SystemTrafficStatus.Ipv6DnsLeakDetected)
                 {
                     (port53Owner, port53Service, _) = GetCachedPort53Diagnostics(includeSuggestedLoopback: false);
+                }
+                else if (trafficStatus == SystemTrafficStatus.AdapterNotConfigured)
+                {
+                    MaybeScheduleAdapterDnsSelfHeal(dns, listenIp, isIpv6LoopbackBound, snap.PrimaryAdapter);
                 }
             }
             else
@@ -804,7 +809,11 @@ public sealed class DnsEngineService : IDnsEngine
 
         try
         {
-            await StopAsync().ConfigureAwait(false);
+            // Never restore external/service-owned Windows DNS backups when disposing an idle in-process instance.
+            if (_state != DnsEngineState.Stopped || _proxy is not null)
+            {
+                await StopAsync().ConfigureAwait(false);
+            }
         }
         finally
         {
@@ -814,6 +823,114 @@ public sealed class DnsEngineService : IDnsEngine
             _prefetchGate.Dispose();
             _lifecycleGate.Dispose();
         }
+    }
+
+    private void MaybeScheduleAdapterDnsSelfHeal(
+        DnsSettings dns,
+        IPAddress listenIp,
+        bool isIpv6LoopbackBound,
+        NetworkAdapterInfo? primaryAdapter)
+    {
+        if (Volatile.Read(ref _disposed) != 0
+            || !Environment.IsPrivilegedProcess
+            || !dns.ConfigureWindowsAdapter
+            || !dns.AutoAdaptNetworkChanges
+            || primaryAdapter is not { IsUp: true })
+        {
+            return;
+        }
+
+        var nowTick = Environment.TickCount64;
+        var prevTick = Volatile.Read(ref _lastAdapterSelfHealTick);
+        if (prevTick != 0 && nowTick - prevTick < 30_000)
+        {
+            return;
+        }
+
+        if (Interlocked.CompareExchange(ref _lastAdapterSelfHealTick, nowTick, prevTick) != prevTick)
+        {
+            return;
+        }
+
+        var listenIpText = listenIp.ToString();
+        var ipv6Text = isIpv6LoopbackBound ? "::1" : null;
+        var targetAdapterId = dns.TargetAdapterId;
+        var primaryId = primaryAdapter.Id;
+
+        _ = Task.Run(async () =>
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
+            if (!await _lifecycleGate.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false))
+            {
+                return;
+            }
+
+            try
+            {
+                if (Volatile.Read(ref _disposed) != 0
+                    || _state is not (DnsEngineState.Running or DnsEngineState.Degraded)
+                    || _proxy is not { BoundPort: 53 }
+                    || !string.IsNullOrWhiteSpace(_activeVpnAdapterName)
+                    || _isCaptivePortalDetected
+                    || _isCaptivePortalPaused)
+                {
+                    return;
+                }
+
+                var currentDns = _settings.Current.Dns;
+                if (!currentDns.ConfigureWindowsAdapter || !currentDns.AutoAdaptNetworkChanges)
+                {
+                    return;
+                }
+
+                var snap = _networkInfo?.GetSnapshot();
+                if (currentDns.AutoDeferToVpn && NetworkAdaptationEvaluator.DetectActiveVpnAdapter(snap) is not null)
+                {
+                    return;
+                }
+
+                var (currentStatus, _) = EvaluateAdapterTrafficStatus(
+                    snap?.PrimaryAdapter?.DnsServers,
+                    listenIp,
+                    currentDns.EnableIpv6 || isIpv6LoopbackBound);
+                if (currentStatus != SystemTrafficStatus.AdapterNotConfigured)
+                {
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "Detected Windows adapter DNS drift away from {ListenIp}:53; re-applying local proxy DNS automatically.",
+                    listenIpText);
+
+                var res = await _windowsDns.ApplyLocalProxyDnsAsync(
+                    targetAdapterId,
+                    listenIpText,
+                    ipv6Text,
+                    async ct =>
+                    {
+                        var probe = await ProbeActiveResolverAsync(ct).ConfigureAwait(false);
+                        return probe.Success;
+                    }).ConfigureAwait(false);
+
+                if (res.Success)
+                {
+                    _lastAppliedAdapterId = primaryId;
+                    RaiseStateChanged(force: true);
+                }
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                _logger.LogDebug(ex, "Adapter DNS drift self-heal skipped.");
+            }
+            finally
+            {
+                try { _lifecycleGate.Release(); } catch (ObjectDisposedException) { }
+            }
+        });
     }
 
     private async Task<byte[]> HandleClientQueryAsync(ReadOnlyMemory<byte> queryWire, CancellationToken cancellationToken)

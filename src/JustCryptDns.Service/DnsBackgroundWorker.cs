@@ -42,6 +42,8 @@ public sealed class DnsBackgroundWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        EnsureNonDelayedAutoStart();
+
         try
         {
             await _state.InitializeFromSettingsAsync(stoppingToken).ConfigureAwait(false);
@@ -62,6 +64,30 @@ public sealed class DnsBackgroundWorker : BackgroundService
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             // Normal service stop.
+        }
+    }
+
+    private void EnsureNonDelayedAutoStart()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                @"SYSTEM\CurrentControlSet\Services\JustCryptDnsService",
+                writable: true);
+            if (key?.GetValue("DelayedAutostart") is int delayed && delayed != 0)
+            {
+                key.SetValue("DelayedAutostart", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                _logger.LogInformation("Migrated JustCryptDnsService startup from Delayed Auto-Start to immediate Automatic startup.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Skipped DelayedAutostart migration check.");
         }
     }
 

@@ -39,6 +39,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
     [ObservableProperty] private bool _autoAdaptNetworkChanges = true;
     [ObservableProperty] private bool _autoDeferToVpn = true;
     [ObservableProperty] private bool _blockFirefoxDohCanary = true;
+    [ObservableProperty] private bool _canFixAdapterDns;
     [ObservableProperty] private bool _canPauseCaptivePortal;
     [ObservableProperty] private bool _isCaptivePortalPaused;
     [ObservableProperty] private bool _enableAutoFailover = true;
@@ -189,6 +190,10 @@ public sealed partial class DnsManagerViewModel : PageViewModel
                     _ = _dnsEngine.ProbeActiveResolverAsync();
                 }
             }
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException or OperationCanceledException)
+        {
+            ErrorMessage = ex.Message;
         }
         finally
         {
@@ -637,6 +642,46 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         }
     }
 
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ApplyWindowsAdapterDnsNowAsync()
+    {
+        IsBusy = true;
+        InfoMessage = null;
+        ErrorMessage = null;
+        try
+        {
+            if (!_settings.Current.Dns.ConfigureWindowsAdapter)
+            {
+                await _settings.UpdateAsync(s => s.Dns.ConfigureWindowsAdapter = true);
+                _loading = true;
+                ConfigureWindowsAdapter = true;
+                _loading = false;
+            }
+
+            var (ok, err) = await _dnsEngine.RestartAsync();
+            if (ok)
+            {
+                _ = _dnsEngine.ProbeActiveResolverAsync();
+                var listenIp = DashboardViewModel.ExtractListenIp(_dnsEngine.GetStats().ListenEndpoint);
+                InfoMessage = LocalizationManager.Instance.Format("TrafficFix_ApplyAdapterDnsSuccess", listenIp);
+            }
+            else
+            {
+                ErrorMessage = err;
+            }
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException or OperationCanceledException)
+        {
+            _loading = false;
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            ApplyStats(_dnsEngine.GetStats());
+            IsBusy = false;
+        }
+    }
+
     internal void ApplyStats(DnsEngineRuntimeStats stats)
     {
         EngineState = stats.State;
@@ -650,6 +695,7 @@ public sealed partial class DnsManagerViewModel : PageViewModel
         SuggestedLoopbackIp = stats.SuggestedLoopbackIp ?? stats.PortConflict?.SuggestedLoopbackIp;
         ConflictingServiceName = stats.Port53ServiceName ?? stats.PortConflict?.ConflictingServiceName;
         IsCaptivePortalPaused = stats.IsCaptivePortalPaused;
+        CanFixAdapterDns = stats.TrafficStatus == SystemTrafficStatus.AdapterNotConfigured;
         CanPauseCaptivePortal = stats.TrafficStatus == SystemTrafficStatus.CaptivePortalDetected && !stats.IsCaptivePortalPaused;
         TrafficWarningBanner = DashboardViewModel.FormatTrafficWarning(stats);
         PortConflict = stats.PortConflict;

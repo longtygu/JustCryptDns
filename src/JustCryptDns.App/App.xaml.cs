@@ -507,34 +507,14 @@ public partial class App : Application
 
             if (serviceClient.ConnectionState != ServiceConnectionState.Connected && isBootWindowAutoStart)
             {
-                logger.LogWarning("JustCryptDnsService is configured for Automatic startup but did not respond during boot window; deferring standalone engine startup to avoid port conflicts.");
+                logger.LogWarning("JustCryptDnsService is configured for Automatic startup but did not respond during initial boot window; deferring standalone engine startup and waiting in background for service connection.");
+                _ = WaitForLateServiceConnectionAsync(services, logger, migratedLegacySettings);
                 return;
             }
 
-            var serviceConnected = serviceClient.ConnectionState == ServiceConnectionState.Connected;
-            var serviceBypassRunning = serviceConnected && serviceClient.LastStatus?.IsBypassRunning == true;
-            await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: serviceBypassRunning).ConfigureAwait(false);
-
-            if (serviceConnected)
+            await SyncConnectedServiceStateAsync(services, serviceClient, windowsProxy, dnsEngine, bypassEngine, migratedLegacySettings).ConfigureAwait(false);
+            if (serviceClient.ConnectionState == ServiceConnectionState.Connected)
             {
-                if (migratedLegacySettings)
-                {
-                    _ = await serviceClient
-                        .SendAsync(new IpcRequest(IpcRequestKind.ReloadConfiguration))
-                        .ConfigureAwait(false);
-                }
-
-                if (dnsEngine is HybridDnsEngineProxy hybridDns)
-                {
-                    await hybridDns.RefreshFromServiceAsync().ConfigureAwait(false);
-                }
-
-                if (bypassEngine is HybridBypassEngineProxy hybridBypass)
-                {
-                    await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
-                    await hybridBypass.EnsureUserProxySynchronizedAsync().ConfigureAwait(false);
-                }
-
                 return;
             }
 
@@ -602,6 +582,85 @@ public partial class App : Application
         {
             logger.LogWarning(ex, "Standalone startup initialization encountered an error.");
         }
+    }
+
+    private static async Task WaitForLateServiceConnectionAsync(
+        ServiceProvider services,
+        ILogger<App> logger,
+        bool migratedLegacySettings)
+    {
+        try
+        {
+            var serviceClient = services.GetRequiredService<IServiceClient>();
+            var windowsProxy = services.GetRequiredService<IWindowsProxyManager>();
+            var dnsEngine = services.GetRequiredService<IDnsEngine>();
+            var bypassEngine = services.GetRequiredService<IBypassEngineService>();
+
+            // Poll gently for up to 3 minutes so a delayed-start service is picked up automatically once online.
+            for (var attempt = 0; attempt < 60 && serviceClient.ConnectionState != ServiceConnectionState.Connected; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                await serviceClient.RefreshStatusAsync().ConfigureAwait(false);
+            }
+
+            if (serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            {
+                logger.LogInformation("Connected to JustCryptDnsService after late startup; synchronizing UI and user proxy.");
+                await SyncConnectedServiceStateAsync(
+                    services,
+                    serviceClient,
+                    windowsProxy,
+                    dnsEngine,
+                    bypassEngine,
+                    migratedLegacySettings).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) when (ex is ObjectDisposedException or OperationCanceledException or InvalidOperationException)
+        {
+            // App shutting down cleanly.
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Background late-service reconnect loop exited.");
+        }
+    }
+
+    private static async Task SyncConnectedServiceStateAsync(
+        ServiceProvider services,
+        IServiceClient serviceClient,
+        IWindowsProxyManager windowsProxy,
+        IDnsEngine dnsEngine,
+        IBypassEngineService bypassEngine,
+        bool migratedLegacySettings)
+    {
+        var serviceConnected = serviceClient.ConnectionState == ServiceConnectionState.Connected;
+        var serviceBypassRunning = serviceConnected && serviceClient.LastStatus?.IsBypassRunning == true;
+        await windowsProxy.RecoverAfterCrashIfNeededAsync(proxyIsRunning: serviceBypassRunning).ConfigureAwait(false);
+
+        if (!serviceConnected)
+        {
+            return;
+        }
+
+        if (migratedLegacySettings)
+        {
+            _ = await serviceClient
+                .SendAsync(new IpcRequest(IpcRequestKind.ReloadConfiguration))
+                .ConfigureAwait(false);
+        }
+
+        if (dnsEngine is HybridDnsEngineProxy hybridDns)
+        {
+            await hybridDns.RefreshFromServiceAsync().ConfigureAwait(false);
+        }
+
+        if (bypassEngine is HybridBypassEngineProxy hybridBypass)
+        {
+            await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
+            await hybridBypass.EnsureUserProxySynchronizedAsync().ConfigureAwait(false);
+        }
+
+        _ = services;
     }
 
     private static bool IsWindowsServiceRunningOrStarting()
@@ -797,6 +856,35 @@ public partial class App : Application
         if (Volatile.Read(ref _servicesDisposed) || _services is null)
         {
             return;
+        }
+
+        var services = _services;
+        if (services.GetService<IServiceClient>() is { ConnectionState: not ServiceConnectionState.Connected } sc)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await sc.RefreshStatusAsync().ConfigureAwait(false);
+                    if (sc.ConnectionState == ServiceConnectionState.Connected)
+                    {
+                        if (services.GetService<IDnsEngine>() is HybridDnsEngineProxy hybridDns)
+                        {
+                            await hybridDns.RefreshFromServiceAsync().ConfigureAwait(false);
+                        }
+
+                        if (services.GetService<IBypassEngineService>() is HybridBypassEngineProxy hybridBypass)
+                        {
+                            await hybridBypass.RefreshFromServiceAsync().ConfigureAwait(false);
+                            await hybridBypass.EnsureUserProxySynchronizedAsync().ConfigureAwait(false);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Non-fatal background sync on window activation.
+                }
+            });
         }
 
         var mainWindow = MainWindow ?? EnsureMainWindowCreated();

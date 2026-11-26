@@ -84,6 +84,7 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
 
     public void Pause()
     {
+        CancellationTokenSource? ctsToStop;
         lock (_sync)
         {
             if (!IsActive && _loopCts is null)
@@ -93,8 +94,10 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
 
             IsActive = false;
             _hasPreviousCounters = false;
-            StopLoopLocked();
+            ctsToStop = DetachLoopCtsLocked();
         }
+
+        CancelAndDisposeQuietly(ctsToStop);
     }
 
     public IReadOnlyList<NetworkTelemetrySample> GetRecentSamples()
@@ -107,6 +110,7 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
 
     public void Dispose()
     {
+        CancellationTokenSource? ctsToStop;
         lock (_sync)
         {
             if (_disposed)
@@ -117,8 +121,10 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
             _disposed = true;
             IsActive = false;
             _hasPreviousCounters = false;
-            StopLoopLocked();
+            ctsToStop = DetachLoopCtsLocked();
         }
+
+        CancelAndDisposeQuietly(ctsToStop);
     }
 
     internal static (double DownloadBytesPerSecond, double UploadBytesPerSecond) CalculateRates(
@@ -214,16 +220,23 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         return DefaultPingTarget;
     }
 
-    private void StopLoopLocked()
+    private CancellationTokenSource? DetachLoopCtsLocked()
     {
-        if (_loopCts is null)
+        var cts = _loopCts;
+        _loopCts = null;
+        return cts;
+    }
+
+    private static void CancelAndDisposeQuietly(CancellationTokenSource? cts)
+    {
+        if (cts is null)
         {
             return;
         }
 
         try
         {
-            _loopCts.Cancel();
+            cts.Cancel();
         }
         catch (ObjectDisposedException)
         {
@@ -231,8 +244,14 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         }
         finally
         {
-            _loopCts.Dispose();
-            _loopCts = null;
+            try
+            {
+                cts.Dispose();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already disposed.
+            }
         }
     }
 
@@ -308,14 +327,17 @@ public sealed class NetworkTelemetryService : INetworkTelemetryService
         }
         finally
         {
+            CancellationTokenSource? ctsToDispose = null;
             lock (_sync)
             {
                 if (ReferenceEquals(_loopCts, ownCts))
                 {
                     IsActive = false;
-                    StopLoopLocked();
+                    ctsToDispose = DetachLoopCtsLocked();
                 }
             }
+
+            CancelAndDisposeQuietly(ctsToDispose);
         }
     }
 

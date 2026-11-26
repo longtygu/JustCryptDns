@@ -57,7 +57,7 @@ public sealed class IpEnrichmentService : IIpEnrichmentService
         {
             Timeout = TimeSpan.FromSeconds(3),
         };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("JustCryptDns/1.8.4");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("JustCryptDns/1.8.5");
         LoadDiskCache();
     }
 

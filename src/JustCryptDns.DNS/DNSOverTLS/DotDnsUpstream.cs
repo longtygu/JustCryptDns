@@ -442,14 +442,17 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
         private void CloseCurrentLocked()
         {
             FailAllPending(_pending, new IOException("DoT socket rotated."));
-            try { _connCts?.Cancel(); } catch { }
-            try { _ssl?.Dispose(); } catch { }
-            try { _tcp?.Dispose(); } catch { }
-            _connCts?.Dispose();
+            var connCts = _connCts;
+            var ssl = _ssl;
+            var tcp = _tcp;
             _connCts = null;
             _ssl = null;
             _tcp = null;
             _readLoopTask = null;
+            try { connCts?.Cancel(); } catch { }
+            try { ssl?.Dispose(); } catch { }
+            try { tcp?.Dispose(); } catch { }
+            try { connCts?.Dispose(); } catch { }
         }
 
         public void Dispose()
@@ -460,10 +463,16 @@ public sealed class DotDnsUpstream : IDnsUpstreamClient, IDisposable
             }
 
             FailAllPending(_pending, new OperationCanceledException("DoT pool disposed."));
-            try { _connCts?.Cancel(); } catch { }
-            try { _ssl?.Dispose(); } catch { }
-            try { _tcp?.Dispose(); } catch { }
-            _connCts?.Dispose();
+            var connCts = _connCts;
+            var ssl = _ssl;
+            var tcp = _tcp;
+            _connCts = null;
+            _ssl = null;
+            _tcp = null;
+            try { connCts?.Cancel(); } catch { }
+            try { ssl?.Dispose(); } catch { }
+            try { tcp?.Dispose(); } catch { }
+            try { connCts?.Dispose(); } catch { }
             _connectGate.Dispose();
             _writeGate.Dispose();
         }

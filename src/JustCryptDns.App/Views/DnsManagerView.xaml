@@ -135,6 +135,9 @@
                                 </TextBlock.Text>
                             </TextBlock>
                         </Button>
+                        <Button Style="{StaticResource Button.Primary}" Command="{Binding ApplyWindowsAdapterDnsNowCommand}"
+                                Content="{l:Loc TrafficFix_ApplyAdapterDnsNow}" Margin="0,0,8,4"
+                                Visibility="{Binding CanFixAdapterDns, Converter={StaticResource BoolToVisibility}}" />
                         <Button Style="{StaticResource Button.Primary}" Command="{Binding PauseForCaptivePortalCommand}"
                                 Content="{l:Loc Dns_PauseCaptivePortal}" Margin="0,0,8,4"
                                 Visibility="{Binding CanPauseCaptivePortal, Converter={StaticResource BoolToVisibility}}" />

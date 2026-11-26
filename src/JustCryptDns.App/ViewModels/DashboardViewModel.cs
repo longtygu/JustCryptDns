@@ -109,6 +109,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string? _conflictingServiceName;
     [ObservableProperty] private string? _testProxyFeedback;
     [ObservableProperty] private string? _engineError;
+    [ObservableProperty] private bool _canFixAdapterDns;
     [ObservableProperty] private bool _canPauseCaptivePortal;
     [ObservableProperty] private bool _isCaptivePortalPaused;
 
@@ -330,6 +331,11 @@ public sealed partial class DashboardViewModel : PageViewModel
         if (!_isShellSuspended)
         {
             StartServicePolling();
+            if (_serviceClient is { ConnectionState: not ServiceConnectionState.Connected })
+            {
+                _ = TryReconnectServiceAsync();
+            }
+
             _ = RefreshCommand.ExecuteAsync(null);
         }
     }
@@ -352,7 +358,66 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         ApplyEngineStats(_dnsEngine.GetStats());
         StartServicePolling();
+        if (_serviceClient is { ConnectionState: not ServiceConnectionState.Connected })
+        {
+            _ = TryReconnectServiceAsync();
+        }
+
         _ = RefreshCommand.ExecuteAsync(null);
+    }
+
+    private async Task TryReconnectServiceAsync()
+    {
+        if (_serviceClient is null || _isShellSuspended)
+        {
+            return;
+        }
+
+        try
+        {
+            var token = _cts?.Token ?? CancellationToken.None;
+            await _serviceClient.RefreshStatusAsync(token).ConfigureAwait(false);
+            if (_serviceClient.ConnectionState == ServiceConnectionState.Connected)
+            {
+                if (_dnsEngine is HybridDnsEngineProxy hybridDns)
+                {
+                    await hybridDns.RefreshFromServiceAsync(token).ConfigureAwait(false);
+                }
+
+                if (_bypassEngine is HybridBypassEngineProxy hybridBypass)
+                {
+                    await hybridBypass.RefreshFromServiceAsync(token).ConfigureAwait(false);
+                }
+
+                if (System.Windows.Application.Current?.Dispatcher is { } dispatcher && !dispatcher.CheckAccess())
+                {
+                    _ = dispatcher.BeginInvoke(() =>
+                    {
+                        ApplyEngineStats(_dnsEngine.GetStats());
+                        if (_bypassEngine is not null)
+                        {
+                            ApplyBypassStats(_bypassEngine.GetStats());
+                        }
+
+                        StartServicePolling();
+                    });
+                }
+                else
+                {
+                    ApplyEngineStats(_dnsEngine.GetStats());
+                    if (_bypassEngine is not null)
+                    {
+                        ApplyBypassStats(_bypassEngine.GetStats());
+                    }
+
+                    StartServicePolling();
+                }
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or InvalidOperationException)
+        {
+            // Ignore navigation/shutdown cancellation.
+        }
     }
 
     public override void OnNavigatedFrom()
@@ -449,36 +514,45 @@ public sealed partial class DashboardViewModel : PageViewModel
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task ToggleEngineAsync()
     {
-        if (IsEngineRunning)
+        try
         {
-            await _dnsEngine.StopAsync();
-            if (_bypassEngine is not null && IsBypassRunning)
+            if (IsEngineRunning)
             {
-                await _bypassEngine.StopAsync();
-            }
-        }
-        else
-        {
-            var (ok, _) = await _dnsEngine.StartAsync();
-            if (!ok)
-            {
-                _navigation.Navigate(PageKeys.DnsManager);
+                await _dnsEngine.StopAsync();
+                if (_bypassEngine is not null && IsBypassRunning)
+                {
+                    await _bypassEngine.StopAsync();
+                }
             }
             else
             {
-                _ = _dnsEngine.ProbeActiveResolverAsync();
-                if (_bypassEngine is not null
-                    && (_settings?.Current.Bypass.IsBypassEnabled ?? true)
-                    && (_settings?.Current.Bypass.AutoStartWithDnsEngine ?? true)
-                    && !IsBypassRunning)
+                var (ok, err) = await _dnsEngine.StartAsync();
+                if (!ok)
                 {
-                    var (_, bypassWarn) = await _bypassEngine.StartAsync();
-                    if (!string.IsNullOrWhiteSpace(bypassWarn))
+                    EngineError = err;
+                    _navigation.Navigate(PageKeys.DnsManager);
+                }
+                else
+                {
+                    _ = _dnsEngine.ProbeActiveResolverAsync();
+                    if (_bypassEngine is not null
+                        && (_settings?.Current.Bypass.IsBypassEnabled ?? true)
+                        && (_settings?.Current.Bypass.AutoStartWithDnsEngine ?? true)
+                        && !IsBypassRunning)
                     {
-                        EngineError ??= bypassWarn;
+                        var (_, bypassWarn) = await _bypassEngine.StartAsync();
+                        if (!string.IsNullOrWhiteSpace(bypassWarn))
+                        {
+                            EngineError ??= bypassWarn;
+                        }
                     }
                 }
             }
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException or OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "ToggleEngineAsync encountered an error.");
+            EngineError = ex.Message;
         }
 
         ApplyEngineStats(_dnsEngine.GetStats());
@@ -736,10 +810,46 @@ public sealed partial class DashboardViewModel : PageViewModel
         SuggestedLoopbackIp = stats.SuggestedLoopbackIp;
         ConflictingServiceName = stats.Port53ServiceName;
         IsCaptivePortalPaused = stats.IsCaptivePortalPaused;
+        CanFixAdapterDns = stats.TrafficStatus == SystemTrafficStatus.AdapterNotConfigured;
         CanPauseCaptivePortal = stats.TrafficStatus == SystemTrafficStatus.CaptivePortalDetected && !stats.IsCaptivePortalPaused;
         TrafficWarningBanner = FormatTrafficWarning(stats);
         EngineError = stats.LastError;
         UpdateTelemetryTargets();
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ApplyWindowsAdapterDnsNowAsync()
+    {
+        EngineError = null;
+        TestProxyFeedback = null;
+        try
+        {
+            if (_settings is not null && !_settings.Current.Dns.ConfigureWindowsAdapter)
+            {
+                await _settings.UpdateAsync(s => s.Dns.ConfigureWindowsAdapter = true);
+            }
+
+            var (ok, err) = await _dnsEngine.RestartAsync();
+            if (ok)
+            {
+                _ = _dnsEngine.ProbeActiveResolverAsync();
+                var listenIp = ExtractListenIp(_dnsEngine.GetStats().ListenEndpoint);
+                TestProxyFeedback = Localization.LocalizationManager.Instance.Format("TrafficFix_ApplyAdapterDnsSuccess", listenIp);
+            }
+            else if (!string.IsNullOrWhiteSpace(err))
+            {
+                EngineError = err;
+            }
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or InvalidOperationException or OperationCanceledException)
+        {
+            EngineError = ex.Message;
+        }
+        finally
+        {
+            ApplyEngineStats(_dnsEngine.GetStats());
+            _ = RefreshCommand.ExecuteAsync(null);
+        }
     }
 
     [RelayCommand(AllowConcurrentExecutions = false)]
@@ -766,6 +876,18 @@ public sealed partial class DashboardViewModel : PageViewModel
         ApplyEngineStats(_dnsEngine.GetStats());
     }
 
+    internal static string ExtractListenIp(string? listenEndpoint)
+    {
+        if (string.IsNullOrWhiteSpace(listenEndpoint))
+        {
+            return DnsSettings.DefaultListenAddress;
+        }
+
+        var trimmed = listenEndpoint.Trim();
+        var colon = trimmed.LastIndexOf(':');
+        return colon > 0 ? trimmed[..colon].Trim('[', ']') : trimmed;
+    }
+
     internal static string? FormatTrafficWarning(DnsEngineRuntimeStats stats)
     {
         var loc = Localization.LocalizationManager.Instance;
@@ -775,7 +897,9 @@ public sealed partial class DashboardViewModel : PageViewModel
                 "TrafficWarn_NonStandardPort",
                 stats.BoundPort,
                 stats.Port53OwnerDescription ?? loc["Common_Unknown"]),
-            SystemTrafficStatus.AdapterNotConfigured => loc["TrafficWarn_AdapterNotConfigured"],
+            SystemTrafficStatus.AdapterNotConfigured => loc.Format(
+                "TrafficWarn_AdapterNotConfigured",
+                ExtractListenIp(stats.ListenEndpoint)),
             SystemTrafficStatus.Ipv6DnsLeakDetected => loc.Format(
                 "TrafficWarn_Ipv6DnsLeak",
                 stats.LeakingIpv6DnsServers is { Count: > 0 } servers

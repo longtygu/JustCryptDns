@@ -1294,7 +1294,13 @@
     <value>Engine is listening on port {0} (not port 53). Windows only sends system DNS traffic to port 53, so traffic counters will stay at 0 for other apps. Port 53 is currently used by: {1}. Stop that service and switch back to port 53.</value>
   </data>
   <data name="TrafficWarn_AdapterNotConfigured" xml:space="preserve">
-    <value>Engine is running on port 53, but your active Windows network adapter DNS is not pointing to 127.0.0.1 yet. Enable 'Configure Windows adapter automatically' in DNS Manager (run as Administrator) so Windows sends DNS queries through JustCryptDns.</value>
+    <value>Engine is running on port 53, but your active Windows network adapter DNS is not pointing to {0} yet. Click 'Apply DNS to Windows now' or enable 'Configure Windows adapter automatically' in DNS Manager so Windows sends DNS queries through JustCryptDns.</value>
+  </data>
+  <data name="TrafficFix_ApplyAdapterDnsNow" xml:space="preserve">
+    <value>Apply DNS to Windows now</value>
+  </data>
+  <data name="TrafficFix_ApplyAdapterDnsSuccess" xml:space="preserve">
+    <value>Windows network adapter DNS is now pointing to {0}:53.</value>
   </data>
   <data name="TrafficWarn_Ipv6DnsLeak" xml:space="preserve">
     <value>IPv6 DNS leak detected: your network adapter still uses ISP IPv6 DNS ({0}), which Windows may prefer over JustCryptDns and poison game/blocked domains. {1}</value>

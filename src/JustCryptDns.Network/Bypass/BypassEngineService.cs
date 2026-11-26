@@ -1214,7 +1214,11 @@ public sealed class BypassEngineService : IBypassEngineService
 
         try
         {
-            await StopAsync().ConfigureAwait(false);
+            // Never restore external/service-owned Windows proxy backups when disposing an idle in-process instance.
+            if (_state != BypassEngineState.Stopped || _proxy is not null || _pacServer is not null)
+            {
+                await StopAsync().ConfigureAwait(false);
+            }
         }
         finally
         {

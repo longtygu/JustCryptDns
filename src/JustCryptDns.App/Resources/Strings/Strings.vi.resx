@@ -1294,7 +1294,13 @@
     <value>Engine đang chạy trên cổng {0} (không phải cổng 53). Windows chỉ gửi truy vấn DNS hệ thống tới cổng 53, nên các chỉ số lưu lượng từ ứng dụng khác sẽ không tăng. Cổng 53 hiện đang bị chiếm bởi: {1}. Hãy tắt dịch vụ đó rồi chuyển về cổng 53.</value>
   </data>
   <data name="TrafficWarn_AdapterNotConfigured" xml:space="preserve">
-    <value>Engine đang chạy trên cổng 53, nhưng DNS của bộ điều hợp mạng Windows chưa trỏ về 127.0.0.1. Hãy bật 'Tự động cấu hình DNS cho bộ điều hợp Windows' trong Quản lý DNS (chạy với quyền Quản trị viên) để Windows gửi truy vấn qua JustCryptDns.</value>
+    <value>Engine đang chạy trên cổng 53, nhưng DNS của bộ điều hợp mạng Windows chưa trỏ về {0}. Hãy bấm 'Áp dụng DNS cho Windows ngay' hoặc bật 'Tự động cấu hình DNS cho bộ điều hợp Windows' trong Quản lý DNS để Windows gửi truy vấn qua JustCryptDns.</value>
+  </data>
+  <data name="TrafficFix_ApplyAdapterDnsNow" xml:space="preserve">
+    <value>Áp dụng DNS cho Windows ngay</value>
+  </data>
+  <data name="TrafficFix_ApplyAdapterDnsSuccess" xml:space="preserve">
+    <value>Đã áp dụng DNS {0}:53 cho bộ điều hợp mạng Windows.</value>
   </data>
   <data name="TrafficWarn_Ipv6DnsLeak" xml:space="preserve">
     <value>Phát hiện rò rỉ DNS IPv6: card mạng vẫn còn DNS IPv6 của nhà mạng ({0}), Windows có thể ưu tiên hỏi DNS này và bị chặn/đầu độc tên miền game hoặc web. {1}</value>

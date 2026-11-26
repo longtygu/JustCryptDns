@@ -231,9 +231,28 @@ public sealed class HybridBypassEngineProxy : IBypassEngineService
         }
     }
 
+    private async Task<bool> EnsureServiceConnectionFreshAsync(CancellationToken cancellationToken)
+    {
+        if (IsDelegatingToService)
+        {
+            return true;
+        }
+
+        try
+        {
+            await _serviceClient.RefreshStatusAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "Pre-command bypass service reconnect probe did not connect.");
+        }
+
+        return IsDelegatingToService;
+    }
+
     public async Task<(bool Success, string? Error)> StartAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsDelegatingToService)
+        if (!await EnsureServiceConnectionFreshAsync(cancellationToken).ConfigureAwait(false))
         {
             return await _local.StartAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -255,7 +274,7 @@ public sealed class HybridBypassEngineProxy : IBypassEngineService
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsDelegatingToService)
+        if (!await EnsureServiceConnectionFreshAsync(cancellationToken).ConfigureAwait(false))
         {
             await _local.StopAsync(cancellationToken).ConfigureAwait(false);
             return;
@@ -270,7 +289,7 @@ public sealed class HybridBypassEngineProxy : IBypassEngineService
 
     public async Task<(bool Success, string? Error)> RestartAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsDelegatingToService)
+        if (!await EnsureServiceConnectionFreshAsync(cancellationToken).ConfigureAwait(false))
         {
             return await _local.RestartAsync(cancellationToken).ConfigureAwait(false);
         }

@@ -730,6 +730,7 @@ Get-ChildItem -LiteralPath $SourceDir -Recurse -File | ForEach-Object {
 }
 
 if ($restartService) {
+    try { & sc.exe config $ServiceName start= auto | Out-Null } catch { }
     try { Start-Service -Name $ServiceName -ErrorAction SilentlyContinue } catch { }
 }
 
